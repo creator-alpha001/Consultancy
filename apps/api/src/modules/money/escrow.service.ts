@@ -92,6 +92,16 @@ export class EscrowService {
     @Inject(PAYMENT_AGGREGATOR) private readonly paymentAggregator: PaymentAggregator,
   ) {}
 
+  /**
+   * Read-only lookup for other modules — e.g. engagements/ needs an
+   * escrow id to release, but must never query `escrows` directly
+   * (CLAUDE.md — only money/ writes ledger, escrow, payout and refund tables).
+   */
+  async findByEngagementId(engagementId: string): Promise<EscrowRow | null> {
+    const res = await this.pool.query<EscrowDbRow>(`SELECT * FROM escrows WHERE engagement_id = $1`, [engagementId]);
+    return res.rows[0] ? mapEscrowRow(res.rows[0]) : null;
+  }
+
   async hold(input: HoldEscrowInput): Promise<EscrowRow> {
     let escrowId: string;
 

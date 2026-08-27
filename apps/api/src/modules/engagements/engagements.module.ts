@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
+import { MoneyModule } from '../money/money.module';
+import { TaxonomyModule } from '../taxonomy/taxonomy.module';
+import { EngagementsService } from './engagements.service';
 
 /**
- * Engagement lifecycle across all four types. `engagements` table exists
- * in M1 only as a minimal stub for escrow to reference — the full state
- * machine (agenda lock + escrow-hold precondition, transition table)
- * arrives in M3.
+ * Engagement lifecycle across all four types. M3 drives document_review
+ * end to end; live_session/written_qa/async_task share this spine but
+ * need sessions/ (M5) or board/ (M6) to actually be usable.
  */
-@Module({})
+@Module({
+  imports: [TaxonomyModule, MoneyModule],
+  providers: [EngagementsService],
+  exports: [EngagementsService],
+})
 export class EngagementsModule {}

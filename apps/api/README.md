@@ -24,6 +24,23 @@ exposes the pack editor's HTTP surface, delegating all parsing to
 test: publishing a new domain manifest version changes what
 `GET /domains/:code` returns immediately, in the same running process.
 
+**M3 — the core engagement loop** is implemented end to end for
+`document_review`: `agenda/` (draft, lock+hash, immutable once locked,
+change orders), `engagements/` (the real lifecycle — draft → agreed →
+working → delivered → assessed → completed, plus cancel/refund),
+`assessment/` (submissions, evaluations, per-dimension scores). Hard rule
+#12 ("no engagement enters a working state without escrow held AND
+agenda locked") is a real DB trigger, not a service-layer check — see
+`test/invariants/engagement-invariants.spec.ts`. The M3 acceptance test
+(`test/engagements/full-loop.e2e.spec.ts`) runs one real engagement
+through every module built so far — money, domains, taxonomy, agenda,
+engagements, assessment — with real ledger postings at the end.
+
+`agenda/`, `engagements/`, and `assessment/` are service-layer only —
+no HTTP controllers. There's no auth yet to give a route a real actor,
+so nothing is exposed publicly; every M3 test drives the services
+directly, same as production code eventually will.
+
 Every other module directory is a placeholder — see the comment at the
 top of each `*.module.ts` for which milestone fills it in.
 
@@ -100,3 +117,24 @@ Reserve is expected to run negative; that's what a reserve is (see D7 in
   anything) a domain manifest that maps a category to an unknown skill,
   binds an unknown assessment template, or offers an engagement type its
   family doesn't.
+
+## Engagement-lifecycle invariants enforced by the database
+
+- **Hard rule #12, unconditionally**: entering `working` without a
+  locked agenda AND a held escrow is rejected by trigger even on a
+  direct, manual `UPDATE` — not just when going through the service. A
+  separate reactive mechanism promotes `agreed → working` automatically
+  whichever precondition is satisfied second (either may legitimately
+  happen first).
+- `engagements.status` transitions are validated against a fixed table,
+  same pattern as `escrows.status` in M1.
+- A locked agenda is immutable: editing its content, or adding/removing
+  items, is rejected by trigger. The one exception is
+  `agenda_items.checked_at` (the in-session checklist) and setting
+  `superseded_at` exactly once (a change order). Only one active
+  (non-superseded) agenda may exist per engagement at a time.
+- An evaluation cannot be returned unless every dimension of its bound
+  template is scored (SPEC-PLATFORM.md §10) — skipped entirely, not
+  failed, when no template is bound (hard rule #3). A score naming a
+  dimension the template doesn't define is rejected outright, so a typo
+  can't silently fail to count toward completeness.

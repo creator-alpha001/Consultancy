@@ -113,6 +113,22 @@ export class FamilyManifestService {
     return new Map(res.rows.map((r) => [r.code, r.id]));
   }
 
+  /**
+   * Given an engagement's required skill ids, finds the assessment
+   * template one of them binds — the mechanism SPEC-PLATFORM.md §10
+   * describes ("applied via skills"). Returns null with no error when
+   * none of the skills bind a template: that's the Wave 3 case (hard
+   * rule #3), not a failure.
+   */
+  async resolveTemplateForSkillIds(skillIds: string[]): Promise<string | null> {
+    if (skillIds.length === 0) return null;
+    const res = await this.pool.query<{ template_id: string | null }>(
+      `SELECT template_id FROM skills WHERE id = ANY($1::uuid[]) AND template_id IS NOT NULL LIMIT 1`,
+      [skillIds],
+    );
+    return res.rows[0]?.template_id ?? null;
+  }
+
   async getTemplateIdsByCode(familyCode: string, codes: string[]): Promise<Map<string, string>> {
     if (codes.length === 0) return new Map();
     const res = await this.pool.query<{ code: string; id: string }>(

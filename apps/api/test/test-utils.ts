@@ -10,7 +10,10 @@ export async function resetDatabase(pool: Pool): Promise<void> {
     TRUNCATE TABLE
       outbox, idempotency_keys, refunds, payouts, escrows,
       ledger_entries, ledger_transactions, ledger_accounts,
-      fee_schedules, engagements,
+      fee_schedules,
+      assessment_scores, evaluations, submissions,
+      engagement_skills, agenda_items, agendas,
+      engagements,
       category_skills, categories,
       domain_manifest_versions, domains,
       skills, credential_types, assessment_templates,
@@ -53,6 +56,40 @@ export async function seedEngagement(
     [seekerId, providerId, currency],
   );
   return res.rows[0].id;
+}
+
+/**
+ * Drives a bare engagement through agreed -> working via the real
+ * reactive triggers (seed a held escrow + a locked agenda, same as the
+ * app would), rather than assigning status='working' directly — tests
+ * that need "some working engagement" as a fixture use this instead of
+ * re-deriving the precondition dance every time.
+ */
+export async function seedWorkingEngagement(
+  pool: Pool,
+  seekerId: string,
+  providerId: string,
+  currency = 'INR',
+  amountPaise = 10_000n,
+): Promise<string> {
+  const engagementId = await seedEngagement(pool, seekerId, providerId, currency);
+  await pool.query(`UPDATE engagements SET status = 'agreed' WHERE id = $1`, [engagementId]);
+  await pool.query(
+    `INSERT INTO escrows (engagement_id, seeker_id, provider_id, currency, amount_paise, status)
+     VALUES ($1, $2, $3, $4, $5, 'held')`,
+    [engagementId, seekerId, providerId, currency, amountPaise.toString()],
+  );
+  const agenda = await pool.query<{ id: string }>(
+    `INSERT INTO agendas (engagement_id, original_lang, expected_deliverable, success_criteria)
+     VALUES ($1, 'en', 'seed deliverable', 'seed criteria') RETURNING id`,
+    [engagementId],
+  );
+  await pool.query(
+    `INSERT INTO agenda_items (agenda_id, ordinal, label_lang, label_text) VALUES ($1, 0, 'en', 'seed goal')`,
+    [agenda.rows[0].id],
+  );
+  await pool.query(`UPDATE agendas SET locked_at = now(), locked_hash = 'seed-hash' WHERE id = $1`, [agenda.rows[0].id]);
+  return engagementId;
 }
 
 export async function seedFeeSchedule(pool: Pool, currency = 'INR', platformFeeBps = 1500): Promise<string> {
