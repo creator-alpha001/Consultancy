@@ -62,6 +62,29 @@ export class MoneyController {
     });
     return serializeEscrow(escrow);
   }
+
+  /**
+   * Separate from /refund on purpose: this one also pays the provider
+   * from reserve (CLAUDE.md #23). Keeping it a distinct route means
+   * "the platform broke" can never be actioned by accident as an
+   * ordinary refund, which would silently cost the provider their fee.
+   */
+  @Post(':escrowId/platform-failure')
+  @UseInterceptors(IdempotencyInterceptor)
+  async platformFailure(
+    @Param('escrowId') escrowId: string,
+    @Body() body: { failureDetail?: string; bankAccountLast4?: string; bankIfsc?: string },
+  ): Promise<SerializedEscrow> {
+    if (!body.failureDetail) throw new BadRequestException('failureDetail is required');
+    const escrow = await this.escrows.resolvePlatformFailure({
+      escrowId,
+      idempotencyKey: `platform-failure:${escrowId}`,
+      failureDetail: body.failureDetail,
+      bankAccountLast4: body.bankAccountLast4,
+      bankIfsc: body.bankIfsc,
+    });
+    return serializeEscrow(escrow);
+  }
 }
 
 function requireHoldBody(body: {

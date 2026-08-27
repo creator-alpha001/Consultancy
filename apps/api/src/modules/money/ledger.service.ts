@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { ledgerTransactionInvalid } from './errors';
 import { PostTransactionInput, PostTransactionResult } from './types';
 
 const UNIQUE_VIOLATION = '23505';
@@ -20,7 +21,7 @@ const UNIQUE_VIOLATION = '23505';
 export class LedgerService {
   async postTransaction(client: PoolClient, input: PostTransactionInput): Promise<PostTransactionResult> {
     if (input.entries.length < 2) {
-      throw new Error('a ledger transaction needs at least two entries (double-entry)');
+      throw ledgerTransactionInvalid('a ledger transaction needs at least two entries (double-entry)');
     }
 
     try {

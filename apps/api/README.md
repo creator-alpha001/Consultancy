@@ -67,6 +67,23 @@ migration that has already run — add a new one.
   external effects (e.g. notifying the payment aggregator) are written to
   `outbox` in the same transaction and dispatched by a relay afterward.
 
+## Money errors and the platform-failure path
+
+`money/errors.ts` is the registry of every error code the module can
+return. Nothing in `money/` throws an untyped `Error` — a caller that
+can't distinguish "already refunded, stop" from "server crashed, retry"
+will retry a payment it shouldn't. Each code has an API test asserting
+the envelope and the code (never the message, which is localised).
+
+A **platform-side failure** has its own path — `resolvePlatformFailure`,
+`POST /internal/escrows/:id/platform-failure` — separate from an
+ordinary refund. Per CLAUDE.md #23 it refunds the seeker in full, pays
+the provider what they'd have earned out of the `reserve` account, and
+takes no platform fee. All four postings are a single balanced
+transaction, so no crash can make one party whole and not the other.
+Reserve is expected to run negative; that's what a reserve is (see D7 in
+`TRACKER.md`).
+
 ## Domain-engine invariants enforced by the database
 
 - A category's slug is unique among its siblings (two partial unique

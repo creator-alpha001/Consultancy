@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { ledgerAccountUnresolvable } from './errors';
 import { LedgerAccountKey } from './types';
 
 /**
@@ -36,7 +37,7 @@ export class LedgerAccountsService {
     // Lost the race to a concurrent insert — the row now exists.
     const found = await this.find(client, key);
     if (!found) {
-      throw new Error(`ledger account (${key.type}, ${key.ownerUserId}, ${key.currency}) not found after insert race`);
+      throw ledgerAccountUnresolvable(`(${key.type}, ${key.ownerUserId}, ${key.currency})`);
     }
     return found;
   }

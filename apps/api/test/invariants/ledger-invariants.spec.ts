@@ -105,6 +105,69 @@ describe('ledger invariants (raw SQL)', () => {
     expect(err.message).toBe('__NO_ERROR_THROWN__');
   });
 
+  it('rejects a transaction that balances in one currency but not another', async () => {
+    // The trigger groups by currency for exactly this case: a transaction
+    // whose total is zero overall, or zero in the currency you happen to
+    // look at, can still be silently wrong in a second currency.
+    const err = await withRolledBackTransaction(async (client) => {
+      const inrA = await createAccount(client, 'payment_aggregator', 'INR');
+      const inrB = await createAccount(client, 'escrow', 'INR');
+      const usdA = await createAccount(client, 'payment_aggregator', 'USD');
+      const usdB = await createAccount(client, 'escrow', 'USD');
+      const tx = await client.query<{ id: string }>(
+        `INSERT INTO ledger_transactions (idempotency_key, reason) VALUES ('multi-currency-1', 'test') RETURNING id`,
+      );
+      const txId = tx.rows[0].id;
+      // INR side balances...
+      await client.query(
+        `INSERT INTO ledger_entries (transaction_id, account_id, currency, amount_paise) VALUES ($1,$2,'INR',-1000)`,
+        [txId, inrA],
+      );
+      await client.query(
+        `INSERT INTO ledger_entries (transaction_id, account_id, currency, amount_paise) VALUES ($1,$2,'INR',1000)`,
+        [txId, inrB],
+      );
+      // ...USD side does not. Naive SUM over all entries would still be 0.
+      await client.query(
+        `INSERT INTO ledger_entries (transaction_id, account_id, currency, amount_paise) VALUES ($1,$2,'USD',-500)`,
+        [txId, usdA],
+      );
+      await client.query(
+        `INSERT INTO ledger_entries (transaction_id, account_id, currency, amount_paise) VALUES ($1,$2,'USD',400)`,
+        [txId, usdB],
+      );
+    });
+    expect(err.message).not.toBe('__NO_ERROR_THROWN__');
+    expect(err.message).toMatch(/does not balance/);
+    expect(err.message).toMatch(/USD/);
+  });
+
+  it('accepts a transaction that balances independently in every currency', async () => {
+    const err = await withRolledBackTransaction(async (client) => {
+      const inrA = await createAccount(client, 'payment_aggregator', 'INR');
+      const inrB = await createAccount(client, 'escrow', 'INR');
+      const usdA = await createAccount(client, 'payment_aggregator', 'USD');
+      const usdB = await createAccount(client, 'escrow', 'USD');
+      const tx = await client.query<{ id: string }>(
+        `INSERT INTO ledger_transactions (idempotency_key, reason) VALUES ('multi-currency-2', 'test') RETURNING id`,
+      );
+      const txId = tx.rows[0].id;
+      for (const [account, currency, amount] of [
+        [inrA, 'INR', -1000],
+        [inrB, 'INR', 1000],
+        [usdA, 'USD', -500],
+        [usdB, 'USD', 500],
+      ] as const) {
+        await client.query(
+          `INSERT INTO ledger_entries (transaction_id, account_id, currency, amount_paise) VALUES ($1,$2,$3,$4)`,
+          [txId, account, currency, amount],
+        );
+      }
+      throw new Error('__NO_ERROR_THROWN__'); // roll back a *valid* transaction, proving it wasn't rejected
+    });
+    expect(err.message).toBe('__NO_ERROR_THROWN__');
+  });
+
   it('rejects UPDATE on ledger_entries — append-only', async () => {
     const client = await pool.connect();
     try {

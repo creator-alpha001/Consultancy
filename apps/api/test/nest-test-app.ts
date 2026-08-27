@@ -5,12 +5,23 @@ import { ErrorEnvelopeFilter } from '../src/common/errors/error-envelope.filter'
 import { IdempotencyModule } from '../src/common/idempotency/idempotency.module';
 import { DbModule, PG_POOL } from '../src/database/db.module';
 
+/** Replaces one provider token with a test double — e.g. a payment aggregator that declines. */
+export interface ProviderOverride {
+  token: unknown;
+  useValue: unknown;
+}
+
 export async function createTestApp(
   extraModules: Array<Type | DynamicModule> = [],
+  overrides: ProviderOverride[] = [],
 ): Promise<INestApplication> {
-  const moduleRef = await Test.createTestingModule({
+  let builder = Test.createTestingModule({
     imports: [DbModule, IdempotencyModule, ...extraModules],
-  }).compile();
+  });
+  for (const override of overrides) {
+    builder = builder.overrideProvider(override.token).useValue(override.useValue);
+  }
+  const moduleRef = await builder.compile();
 
   const app = moduleRef.createNestApplication();
   app.useGlobalFilters(new ErrorEnvelopeFilter());

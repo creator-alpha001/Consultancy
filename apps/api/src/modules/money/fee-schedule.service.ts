@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { noFeeSchedule } from './errors';
 import { FeeSchedule } from './types';
 
 /**
@@ -20,7 +21,7 @@ export class FeeScheduleService {
 
     const row = res.rows[0];
     if (!row || row.id === null) {
-      throw new Error(`no fee schedule covers ${currency} at ${at.toISOString()}`);
+      throw noFeeSchedule(currency, at);
     }
 
     return {

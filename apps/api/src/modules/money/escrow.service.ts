@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
+import { escrowNotFound, escrowNotRefundable, escrowNotReleasable, paymentCaptureFailed } from './errors';
 import { LedgerAccountsService } from './ledger-accounts.service';
 import { LedgerService } from './ledger.service';
 import { FeeScheduleService } from './fee-schedule.service';
@@ -28,6 +29,15 @@ export interface RefundEscrowInput {
   escrowId: string;
   idempotencyKey: string;
   reason: string;
+}
+
+export interface PlatformFailureInput {
+  escrowId: string;
+  idempotencyKey: string;
+  /** What broke on our side — recorded for the evidence packet, never shown as blame to either party. */
+  failureDetail: string;
+  bankAccountLast4?: string;
+  bankIfsc?: string;
 }
 
 interface EscrowDbRow {
@@ -124,7 +134,7 @@ export class EscrowService {
       idempotencyKey: input.idempotencyKey,
     });
     if (capture.status !== 'succeeded') {
-      throw new Error(`payment aggregator capture failed for escrow ${escrowId}`);
+      throw paymentCaptureFailed(escrowId);
     }
 
     const client2 = await this.pool.connect();
@@ -198,14 +208,14 @@ export class EscrowService {
 
       const res = await client.query<EscrowDbRow>(`SELECT * FROM escrows WHERE id = $1 FOR UPDATE`, [input.escrowId]);
       const escrow = res.rows[0];
-      if (!escrow) throw new NotFoundException(`escrow ${input.escrowId} not found`);
+      if (!escrow) throw escrowNotFound(input.escrowId);
 
       if (escrow.status === 'released') {
         await client.query('COMMIT');
         return mapEscrowRow(escrow); // idempotent no-op
       }
       if (escrow.status !== 'held' && escrow.status !== 'disputed_hold') {
-        throw new Error(`cannot release escrow ${escrow.id} from status ${escrow.status}`);
+        throw escrowNotReleasable(escrow.id, escrow.status);
       }
 
       const amountPaise = BigInt(escrow.amount_paise);
@@ -288,14 +298,14 @@ export class EscrowService {
 
       const res = await client.query<EscrowDbRow>(`SELECT * FROM escrows WHERE id = $1 FOR UPDATE`, [input.escrowId]);
       const escrow = res.rows[0];
-      if (!escrow) throw new NotFoundException(`escrow ${input.escrowId} not found`);
+      if (!escrow) throw escrowNotFound(input.escrowId);
 
       if (escrow.status === 'refunded') {
         await client.query('COMMIT');
         return mapEscrowRow(escrow); // idempotent no-op
       }
       if (escrow.status !== 'held' && escrow.status !== 'disputed_hold') {
-        throw new Error(`cannot refund escrow ${escrow.id} from status ${escrow.status}`);
+        throw escrowNotRefundable(escrow.id, escrow.status);
       }
 
       const amountPaise = BigInt(escrow.amount_paise);
@@ -339,6 +349,142 @@ export class EscrowService {
         aggregateId: escrow.id,
         eventType: 'refund.initiated',
         payload: { seekerId: escrow.seeker_id, amountPaise, currency: escrow.currency, reason: input.reason },
+      });
+
+      await client.query('COMMIT');
+      return mapEscrowRow(updated.rows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * CLAUDE.md #23: "Never penalise a provider for a platform-side
+   * failure. Refund the seeker and pay the provider from reserve."
+   *
+   * So this is deliberately NOT `refund()` with a different reason — the
+   * postings differ. The seeker is made whole out of escrow, the provider
+   * is paid what they would have earned out of `reserve`, and the
+   * platform takes **no fee**: we failed, we do not bill for it. All four
+   * entries are one balanced transaction, so a crash can never refund the
+   * seeker without also paying the provider.
+   *
+   * The reserve account is expected to run negative — that is what a
+   * reserve is. Monitoring and top-up are an ops concern (M9); nothing
+   * here blocks on its balance, because refusing to make a wronged
+   * provider whole would be the worse failure.
+   */
+  async resolvePlatformFailure(input: PlatformFailureInput): Promise<EscrowRow> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const res = await client.query<EscrowDbRow>(`SELECT * FROM escrows WHERE id = $1 FOR UPDATE`, [input.escrowId]);
+      const escrow = res.rows[0];
+      if (!escrow) throw escrowNotFound(input.escrowId);
+
+      if (escrow.status === 'refunded') {
+        await client.query('COMMIT');
+        return mapEscrowRow(escrow); // idempotent no-op
+      }
+      if (escrow.status !== 'held' && escrow.status !== 'disputed_hold') {
+        throw escrowNotRefundable(escrow.id, escrow.status);
+      }
+
+      const amountPaise = BigInt(escrow.amount_paise);
+      const platformFeePaise = BigInt(escrow.platform_fee_paise ?? 0n);
+      // What the provider would have taken home had the platform not failed.
+      const providerDuePaise = amountPaise - platformFeePaise;
+
+      const escrowAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'escrow',
+        ownerUserId: null,
+        currency: escrow.currency,
+      });
+      const paAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'payment_aggregator',
+        ownerUserId: null,
+        currency: escrow.currency,
+      });
+      const reserveAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'reserve',
+        ownerUserId: null,
+        currency: escrow.currency,
+      });
+      const providerAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'provider_wallet',
+        ownerUserId: escrow.provider_id,
+        currency: escrow.currency,
+      });
+
+      const ledgerResult = await this.ledger.postTransaction(client, {
+        idempotencyKey: input.idempotencyKey,
+        reason: 'platform_failure_resolution',
+        referenceType: 'escrow',
+        referenceId: escrow.id,
+        entries: [
+          // Seeker made whole, in full — no fee retained.
+          { accountId: escrowAccountId, currency: escrow.currency, amountPaise: -amountPaise },
+          { accountId: paAccountId, currency: escrow.currency, amountPaise: amountPaise },
+          // Provider paid what they were owed, funded by the platform.
+          { accountId: reserveAccountId, currency: escrow.currency, amountPaise: -providerDuePaise },
+          { accountId: providerAccountId, currency: escrow.currency, amountPaise: providerDuePaise },
+        ],
+      });
+
+      const updated = await client.query<EscrowDbRow>(
+        `UPDATE escrows SET status = 'refunded', resolution_transaction_id = $2 WHERE id = $1 RETURNING *`,
+        [escrow.id, ledgerResult.transactionId],
+      );
+
+      await client.query(
+        `INSERT INTO refunds (escrow_id, seeker_id, currency, amount_paise, reason, refund_transaction_id, pa_provider)
+         VALUES ($1, $2, $3, $4, 'platform_failure', $5, $6)
+         ON CONFLICT (escrow_id) DO NOTHING`,
+        [escrow.id, escrow.seeker_id, escrow.currency, amountPaise.toString(), ledgerResult.transactionId, this.paymentAggregator.code],
+      );
+
+      await client.query(
+        `INSERT INTO payouts (escrow_id, provider_id, currency, amount_paise, release_transaction_id, pa_provider, bank_account_last4, bank_ifsc)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (escrow_id) DO NOTHING`,
+        [
+          escrow.id,
+          escrow.provider_id,
+          escrow.currency,
+          providerDuePaise.toString(),
+          ledgerResult.transactionId,
+          this.paymentAggregator.code,
+          input.bankAccountLast4 ?? null,
+          input.bankIfsc ?? null,
+        ],
+      );
+
+      await this.outbox.append(client, {
+        aggregateType: 'escrow',
+        aggregateId: escrow.id,
+        eventType: 'refund.initiated',
+        payload: {
+          seekerId: escrow.seeker_id,
+          amountPaise,
+          currency: escrow.currency,
+          reason: 'platform_failure',
+          failureDetail: input.failureDetail,
+        },
+      });
+      await this.outbox.append(client, {
+        aggregateType: 'escrow',
+        aggregateId: escrow.id,
+        eventType: 'payout.initiated',
+        payload: {
+          providerId: escrow.provider_id,
+          amountPaise: providerDuePaise,
+          currency: escrow.currency,
+          fundedFrom: 'reserve',
+        },
       });
 
       await client.query('COMMIT');
