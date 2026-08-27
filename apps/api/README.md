@@ -69,10 +69,38 @@ reconnection, screen share, in-call chat, the session timer, live
 subtitles — none of these have a meaningful backend-only fake the way a
 payment capture does.
 
-`agenda/`, `engagements/`, `assessment/`, `verification/`, and
-`sessions/` are service-layer only — no HTTP controllers. There's no
+**M6 — board** is implemented: `board/` gives a seeker an open-posting
+path to a provider they've never met. `BoardPostService` (create,
+cancel, cross-domain `searchOpen` — resolving a seeker's active
+`seeker_domains` when no explicit domain filter is given, per hard rule
+#6) never accepts a price-sort parameter, anywhere (hard rule #15).
+`ProposalService.submit()` enforces hard rule #5 twice: a
+`MatchingService` pre-check throws a typed `PROPOSAL_NOT_ELIGIBLE` for
+the common case, backed by the real backstop — a DB trigger
+(`check_proposal_requires_skills_and_tier`) that fires even on a raw SQL
+INSERT and checks every one of the category's required skills at the
+family's `minTierForPaidWork`, in the post's language. `accept()` turns a
+winning proposal into a real engagement via `EngagementsService`, rejects
+every sibling proposal, and re-checks the board post's status under a
+fresh lock after the engagement is created (its own transaction runs
+outside the first one's locks) so a race with a concurrent accept can
+never award the same post twice or orphan an engagement.
+`QuestionService` + `safety/ScreeningService` implement the free-question
+side: a flagged question is held for review, never auto-published and
+never auto-rejected (CLAUDE.md #25), and a distress-flagged hold carries
+the family's real helpline numbers. The M6 acceptance test
+(`test/board/board-acceptance.e2e.spec.ts`) proves the whole chain: an
+unqualified provider rejected, a qualified one's proposal accepted into a
+real engagement, a sibling proposal auto-rejected, and that engagement run
+through M3's full lifecycle to completion with money moving correctly. See
+`TRACKER.md` for why this is "Complete, with debt" rather than plainly
+Complete — one listed M6 feature ("waves") is undefined in every supplied
+spec document and was not guessed at.
+
+`agenda/`, `engagements/`, `assessment/`, `verification/`, `sessions/`,
+and `board/` are service-layer only — no HTTP controllers. There's no
 auth yet to give a route a real actor, so nothing is exposed publicly;
-every M3–M5 test drives the services directly, same as production code
+every M3–M6 test drives the services directly, same as production code
 eventually will.
 
 Every other module directory is a placeholder — see the comment at the
@@ -211,3 +239,22 @@ Reserve is expected to run negative; that's what a reserve is (see D7 in
   which is what makes a refusal legally distinguishable from silence.
 - `sessions` rejects `scheduled_end <= scheduled_start` outright.
 - `transcripts` is one-per-session (`UNIQUE (session_id)`).
+
+## Board invariants enforced by the database
+
+- **`check_proposal_requires_skills_and_tier`** — the mechanism that
+  closes TRACKER.md's D8 (hard rule #5). A `proposals` INSERT is rejected
+  unless the provider holds a verified, active tier at or above the
+  family's `minTierForPaidWork` in *every* skill the post's category
+  maps to, and works in the post's language — checked directly against
+  `provider_skills`/`provider_languages`, fires on a raw SQL INSERT the
+  same as any app call. The post must also be `open`; a duplicate
+  `(board_post_id, provider_id)` pair is rejected by a unique index, not
+  app logic.
+- `board_posts.status` and `proposals.status` each follow a fixed
+  transition table, same pattern as every other lifecycle table here —
+  e.g. `awarded → open` is rejected outright.
+- `answers` cannot be inserted against a `held_for_review` question — a
+  distress- or contact-leak-flagged question is invisible to providers,
+  not just to the public list. A published question flips to `answered`
+  automatically on its first answer.

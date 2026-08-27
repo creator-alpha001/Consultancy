@@ -1,5 +1,16 @@
 import { Module } from '@nestjs/common';
+import { DomainsModule } from '../domains/domains.module';
+import { EngagementsModule } from '../engagements/engagements.module';
+import { SafetyModule } from '../safety/safety.module';
+import { VerificationModule } from '../verification/verification.module';
+import { BoardPostService } from './board-post.service';
+import { ProposalService } from './proposal.service';
+import { QuestionService } from './question.service';
 
-/** Public questions, answers, screening, quotas. Built in M6. */
-@Module({})
+/** Public questions, answers, screening (via safety/), quotas, proposals. */
+@Module({
+  imports: [DomainsModule, EngagementsModule, SafetyModule, VerificationModule],
+  providers: [BoardPostService, ProposalService, QuestionService],
+  exports: [BoardPostService, ProposalService, QuestionService],
+})
 export class BoardModule {}

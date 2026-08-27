@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-27 · after M5
+Last updated: 2026-08-27 · after M6
 
 ---
 
@@ -22,7 +22,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M3 | Core engagement loop (`document_review`) | **Complete** | Yes — one real evaluation, real money, end to end |
 | M4 | Supply: provider onboarding, result-list verifier, per-skill tiers | **Complete** | Yes — a provider verifies once and appears in matching for multiple domains |
 | M5 | Sessions | **Partial — not complete** | No — see below |
-| M6 | Board | Not started | — |
+| M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
 | M7 | Trust: reviews, disputes, appeals | Not started | — |
 | M8 | Seed 15 more domains as data only | Not started | — |
 | M9 | Hardening | Not started | — |
@@ -64,6 +64,31 @@ translated subtitles. These aren't stubbed with fakes because there is
 no meaningful backend-only fake for "the video adapted its bitrate" —
 unlike a payment capture, there's no discrete call to mock.
 
+### Why M6 is "Complete, with debt," not plainly Complete
+
+M6's own done-when bar — "a seeker finds a provider they never met and
+completes an engagement" — is genuinely met and proven end to end in
+`test/board/board-acceptance.e2e.spec.ts`: an open board post, an
+unqualified provider's proposal rejected by the skill/tier/language gate
+(closing D8), a qualified provider's proposal accepted into a real
+engagement, a sibling proposal automatically rejected on award, and that
+engagement run through M3's full lifecycle (agree → lock → escrow →
+deliver → assess → complete) with money moving correctly. Free questions
+with screening (published/held-for-review/distress-with-helplines) and
+the daily quota are built and tested in `test/board/question.e2e.spec.ts`.
+Cross-domain search resolves a seeker's active domains from
+`seeker_domains` when none are given, per hard rule #6.
+
+What keeps this from being plainly "Complete": M6's feature row in
+SPEC-PLATFORM.md §18 lists "**waves**" alongside proposals and quotas.
+No supplied spec document defines what a wave is here (§15's "Wave 1–5"
+is the unrelated multi-year expansion roadmap, not a board mechanic —
+confirmed by grep, there is no other occurrence). Per CLAUDE.md ("if a
+spec is silent, ask rather than invent"), nothing was built for it — see
+D13. The bar itself doesn't mention waves, so the milestone's actual
+acceptance criterion is met; the debt is that one listed feature is
+unimplemented and unclarified, not faked.
+
 ---
 
 ## Open debt
@@ -78,14 +103,17 @@ currently tells.
 | D5 | M1 | `IdempotencyService` deletes its key on handler failure | A concurrent retry racing that window can double-execute. Acceptable with no live traffic; must close before M6 opens the board to real users. |
 | D6 | M2 | Loader cache is per-process | Correct for one deployable. A second instance serves stale manifests until its own publish. Invalidation must become pub/sub before horizontal scaling, not after. |
 | D7 | M1 | Reserve balance is unmonitored | `resolvePlatformFailure` draws on `reserve` without limit and the account is expected to run negative. Nothing alerts when it does. Needs a reconciliation check in M9; deliberately not a runtime block, since refusing to make a wronged provider whole is the worse failure. |
-| D8 | M3/M4 | Required-skill TIER is recorded and findable, but not enforced at engagement creation | `provider_skills` and `MatchingService` now exist and correctly find eligible providers, but `EngagementsService.agree()` never checks the assigned provider actually holds t2+ in the engagement's required skills (hard rule #5) — only the paid-work sanction gate is enforced there. Any provider can still be assigned any engagement; only a *board*/proposal flow (M6) is the natural place to gate on eligibility, matching how schema-v4's own design ties this check to a `proposals` INSERT, not to award. Until M6, this must not be relied on. |
 | D9 | M3 | No revision path | `evaluations.returned_at` is one-shot; a seeker has no way to ask for changes short of a full dispute. `disputed` is a valid transition target from every working-and-later state but nothing drives an engagement into it yet — that's M7. |
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
+| D13 | M6 | "Waves" (SPEC-PLATFORM.md §18's M6 row) not implemented | No supplied spec document defines what a wave is on the board (staggered proposal visibility? cohort release to providers? something else) — confirmed there is no second, board-relevant occurrence of the word anywhere in SPEC-PLATFORM.md. Per CLAUDE.md, not invented. Needs a one-line clarification from the business before it's buildable. |
 
 **Recently closed:** D1 (money error codes), D2 (per-currency sum-to-zero
-test), D3 (reserve-funded platform failure) — 2026-08-27.
+test), D3 (reserve-funded platform failure) — 2026-08-27. D8 (required-
+skill tier now enforced at proposal submission, both by
+`check_proposal_requires_skills_and_tier` and a `MatchingService`
+pre-check in `ProposalService.submit()`) — 2026-08-27.
 
 ---
 
@@ -101,7 +129,8 @@ trusting any of them.**
 | `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money | M1 debt / pre-launch |
 | `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires | `notifications/` relay |
 | `MoneyController` (`/internal/escrows/*`) | Ops scaffolding from M1, now superseded by the real path: `engagements/` orchestrates hold/release via `EscrowService` directly. Kept only for ops tooling and the M1/M2 tests that predate the engagement loop — don't extend it. | Superseded by `engagements/` |
-| `agenda/`, `engagements/`, `assessment/`, `verification/` | **Service layer only — no HTTP controllers.** Every M3/M4 test drives the services directly. There is no public API for the engagement loop or credential pipeline yet; that arrives with identity/auth (routes need a real actor, not a header) | Whichever milestone adds real auth |
+| `agenda/`, `engagements/`, `assessment/`, `verification/`, `board/`, `sessions/` | **Service layer only — no HTTP controllers.** Every M3–M6 test drives the services directly. There is no public API for the engagement loop, credential pipeline, board, or sessions yet; that arrives with identity/auth (routes need a real actor, not a header) | Whichever milestone adds real auth |
+| `ScreeningService` (`safety/`) | A handful of deterministic regexes for distress language and off-platform-contact mentions — **not a real classifier, no ML, no clinical review of the patterns.** Enough to prove the hold/never-auto-publish/never-auto-reject mechanism (CLAUDE.md #25) works; the patterns themselves are a placeholder, same spirit as M4's illustrative tier thresholds | Needs clinical/policy input before this reaches real users, not another regex |
 | `submissions.content_ref` | A plain text column standing in for a real private-storage pointer. No S3, no `attachment_grants`, no signed URLs (CLAUDE.md #29 unmet) | When object storage is wired up |
 | `assessment_scores.score` range (0–100) | Placeholder scale. `SPEC-FEATURES.md`, which would define the real one, was never supplied — confirm before this reaches an evaluator screen | Pending SPEC-FEATURES.md |
 | `credentialTypes[].minTierGranted` values in the test fixture (`exam_rank` → t3, `mains_cleared` → t2) | Illustrative placeholders written to exercise the mechanism, same caveat as M1's platform fee % — **not a business decision**, since the mechanism itself makes this manifest data, not core code. Confirm real thresholds with the business before any real credential type ships. | Pending business/compliance sign-off |
@@ -225,6 +254,28 @@ future task is surprised by something, it should be recorded here.
   note above. `SessionService.schedule` takes a start/end the caller
   already agreed; nothing here models a provider's recurring
   availability, exceptions, buffers, or notice periods.
+- **Hard rule #5 (skill/tier/language eligibility) is enforced at proposal
+  submission, not at engagement award.** This follows schema-v4's own
+  design: a `proposals` INSERT is the natural gate, since a proposal *is*
+  the provider's claim of eligibility, and by the time `accept()` runs the
+  provider was already checked. Enforced by both a DB trigger
+  (`check_proposal_requires_skills_and_tier`, the actual backstop — fires
+  even on a raw SQL INSERT) and a `MatchingService` pre-check in
+  `ProposalService.submit()` for a typed `PROPOSAL_NOT_ELIGIBLE` error —
+  the same "trigger as backstop, service pre-check for a friendly error"
+  pattern used for the paid-work gate in `EngagementsService.agree()`.
+  This closes D8.
+- **`ProposalService.accept()` re-checks the board post's status under a
+  fresh lock after `EngagementsService.createDraft` returns**, because
+  that call opens its own transaction and the first transaction's locks
+  are released before it runs. If a concurrent accept on a sibling
+  proposal won the race in between, the just-created engagement is
+  cancelled and the loser gets a typed `BOARD_POST_WRONG_STATUS` error —
+  no orphaned engagement, no silently double-awarded post.
+- **"Waves" (SPEC-PLATFORM.md §18's M6 feature row) was not built.** No
+  spec document defines it for the board; the only other occurrence of
+  "wave" in SPEC-PLATFORM.md is the unrelated multi-year expansion
+  roadmap (§15's "Wave 1–5"). Recorded as D13 rather than guessed at.
 
 ---
 
@@ -234,8 +285,9 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **126 tests, all passing** as of
-  this update.
+- Full suite: `cd apps/api && npm test` — **142 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 21 migrations,
+  full suite) to confirm migration order integrity, as of this update.
 - Docker is unavailable in this environment; use the local cluster.
 
 ---
