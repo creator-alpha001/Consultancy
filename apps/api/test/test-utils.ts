@@ -14,6 +14,7 @@ export async function resetDatabase(pool: Pool): Promise<void> {
       assessment_scores, evaluations, submissions,
       engagement_skills, agenda_items, agendas,
       engagements,
+      transcripts, session_consents, session_participants, sessions,
       result_list_entries,
       provider_skills, provider_languages,
       provider_credential_skills, provider_credentials,

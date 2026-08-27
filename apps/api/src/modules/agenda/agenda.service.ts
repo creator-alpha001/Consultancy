@@ -122,6 +122,20 @@ export class AgendaService {
     return this.get(res.rows[0].id);
   }
 
+  /**
+   * The in-session checklist (SPEC-PLATFORM.md §8): either party ticks,
+   * both see progress. Allowed post-lock by the DB trigger in 0011 —
+   * this is the only agenda mutation a live session performs.
+   */
+  async tickItem(itemId: string): Promise<AgendaItemRow> {
+    const res = await this.pool.query<AgendaItemDbRow>(
+      `UPDATE agenda_items SET checked_at = now() WHERE id = $1 RETURNING *`,
+      [itemId],
+    );
+    if (!res.rows[0]) throw agendaNotFound(itemId);
+    return mapItem(res.rows[0]);
+  }
+
   /** Freezes the agenda's content and hashes it. Both parties now hold identical copies by definition — same row, same hash. */
   async lock(agendaId: string): Promise<AgendaRow> {
     const client = await this.pool.connect();

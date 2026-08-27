@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-27 · after M4
+Last updated: 2026-08-27 · after M5
 
 ---
 
@@ -21,7 +21,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M2 | Domain engine | **Complete** | Yes — a manifest change alters the app with no deploy |
 | M3 | Core engagement loop (`document_review`) | **Complete** | Yes — one real evaluation, real money, end to end |
 | M4 | Supply: provider onboarding, result-list verifier, per-skill tiers | **Complete** | Yes — a provider verifies once and appears in matching for multiple domains |
-| M5 | Sessions | Not started | — |
+| M5 | Sessions | **Partial — not complete** | No — see below |
 | M6 | Board | Not started | — |
 | M7 | Trust: reviews, disputes, appeals | Not started | — |
 | M8 | Seed 15 more domains as data only | Not started | — |
@@ -30,6 +30,39 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt
 is carried in the table below until closed.
+
+### Why M5 is marked partial, not complete
+
+M5's own done-when bar is "a Hindi session completes on 3G with the
+agenda ticked live" — a claim about live video quality on a real
+network, through a real SFU, from a real client. None of those three
+things exist in this environment (no SFU credentials, no client, no
+network to throttle), the same way M1 could not touch a real bank rail.
+The difference from M1 is that M1's *actual mechanism* (ledger, escrow,
+double-entry) was fully real even though the payment-gateway leg was
+sandboxed — here, the parts of §9 that are genuinely backend-modelable
+are built and tested for real (see below), but the milestone's bar
+itself is about the one leg that cannot be faked or verified here.
+Marking it complete would be exactly the thing this file exists to
+prevent.
+
+**Built and tested for real:** the session lifecycle and its transition
+table; both-party explicit recording consent gated by a DB trigger, with
+a refusal recorded as its own distinguishable row (CLAUDE.md #21); the
+live agenda checklist, ticking real `agenda_items` rows during an
+`in_progress` session; transcripts stored separately from recording
+(§9); a `RoomProvider` seam (mirroring the M1 `PaymentAggregator`
+pattern exactly) so a real SFU vendor is a drop-in class later.
+
+**Not built — needs real infrastructure or a client, not more backend
+code:** RRULE availability/exceptions/buffers/notice-periods (§9's
+booking engine — a scheduling-UI-sized feature on its own, not attempted
+here); adaptive bitrate and the network-quality indicator; reconnection
+with session-time credit; screen share; in-call chat; file share; the
+session timer with a 5-minute warning and paid extension; live
+translated subtitles. These aren't stubbed with fakes because there is
+no meaningful backend-only fake for "the video adapted its bitrate" —
+unlike a payment capture, there's no discrete call to mock.
 
 ---
 
@@ -73,6 +106,10 @@ trusting any of them.**
 | `assessment_scores.score` range (0–100) | Placeholder scale. `SPEC-FEATURES.md`, which would define the real one, was never supplied — confirm before this reaches an evaluator screen | Pending SPEC-FEATURES.md |
 | `credentialTypes[].minTierGranted` values in the test fixture (`exam_rank` → t3, `mains_cleared` → t2) | Illustrative placeholders written to exercise the mechanism, same caveat as M1's platform fee % — **not a business decision**, since the mechanism itself makes this manifest data, not core code. Confirm real thresholds with the business before any real credential type ships. | Pending business/compliance sign-off |
 | `provider_credentials.verifier_data` / result-list matching | No real identity documents, no fuzzy name matching (exact case-insensitive string compare only) — a legitimate candidate whose name is recorded slightly differently will fail the automated check and fall to manual review, which is the safe failure direction but still crude | Pre-launch verification hardening |
+| `HundredMsSandboxRoomProvider` | Local, no network, no real room ever created. Same shape as the M1 PA sandboxes — no live SFU credentials in this environment | M5 debt / pre-launch |
+| Session booking | Booked directly against a fixed `scheduled_start`/`scheduled_end` chosen by the caller. No RRULE availability, exceptions, buffers, or notice periods (§9) | Not built — see the M5 note above |
+| `sessions.mode = 'audio_only'` | Records that a session is in audio-only mode; nothing actually adapts bitrate or detects network quality to trigger it | Needs a real client + SFU |
+| `transcripts.content_ref` | Same placeholder pattern as `submissions.content_ref` — no object storage, no real transcript ever generated | When object storage is wired up |
 | `docs/reference/schema-v4-family.sql` | Reference only; never applied. Assumes tables from schema v1–v3 we never received | n/a |
 
 ---
@@ -176,6 +213,18 @@ future task is surprised by something, it should be recorded here.
   Postgres enums compare by declaration order (t0 < t1 < ... < t4), so
   this works without a CASE expression. A provider re-submitting the same
   skill at a lower tier some years later keeps their higher one.
+- **Session consent is recorded as a row per party, always — never
+  inferred from absence.** `session_consents` has no default; a party
+  who hasn't decided has no row at all, distinct from a row with
+  `consent_given = false`. `recording_active` can only flip to true when
+  every participant has a row AND every row says true — enforced by
+  trigger, pre-checked in `SessionService.setRecording` for a typed
+  error, same pattern as the paid-work gate.
+- **Booking is a fixed window, not the RRULE availability engine §9
+  describes.** A deliberate scope cut, not an oversight — see the M5
+  note above. `SessionService.schedule` takes a start/end the caller
+  already agreed; nothing here models a provider's recurring
+  availability, exceptions, buffers, or notice periods.
 
 ---
 
@@ -185,7 +234,7 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **112 tests, all passing** as of
+- Full suite: `cd apps/api && npm test` — **126 tests, all passing** as of
   this update.
 - Docker is unavailable in this environment; use the local cluster.
 

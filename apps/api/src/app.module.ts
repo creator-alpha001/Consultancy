@@ -7,6 +7,7 @@ import { AssessmentModule } from './modules/assessment/assessment.module';
 import { DomainsModule } from './modules/domains/domains.module';
 import { EngagementsModule } from './modules/engagements/engagements.module';
 import { MoneyModule } from './modules/money/money.module';
+import { SessionsModule } from './modules/sessions/sessions.module';
 import { VerificationModule } from './modules/verification/verification.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { VerificationModule } from './modules/verification/verification.module';
     EngagementsModule,
     AssessmentModule,
     VerificationModule,
+    SessionsModule,
   ],
 })
 export class AppModule {}

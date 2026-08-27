@@ -53,10 +53,27 @@ generically: `credential_types.requires_paid_work_sanction` /
 `grants_paid_work_sanction` are family-manifest data, so core code never
 hardcodes which credential type means "serving officer."
 
-`agenda/`, `engagements/`, `assessment/`, and `verification/` are
-service-layer only — no HTTP controllers. There's no auth yet to give a
-route a real actor, so nothing is exposed publicly; every M3/M4 test
-drives the services directly, same as production code eventually will.
+**M5 — sessions is partial, and deliberately not marked complete** — see
+`TRACKER.md`. Its own acceptance bar ("a Hindi session completes on 3G
+with the agenda ticked live") is a claim about live video over a real
+network through a real SFU, none of which exist in this environment.
+What's built and genuinely tested: the session lifecycle
+(`sessions/session.service.ts`), both-party explicit recording consent
+gated by a DB trigger with a refusal recorded as its own row (CLAUDE.md
+#21), the live agenda checklist ticking real `agenda_items` during an
+`in_progress` session (reusing `AgendaService.tickItem`), transcripts
+stored separately from recording, and a `RoomProvider` seam mirroring
+`money/`'s `PaymentAggregator` pattern for a real SFU vendor to drop into
+later. Not built: RRULE availability/booking, adaptive bitrate,
+reconnection, screen share, in-call chat, the session timer, live
+subtitles — none of these have a meaningful backend-only fake the way a
+payment capture does.
+
+`agenda/`, `engagements/`, `assessment/`, `verification/`, and
+`sessions/` are service-layer only — no HTTP controllers. There's no
+auth yet to give a route a real actor, so nothing is exposed publicly;
+every M3–M5 test drives the services directly, same as production code
+eventually will.
 
 Every other module directory is a placeholder — see the comment at the
 top of each `*.module.ts` for which milestone fills it in.
@@ -177,3 +194,20 @@ Reserve is expected to run negative; that's what a reserve is (see D7 in
   pre-checks the same condition via `CredentialService`, for a typed
   error instead of a raw constraint violation; the trigger is the
   backstop for anything that bypasses the service.
+
+## Session invariants enforced by the database
+
+- `sessions.status` follows a fixed transition table
+  (`scheduled → in_progress → completed`, or `scheduled → no_show |
+  cancelled`) — same pattern as every other lifecycle table in this
+  codebase.
+- **Recording requires every participant's explicit, current consent**
+  (CLAUDE.md #21): `recording_active` can only flip to `true` when a
+  `session_consents` row exists for every `session_participants` row and
+  every one says `consent_given = true`. A participant who hasn't
+  decided yet blocks recording exactly like one who explicitly refused —
+  the trigger can't tell them apart from "not yet asked" and doesn't try
+  to; only the presence of a row with `consent_given = false` does that,
+  which is what makes a refusal legally distinguishable from silence.
+- `sessions` rejects `scheduled_end <= scheduled_start` outright.
+- `transcripts` is one-per-session (`UNIQUE (session_id)`).
