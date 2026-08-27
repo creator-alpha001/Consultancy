@@ -31,12 +31,19 @@ Read `SPEC-PLATFORM.md` before any architectural work. It supersedes the product
 | File | Contains | Read when |
 |---|---|---|
 | `CLAUDE.md` | This file — rules, stack, conventions | Always |
+| `TRACKER.md` | Build state: milestone status, open debt, stubs and fakes, decisions | **Always — before starting and before finishing** |
 | `SPEC-PLATFORM.md` | **Authoritative.** Domain model, packs, engagement types, agenda system, expansion path | Any architectural or data-model work |
 | `SPEC-FEATURES.md` | Feature behaviour, APIs, edge cases, acceptance criteria | Backend or logic work |
 | `SPEC-SCREENS.md` | Screen layout, states, copy — currently written for the exam family | UI work |
 | `schema.sql`, `schema-v2-patch.sql`, `schema-v3-generic.sql`, `schema-v4-family.sql` | DDL and enforced invariants | Data-layer work |
 
 Precedence: `SPEC-PLATFORM.md` → `CLAUDE.md` → feature/screen specs. `SPEC-FEATURES.md` and `SPEC-SCREENS.md` still carry the older exam-bound vocabulary in places; translate using §3 of `SPEC-PLATFORM.md`.
+
+The specs describe the product as it should be; `TRACKER.md` describes the
+build as it actually is. **Where they differ, `TRACKER.md` is telling you
+about a stub, a fake, or outstanding debt — trust it, and do not assume a
+component works because a spec says it should.** It carries no authority
+over what to build, only over what currently exists.
 
 If a spec is silent, ask rather than invent — especially on money, verification, or safety.
 
@@ -193,6 +200,11 @@ src/modules/
 - [ ] Handwritten or image content has a text equivalent
 - [ ] Session features degrade to audio-only cleanly
 - [ ] No new `TODO` without an issue reference
+- [ ] **`TRACKER.md` updated in the same commit** — milestone status, and any
+      debt, stub, fake or spec deviation you introduced. A stub recorded
+      only in a code comment is not recorded. Never mark a milestone
+      complete because its tests pass; check its `SPEC-PLATFORM.md` §18
+      done-when bar.
 
 ---
 
