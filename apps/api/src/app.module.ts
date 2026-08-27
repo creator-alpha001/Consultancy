@@ -7,6 +7,7 @@ import { AssessmentModule } from './modules/assessment/assessment.module';
 import { DomainsModule } from './modules/domains/domains.module';
 import { EngagementsModule } from './modules/engagements/engagements.module';
 import { MoneyModule } from './modules/money/money.module';
+import { VerificationModule } from './modules/verification/verification.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MoneyModule } from './modules/money/money.module';
     AgendaModule,
     EngagementsModule,
     AssessmentModule,
+    VerificationModule,
   ],
 })
 export class AppModule {}

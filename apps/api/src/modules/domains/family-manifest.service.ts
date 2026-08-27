@@ -62,12 +62,24 @@ export class FamilyManifestService {
 
       for (const c of manifest.credentialTypes) {
         await client.query(
-          `INSERT INTO credential_types (family_code, code, labels, verifier, min_tier_granted, active)
-           VALUES ($1, $2, $3::jsonb, $4, $5, $6)
+          `INSERT INTO credential_types
+             (family_code, code, labels, verifier, min_tier_granted, active, requires_paid_work_sanction, grants_paid_work_sanction)
+           VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)
            ON CONFLICT (family_code, code) DO UPDATE
              SET labels = EXCLUDED.labels, verifier = EXCLUDED.verifier,
-                 min_tier_granted = EXCLUDED.min_tier_granted, active = EXCLUDED.active`,
-          [manifest.code, c.code, JSON.stringify(c.labels), c.verifier, c.minTierGranted ?? null, c.active ?? true],
+                 min_tier_granted = EXCLUDED.min_tier_granted, active = EXCLUDED.active,
+                 requires_paid_work_sanction = EXCLUDED.requires_paid_work_sanction,
+                 grants_paid_work_sanction = EXCLUDED.grants_paid_work_sanction`,
+          [
+            manifest.code,
+            c.code,
+            JSON.stringify(c.labels),
+            c.verifier,
+            c.minTierGranted ?? null,
+            c.active ?? true,
+            c.requiresPaidWorkSanction ?? false,
+            c.grantsPaidWorkSanction ?? false,
+          ],
         );
       }
       await client.query(
@@ -111,6 +123,18 @@ export class FamilyManifestService {
       [familyCode, codes],
     );
     return new Map(res.rows.map((r) => [r.code, r.id]));
+  }
+
+  async getCredentialTypeByCode(
+    familyCode: string,
+    code: string,
+  ): Promise<{ id: string; verifier: string; minTierGranted: string | null } | null> {
+    const res = await this.pool.query<{ id: string; verifier: string; min_tier_granted: string | null }>(
+      `SELECT id, verifier, min_tier_granted FROM credential_types WHERE family_code = $1 AND code = $2 AND active`,
+      [familyCode, code],
+    );
+    if (!res.rows[0]) return null;
+    return { id: res.rows[0].id, verifier: res.rows[0].verifier, minTierGranted: res.rows[0].min_tier_granted };
   }
 
   /**

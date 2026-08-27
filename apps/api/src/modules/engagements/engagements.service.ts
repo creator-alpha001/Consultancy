@@ -3,11 +3,13 @@ import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { EscrowService } from '../money/escrow.service';
 import { TaxonomyService } from '../taxonomy/taxonomy.service';
+import { CredentialService } from '../verification/credential.service';
 import {
   categoryDomainMismatch,
   engagementEscrowMissing,
   engagementNotFound,
   engagementWrongStatus,
+  providerPaidWorkBlocked,
 } from './errors';
 import { CreateEngagementDraftInput, EngagementRow, EngagementStatus } from './types';
 
@@ -54,6 +56,7 @@ export class EngagementsService {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(TaxonomyService) private readonly taxonomy: TaxonomyService,
     @Inject(EscrowService) private readonly escrows: EscrowService,
+    @Inject(CredentialService) private readonly credentials: CredentialService,
   ) {}
 
   async createDraft(input: CreateEngagementDraftInput): Promise<EngagementRow> {
@@ -104,6 +107,10 @@ export class EngagementsService {
       const engagement = res.rows[0];
       if (!engagement) throw engagementNotFound(engagementId);
       if (engagement.status !== 'draft') throw engagementWrongStatus(engagementId, engagement.status, ['draft']);
+
+      if (engagement.amount_paise !== null && (await this.credentials.isPaidWorkBlocked(engagement.provider_id))) {
+        throw providerPaidWorkBlocked(engagement.provider_id);
+      }
 
       if (engagement.category_id) {
         const category = await this.taxonomy.getCategory(engagement.category_id);

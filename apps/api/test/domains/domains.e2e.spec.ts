@@ -67,7 +67,12 @@ describe('domain engine: publish, resolve, inheritance', () => {
     expect(polityTemplate.rows[0].code).toBe('answer_writing.v1');
 
     const credentials = await pool.query(`SELECT code FROM credential_types WHERE family_code = 'civil_services_exams' AND active ORDER BY code`);
-    expect(credentials.rows.map((r) => r.code)).toEqual(['exam_rank', 'mains_cleared']);
+    expect(credentials.rows.map((r) => r.code)).toEqual([
+      'departmental_sanction',
+      'exam_rank',
+      'mains_cleared',
+      'serving_officer',
+    ]);
   });
 
   it('rejects a domain manifest naming a family that does not exist', async () => {

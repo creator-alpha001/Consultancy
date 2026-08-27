@@ -36,10 +36,27 @@ agenda locked") is a real DB trigger, not a service-layer check — see
 through every module built so far — money, domains, taxonomy, agenda,
 engagements, assessment — with real ledger postings at the end.
 
-`agenda/`, `engagements/`, and `assessment/` are service-layer only —
-no HTTP controllers. There's no auth yet to give a route a real actor,
-so nothing is exposed publicly; every M3 test drives the services
-directly, same as production code eventually will.
+**M4 — supply** is implemented: `verification/` runs the credential
+pipeline SPEC-PLATFORM.md §11 describes — submit → automated check →
+human review → tier assignment — never letting an automated result
+bypass a human. `PublicResultListVerifier` is a real DB lookup against
+`result_list_entries` (no external call, no sandbox — the platform holds
+the published data), while `document_review`/`sanction_document` have no
+automation at all and go straight to review. Verifying grants a
+`mentor_tier` (t0–t4) **per skill**, never globally, in
+`provider_skills`; `MatchingService` is the mechanism SPEC-PLATFORM.md §5
+promises — one verified skill surfaces a provider across every domain
+whose category maps to it, proven in
+`test/verification/credential-pipeline.e2e.spec.ts` across two domains
+sharing a skill. The serving-officer paid-work gate (§11) is enforced
+generically: `credential_types.requires_paid_work_sanction` /
+`grants_paid_work_sanction` are family-manifest data, so core code never
+hardcodes which credential type means "serving officer."
+
+`agenda/`, `engagements/`, `assessment/`, and `verification/` are
+service-layer only — no HTTP controllers. There's no auth yet to give a
+route a real actor, so nothing is exposed publicly; every M3/M4 test
+drives the services directly, same as production code eventually will.
 
 Every other module directory is a placeholder — see the comment at the
 top of each `*.module.ts` for which milestone fills it in.
@@ -138,3 +155,25 @@ Reserve is expected to run negative; that's what a reserve is (see D7 in
   failed, when no template is bound (hard rule #3). A score naming a
   dimension the template doesn't define is rejected outright, so a typo
   can't silently fail to count toward completeness.
+
+## Verification invariants enforced by the database
+
+- `provider_credentials.status` follows a fixed transition table
+  (`submitted → under_review → verified|rejected`) — a credential can
+  never be marked verified or rejected without also recording who
+  reviewed it and when (a `CHECK`, not just a trigger).
+- `result_list_entries` rejects a duplicate `(source_code, cycle_year,
+  roll_no)` — the same published result can't be imported twice with two
+  different names attached.
+- `mentor_tier` is a real ordered enum (`t0 < t1 < ... < t4`), so
+  `tier >= 't2'` comparisons and `GREATEST(old, new)` upserts work
+  without a CASE expression.
+- The serving-officer paid-work gate is enforced at the DB level too: a
+  trigger on `engagements` blocks `draft → agreed` for a paid engagement
+  (`amount_paise IS NOT NULL`) whenever the provider holds a verified
+  credential with `requires_paid_work_sanction` and none with
+  `grants_paid_work_sanction` — reading only those two generic flags,
+  never a hardcoded credential code. `EngagementsService.agree()`
+  pre-checks the same condition via `CredentialService`, for a typed
+  error instead of a raw constraint violation; the trigger is the
+  backstop for anything that bypasses the service.

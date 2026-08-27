@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MoneyModule } from '../money/money.module';
 import { TaxonomyModule } from '../taxonomy/taxonomy.module';
+import { VerificationModule } from '../verification/verification.module';
 import { EngagementsService } from './engagements.service';
 
 /**
@@ -9,7 +10,7 @@ import { EngagementsService } from './engagements.service';
  * need sessions/ (M5) or board/ (M6) to actually be usable.
  */
 @Module({
-  imports: [TaxonomyModule, MoneyModule],
+  imports: [TaxonomyModule, MoneyModule, VerificationModule],
   providers: [EngagementsService],
   exports: [EngagementsService],
 })

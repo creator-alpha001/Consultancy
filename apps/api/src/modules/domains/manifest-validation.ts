@@ -150,6 +150,8 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
       verifier,
       minTierGranted: typeof c.minTierGranted === 'string' ? c.minTierGranted : undefined,
       active: typeof c.active === 'boolean' ? c.active : true,
+      requiresPaidWorkSanction: typeof c.requiresPaidWorkSanction === 'boolean' ? c.requiresPaidWorkSanction : false,
+      grantsPaidWorkSanction: typeof c.grantsPaidWorkSanction === 'boolean' ? c.grantsPaidWorkSanction : false,
     };
   });
 

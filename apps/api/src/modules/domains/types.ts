@@ -28,6 +28,10 @@ export interface CredentialTypeInput {
   verifier: string;
   minTierGranted?: string;
   active?: boolean;
+  /** Verified, this credential blocks paid work unless another verified credential grants sanction (SPEC-PLATFORM.md §11 — serving officers). Generic: core never hardcodes which credential this is. */
+  requiresPaidWorkSanction?: boolean;
+  /** Verified, this credential lifts a requiresPaidWorkSanction block (departmental sanction, in the exam family). */
+  grantsPaidWorkSanction?: boolean;
 }
 
 export interface FamilyPolicy {

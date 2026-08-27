@@ -39,8 +39,23 @@ export function familyManifestV1(): unknown {
       },
     ],
     credentialTypes: [
-      { code: 'exam_rank', labels: { en: 'Exam rank' }, verifier: 'public_result_list' },
-      { code: 'mains_cleared', labels: { en: 'Mains cleared' }, verifier: 'document_review' },
+      // minTierGranted values are illustrative placeholders — see
+      // TRACKER.md: real thresholds need business/compliance sign-off
+      // before launch, same caveat as the platform fee % from M1.
+      { code: 'exam_rank', labels: { en: 'Exam rank' }, verifier: 'public_result_list', minTierGranted: 't3' },
+      { code: 'mains_cleared', labels: { en: 'Mains cleared' }, verifier: 'document_review', minTierGranted: 't2' },
+      {
+        code: 'serving_officer',
+        labels: { en: 'Serving government officer' },
+        verifier: 'sanction_document',
+        requiresPaidWorkSanction: true,
+      },
+      {
+        code: 'departmental_sanction',
+        labels: { en: 'Departmental sanction for private work' },
+        verifier: 'sanction_document',
+        grantsPaidWorkSanction: true,
+      },
     ],
     policy: {
       minTierForPaidWork: 't2',
@@ -75,6 +90,32 @@ export function domainManifestV1(): unknown {
     ],
     calendar: [{ phase: 'mains', monthHint: 9, demand: 'peak' }],
     priceBands: { document_review: [6000, 20000] },
+  };
+}
+
+/**
+ * A second domain in the same family, mapping its own GS paper to the
+ * SAME family-level skill as uppsc's — the mechanism SPEC-PLATFORM.md §5
+ * exists for. Used to prove one verified provider surfaces in matching
+ * for more than one domain without a second verification.
+ */
+export function domainManifestBpsc(): unknown {
+  return {
+    code: 'bpsc',
+    family: 'civil_services_exams',
+    version: '1.0.0',
+    labels: { domain: { en: 'BPSC', hi: 'बीपीएससी' } },
+    languages: ['hi', 'en'],
+    defaultLanguage: 'hi',
+    resultSource: { verifier: 'public_result_list', sourceCode: 'bpsc_results', fields: ['year', 'rollNo', 'rank'] },
+    categories: [
+      {
+        slug: 'mains',
+        labels: { en: 'Mains' },
+        children: [{ slug: 'gs1', labels: { en: 'GS-I' }, skills: ['answer_writing.gs.polity'] }],
+      },
+    ],
+    priceBands: { document_review: [5000, 18000] },
   };
 }
 
