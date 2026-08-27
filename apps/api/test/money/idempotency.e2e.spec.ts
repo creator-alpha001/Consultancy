@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PG_POOL } from '../../src/database/db.module';
+import { MoneyModule } from '../../src/modules/money/money.module';
 import { closeTestApp, createTestApp } from '../nest-test-app';
 import { findAccountId, accountBalance, resetDatabase, seedEngagement, seedFeeSchedule, seedUsers } from '../test-utils';
 
@@ -12,7 +13,7 @@ describe('Idempotency-Key on mutating money endpoints', () => {
 
   beforeEach(async () => {
     if (!app) {
-      app = await createTestApp();
+      app = await createTestApp([MoneyModule]);
       pool = app.get<Pool>(PG_POOL);
     }
     await resetDatabase(pool);

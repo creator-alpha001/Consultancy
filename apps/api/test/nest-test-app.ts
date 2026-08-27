@@ -1,15 +1,19 @@
-import { INestApplication } from '@nestjs/common';
+import { DynamicModule, INestApplication, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Pool } from 'pg';
+import { ErrorEnvelopeFilter } from '../src/common/errors/error-envelope.filter';
+import { IdempotencyModule } from '../src/common/idempotency/idempotency.module';
 import { DbModule, PG_POOL } from '../src/database/db.module';
-import { MoneyModule } from '../src/modules/money/money.module';
 
-export async function createTestApp(): Promise<INestApplication> {
+export async function createTestApp(
+  extraModules: Array<Type | DynamicModule> = [],
+): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
-    imports: [DbModule, MoneyModule],
+    imports: [DbModule, IdempotencyModule, ...extraModules],
   }).compile();
 
   const app = moduleRef.createNestApplication();
+  app.useGlobalFilters(new ErrorEnvelopeFilter());
   await app.init();
   return app;
 }

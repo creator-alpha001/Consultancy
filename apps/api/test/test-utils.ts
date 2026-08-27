@@ -10,9 +10,23 @@ export async function resetDatabase(pool: Pool): Promise<void> {
     TRUNCATE TABLE
       outbox, idempotency_keys, refunds, payouts, escrows,
       ledger_entries, ledger_transactions, ledger_accounts,
-      fee_schedules, engagements, users
+      fee_schedules, engagements,
+      category_skills, categories,
+      domain_manifest_versions, domains,
+      skills, credential_types, assessment_templates,
+      domain_family_manifest_versions, domain_families,
+      users
     RESTART IDENTITY CASCADE;
   `);
+}
+
+export async function seedAdminUser(pool: Pool): Promise<string> {
+  const unique = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const admin = await pool.query<{ id: string }>(
+    `INSERT INTO users (email, role) VALUES ($1, 'admin') RETURNING id`,
+    [`admin+${unique}@test.local`],
+  );
+  return admin.rows[0].id;
 }
 
 export async function seedUsers(pool: Pool): Promise<{ seekerId: string; providerId: string }> {

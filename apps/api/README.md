@@ -9,9 +9,23 @@ calls it rather than touching those tables directly.
 
 **M1 — money spine** is implemented: schema (ledger, escrow, fee
 schedule, outbox, idempotency), `MoneyModule` services, PA sandbox
-adapters, and invariant/idempotency/award-release tests. Every other
-module directory is a placeholder — see the comment at the top of each
-`*.module.ts` for which milestone fills it in.
+adapters, and invariant/idempotency/award-release tests.
+
+**M2 — domain engine** is implemented: `domain_families`/`domains` with
+full manifest version history, family-scoped `assessment_templates` /
+`credential_types` / `skills`, and a `categories` tree with
+`category_skills` mapping. `domains/` is the only module that reads a
+manifest — it validates, publishes, and resolves family → domain
+inheritance (last write wins) through `DomainLoaderService`'s in-process
+cache; `taxonomy/` owns categories and is handed an already-resolved
+tree (skill/template codes turned into IDs), never a manifest. `admin/`
+exposes the pack editor's HTTP surface, delegating all parsing to
+`domains/`. See `test/domains/domains.e2e.spec.ts` for the M2 acceptance
+test: publishing a new domain manifest version changes what
+`GET /domains/:code` returns immediately, in the same running process.
+
+Every other module directory is a placeholder — see the comment at the
+top of each `*.module.ts` for which milestone fills it in.
 
 ## Local setup
 
@@ -52,3 +66,20 @@ migration that has already run — add a new one.
 - Nothing in `money/` calls an external API inside a DB transaction;
   external effects (e.g. notifying the payment aggregator) are written to
   `outbox` in the same transaction and dispatched by a relay afterward.
+
+## Domain-engine invariants enforced by the database
+
+- A category's slug is unique among its siblings (two partial unique
+  indexes — root categories and child categories — since a plain
+  `UNIQUE` treats every `NULL parent_id` as distinct).
+- A skill code is unique within its family, but the same code is free to
+  exist independently in a different family.
+- `domain_family_manifest_versions` / `domain_manifest_versions` reject a
+  duplicate `(code, version)` — a version, once published, is immutable
+  audit history.
+- `category_skills.weight` must be positive.
+- A domain cannot name a family that doesn't exist (FK), and
+  `DomainManifestService.publish` additionally rejects (before writing
+  anything) a domain manifest that maps a category to an unknown skill,
+  binds an unknown assessment template, or offers an engagement type its
+  family doesn't.

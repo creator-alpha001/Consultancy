@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EscrowService } from './escrow.service';
 import { FeeScheduleService } from './fee-schedule.service';
-import { IdempotencyInterceptor } from './idempotency.interceptor';
-import { IdempotencyService } from './idempotency.service';
 import { LedgerAccountsService } from './ledger-accounts.service';
 import { LedgerService } from './ledger.service';
 import { MoneyController } from './money.controller';
@@ -25,8 +23,6 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
     FeeScheduleService,
     OutboxService,
     EscrowService,
-    IdempotencyService,
-    IdempotencyInterceptor,
     RazorpayRouteSandbox,
     CashfreeEasySplitSandbox,
     {

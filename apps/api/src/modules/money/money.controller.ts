@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Inject, Param, Post, UseInterceptors } from '@nestjs/common';
 import { EscrowService } from './escrow.service';
-import { IdempotencyInterceptor } from './idempotency.interceptor';
+import { IdempotencyInterceptor } from '../../common/idempotency/idempotency.interceptor';
 import { EscrowRow } from './types';
 
 /**

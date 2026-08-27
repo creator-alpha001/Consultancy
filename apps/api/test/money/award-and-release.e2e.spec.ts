@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PG_POOL } from '../../src/database/db.module';
 import { EscrowService } from '../../src/modules/money/escrow.service';
+import { MoneyModule } from '../../src/modules/money/money.module';
 import { closeTestApp, createTestApp } from '../nest-test-app';
 import {
   accountBalance,
@@ -20,7 +21,7 @@ describe('award -> escrow hold -> release (end to end)', () => {
 
   beforeEach(async () => {
     if (!app) {
-      app = await createTestApp();
+      app = await createTestApp([MoneyModule]);
       pool = app.get<Pool>(PG_POOL);
       escrows = app.get(EscrowService);
     }

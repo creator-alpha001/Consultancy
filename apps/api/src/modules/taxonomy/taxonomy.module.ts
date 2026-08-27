@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
+import { TaxonomyService } from './taxonomy.service';
 
-/** Categories, provider category verification. Built in M2/M4. */
-@Module({})
+/** Categories, category_skills. See CLAUDE.md module boundaries. */
+@Module({
+  providers: [TaxonomyService],
+  exports: [TaxonomyService],
+})
 export class TaxonomyModule {}
