@@ -93,21 +93,71 @@ await Promise.all([
 await page.waitForLoadState('networkidle');
 body = await page.textContent('body');
 body.includes('verified') ? ok('per-skill tiers shown as conclusions') : bad('tiers missing');
-// Check the PAYLOAD, not the page's prose. The earlier version of this
-// assertion searched the rendered text for "credential" and matched the
-// UI's own explanation of why credentials are never shown — testing for
-// a word rather than for leaked data.
+// Check the PAYLOAD, not the page's prose. Two earlier versions of this
+// assertion were wrong in opposite directions: the first searched the
+// rendered text for "credential" and matched the UI's own explanation of
+// why evidence is never shown; the second banned any top-level key
+// matching /credential/, which condemns the published-qualifications
+// feature itself and would still have missed evidence nested one level
+// down inside it.
+//
+// Rule #30 is "profiles show the conclusion, never the evidence" — so
+// test exactly that: walk the whole payload, prove no evidence appears
+// at any depth, and prove each published fact was admitted by its
+// credential type's allow-list rather than by luck.
 const profileId = page.url().split('/mentors/')[1].split('?')[0];
 const profileJson = await page.evaluate(
   async (id) => (await fetch(`${location.origin.replace('3001', '3000')}/providers/${id}`)).json(),
   profileId,
 );
-const leakedKeys = Object.keys(profileJson).filter((k) =>
-  /credential|verifier|document|evidence|email/i.test(k),
+
+// The seed deliberately plants these in verifier_data so their absence
+// here means the allow-list filtered them, not that they never existed.
+const EVIDENCE = ['rollNumber', 'claimedName', 'documentRef', 'verifierData', 'passwordHash'];
+const foundEvidence = [];
+(function walk(node, path) {
+  if (node === null || typeof node !== 'object') return;
+  for (const [k, v] of Object.entries(node)) {
+    if (EVIDENCE.includes(k)) foundEvidence.push(`${path}${k}`);
+    walk(v, `${path}${k}.`);
+  }
+})(profileJson, '');
+foundEvidence.length === 0
+  ? ok('no credential evidence anywhere in the profile payload, at any depth (#30)')
+  : bad('profile payload leaked evidence: ' + foundEvidence.join(', '));
+
+const asText = JSON.stringify(profileJson);
+!/s3:\/\/|\.pdf/i.test(asText)
+  ? ok('no private document reference reaches the profile')
+  : bad('a document reference leaked into the profile');
+
+// The positive half: the qualifications feature is actually present, and
+// every fact it publishes sits inside the allow-list for its type. An
+// empty credentials array would pass every check above while shipping
+// nothing, so assert the conclusions are really there.
+const PUBLISHABLE = {
+  exam_rank: ['year', 'rank'],
+  mains_cleared: ['year'],
+  interview_appeared: ['year'],
+  subject_expertise: ['subject'],
+  serving_officer: [],
+  departmental_sanction: [],
+};
+const creds = profileJson.credentials ?? [];
+creds.length > 0
+  ? ok(`${creds.length} verified qualifications published as conclusions`)
+  : bad('no credentials on the profile — the qualifications feature is not rendering');
+const outsideAllowList = creds.flatMap((c) =>
+  Object.keys(c.details ?? {})
+    .filter((k) => !(PUBLISHABLE[c.credentialCode] ?? []).includes(k))
+    .map((k) => `${c.credentialCode}.${k}`),
 );
-leakedKeys.length === 0
-  ? ok('the profile payload carries no credential, verifier or contact field (#30)')
-  : bad('profile payload leaked: ' + leakedKeys.join(', '));
+outsideAllowList.length === 0
+  ? ok('every published fact is one its credential type allow-lists')
+  : bad('published outside the allow-list: ' + outsideAllowList.join(', '));
+creds.every((c) => c.verifiedAt && c.labels)
+  ? ok('each qualification carries its verification date and pack labels')
+  : bad('a qualification is missing its verification date or labels');
 JSON.stringify(profileJson).includes('@')
   ? bad('an email address reached the profile payload')
   : ok('no email address in the profile payload');

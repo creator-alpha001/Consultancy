@@ -1,5 +1,66 @@
 # Running the app locally
 
+## The short version
+
+```bash
+./scripts/dev.sh up
+```
+
+That is the whole thing. It creates the Postgres role and databases if the
+machine has none, installs dependencies it finds missing, runs migrations,
+seeds the family and the demo mentors, then builds and starts the API and
+the web app — and waits for each to answer a real request before calling
+it up. Roughly 40 seconds from cold; a few minutes the first time, when
+`npm install` has to run.
+
+```
+api     http://localhost:3000
+web     http://localhost:3001
+```
+
+| Command | Does |
+|---|---|
+| `./scripts/dev.sh up` | Bring everything up and verify it |
+| `./scripts/dev.sh status` | What is actually running, checked by HTTP |
+| `./scripts/dev.sh down` | Stop what the script started (Postgres stays up) |
+| `./scripts/dev.sh restart` | `down`, then `up` |
+| `./scripts/dev.sh seed` | Re-seed the dev database |
+| `./scripts/dev.sh mobile` | Export the mobile app to web and serve it on :8082 |
+| `./scripts/dev.sh test` | Typechecks, the API suite, and the browser journeys |
+| `./scripts/dev.sh logs` | Tail all service logs |
+
+Every command is idempotent — running `up` twice is safe.
+
+### Two things it does deliberately
+
+**`up` always rebuilds the web app before serving it.** It costs about
+fifteen seconds. It is there because the opposite failure is far more
+expensive: a stale `.next` served while you believe you are looking at
+your change gives you a confident, wrong answer, and you can lose an hour
+to it before suspecting the build.
+
+**It tracks services by PID file and never uses `pkill -f`.** A pattern
+like `pkill -f "expo start"` also matches the shell running the command
+that contains that string, so it kills its own caller. Stops here are by
+recorded PID, sent to the whole process group, because `ts-node-dev` and
+`next` both fork children that otherwise survive and hold the port.
+
+### If a port is already taken
+
+`status` distinguishes a service this script started (`pid 1234`) from one
+that was already there (`not ours`). To clear a stray holder:
+
+```bash
+fuser -k 3001/tcp
+```
+
+---
+
+## The long version — running it by hand
+
+You only need this to work on one piece in isolation, or to debug what
+`dev.sh` is doing. It is the same sequence the script automates.
+
 Everything below assumes a clean machine with **Node 20+** and
 **PostgreSQL 16** available. There is no Docker setup — Docker is not
 available in the environment this was built in, so the local Postgres
@@ -28,7 +89,7 @@ npm install
 cp .env.example .env          # DATABASE_URL + PORT
 
 export DATABASE_URL="postgres://sankalp:sankalp@localhost:5432/sankalp_dev"
-npm run migrate               # 30 migrations
+npm run migrate               # 31 migrations
 npm run seed                  # the family + 19 domains, all unlisted
 npx ts-node seed/demo-fixtures.ts   # see below — needed for the UI
 

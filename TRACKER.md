@@ -360,9 +360,10 @@ currently tells.
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
 | D29 | web | `apps/web` still renders `2 मेंटरs` and `an अभ्यर्थी account` | An English plural and article concatenated onto a Devanagari noun, in `mentors/page.tsx` and elsewhere. `apps/mobile/src/lib/pack.ts` has the fix (`plural()` / `withArticle()`); the web app needs the same helper. Cosmetic in English, and quietly insulting in Hindi. |
+| D31 | M4 | `credential_types.public_fields` is security-relevant data with no review gate | The allow-list that keeps verification evidence off a public profile (#30) is a `text[]` column, so a single `UPDATE` publishes `rollNumber` and `claimedName` to the world with no code change, no migration and no review. Confirmed by doing it: widening the list leaked both fields into `GET /providers/:id` immediately. The booking journey now catches it, but only if someone runs the journey. The column should be writable only through the admin pack editor with an audit-logged change, and the pack validator should warn when a new credential type declares any `public_fields` at all. |
 | D30 | web | `RuleNote` puts engineering commentary on every web screen | "There is no sort-by-price control here, at any layer…" is written for a reviewer, not a user. It should move to code comments and the docs; the rules stay enforced either way. The mobile app already does this. |
 | D25 | web | Screens still missing: dispute detail, admin queues, credential submission | The booking + mentorship loop is now built and driven in a browser (mentor search, profile, booking with slot picking, agenda draft/lock, session room, submission, rubric evaluation, accept/dispute, review, board post + propose + accept). What remains unbuilt: the dispute *detail* and appeal screens (raising one works), the admin adjudication and moderation queues, and provider credential submission. |
-| D26 | web | No frontend test suite beyond the browser journeys | `test/journey.mjs` and `test/booking-journey.mjs` (31 checks) drive the real flows and catch a lot — the latter found a 500 on `/engagements` that the happy path had walked past — but there are no component tests and nothing runs in CI. Both need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
+| D26 | web | No frontend test suite beyond the browser journeys, and nothing runs in CI | `test/journey.mjs` and `test/booking-journey.mjs` (35 checks) drive the real flows and catch a lot — the latter found a 500 on `/engagements` that the happy path had walked past, and now catches credential evidence leaking at any depth of the profile payload. But there are no component tests, and **the repository still has no CI workflow at all**: `./scripts/dev.sh test` runs everything (typechecks, 317 API tests, both browser journeys) in one command, so the remaining work is wiring that command to a GitHub Actions workflow with a Postgres service container. Both journeys need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
 | D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
 | D24 | M9 | The restore drill is manual and local | `scripts/restore-drill.sh` is real and passes, but it dumps a local database on demand. There is no backup *storage*, no retention policy, no WAL archiving, and therefore no point-in-time recovery — so "restore verified" is verified for the mechanism, not for a production backup that does not exist yet. |
 | D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
@@ -817,6 +818,13 @@ future task is surprised by something, it should be recorded here.
 
 ## Environment notes
 
+- **`./scripts/dev.sh up` does all of the below.** It is the supported way
+  to get a running stack: it starts Postgres, creates the role and both
+  databases if the container is cold, installs missing dependencies,
+  migrates, seeds, then builds and starts the API and web app, waiting on
+  a real HTTP response from each. `status` / `down` / `restart` / `seed` /
+  `mobile` / `test` / `logs` are the other subcommands. The notes that
+  follow explain what it is doing and remain the manual fallback.
 - Postgres runs locally in this container and **stops when the container
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
@@ -844,6 +852,17 @@ future task is surprised by something, it should be recorded here.
   categories deactivate instead of deleting). Verified against a real
   `sankalp_dev` database, twice.
 - Docker is unavailable in this environment; use the local cluster.
+- **Never stop a service with `pkill -f <pattern>`.** If the pattern
+  appears in the command line of the shell running it, it matches that
+  shell and kills the caller — this cost a session's worth of confusing
+  exits. `dev.sh` stops services by recorded PID, signalling the whole
+  process group because `ts-node-dev` and `next` fork children that
+  otherwise survive and keep holding the port.
+- **Always rebuild `apps/web` before serving it.** A stale `.next` served
+  on an already-bound port looks exactly like a working app and produces a
+  confident, wrong verdict about a change you just made. `dev.sh up`
+  rebuilds unconditionally for this reason; the fifteen seconds are cheap
+  against an hour of debugging the wrong build.
 
 ---
 
