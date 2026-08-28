@@ -42,7 +42,15 @@ export function familyManifestV1(): unknown {
       // minTierGranted values are illustrative placeholders — see
       // TRACKER.md: real thresholds need business/compliance sign-off
       // before launch, same caveat as the platform fee % from M1.
-      { code: 'exam_rank', labels: { en: 'Exam rank' }, verifier: 'public_result_list', minTierGranted: 't3' },
+      {
+        code: 'exam_rank',
+        labels: { en: 'Exam rank' },
+        verifier: 'public_result_list',
+        minTierGranted: 't3',
+        // The achievement, never the evidence: `rollNumber` is
+        // deliberately absent and the tests assert it stays absent.
+        publicFields: ['year', 'rank'],
+      },
       { code: 'mains_cleared', labels: { en: 'Mains cleared' }, verifier: 'document_review', minTierGranted: 't2' },
       {
         code: 'serving_officer',
@@ -57,6 +65,11 @@ export function familyManifestV1(): unknown {
         grantsPaidWorkSanction: true,
       },
     ],
+    reviewDimensions: [
+      { code: 'clarity', labels: { en: 'Made it clear' } },
+      { code: 'punctuality', labels: { en: 'On time' } },
+    ],
+
     policy: {
       minTierForPaidWork: 't2',
       freeQuestionsPerDay: 3,

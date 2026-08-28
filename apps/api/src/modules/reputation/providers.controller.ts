@@ -24,6 +24,34 @@ export interface ProviderCard {
 }
 
 /**
+ * A verified credential, as an achievement.
+ *
+ * `details` carries ONLY the keys the credential type's manifest marked
+ * publishable, and that list defaults to empty — so a credential with no
+ * declared public fields shows its label and its verified date and
+ * nothing else. The roll number, the claimed name and the document
+ * reference that PROVED it never appear here (#30).
+ */
+export interface PublicCredential {
+  credentialCode: string;
+  labels: Record<string, string>;
+  domainCode: string;
+  verifiedAt: string | null;
+  details: Record<string, unknown>;
+}
+
+/** What a provider's track record actually is, drawn from their own history. */
+export interface ProviderTrackRecord {
+  completedEngagements: number;
+  refundedEngagements: number;
+  distinctSeekers: number;
+  /** Of seekers who worked with them more than once — the strongest signal there is. */
+  repeatSeekers: number;
+  firstCompletedAt: string | null;
+  lastCompletedAt: string | null;
+}
+
+/**
  * Provider discovery — how a seeker finds someone to work with.
  *
  * Two rules shape everything this returns:
@@ -87,14 +115,118 @@ export class ProvidersController {
     return ordered.map((id) => byId.get(id)).filter((c): c is ProviderCard => c !== undefined);
   }
 
+  /**
+   * The full profile: what they are verified for, what they have
+   * achieved, what their record is, and what people who actually worked
+   * with them said.
+   *
+   * Every review here came from a completed engagement — the database
+   * refuses one otherwise — so there is no such thing as a review from
+   * someone who never turned up.
+   */
   @Get(':id')
   @Public()
-  async profile(@Param('id') id: string): Promise<ProviderCard & { reviews: unknown[] }> {
+  async profile(@Param('id') id: string): Promise<
+    ProviderCard & {
+      credentials: PublicCredential[];
+      trackRecord: ProviderTrackRecord;
+      reviewSummary: unknown;
+      reviews: unknown[];
+    }
+  > {
     const [card] = await this.cards([id]);
     if (!card) throw new BadRequestException('no such provider');
-    // Reviews are about the provider and were written by seekers who
-    // actually completed an engagement — the DB enforces that link.
-    return { ...card, reviews: await this.reviews.listAboutUser(id, 20) };
+
+    const [credentials, trackRecord, reviewSummary, reviews] = await Promise.all([
+      this.publicCredentials(id),
+      this.trackRecord(id),
+      this.reviews.summaryFor(id),
+      this.reviews.listAboutProviderWithContext(id, 30),
+    ]);
+
+    return { ...card, credentials, trackRecord, reviewSummary, reviews };
+  }
+
+  /**
+   * Verified credentials, filtered through each type's `public_fields`
+   * allow-list.
+   *
+   * Only `status = 'verified'` — a submitted or rejected credential is
+   * nobody's business but the provider's and the reviewer's. And the
+   * filtering happens HERE rather than in the query, so the allow-list
+   * is applied to exactly the keys that exist rather than to a shape we
+   * assumed.
+   */
+  private async publicCredentials(providerId: string): Promise<PublicCredential[]> {
+    const res = await this.pool.query<{
+      code: string;
+      labels: Record<string, string>;
+      domain_code: string;
+      reviewed_at: Date | null;
+      verifier_data: Record<string, unknown>;
+      public_fields: string[];
+    }>(
+      `SELECT ct.code, ct.labels, pc.domain_code, pc.reviewed_at, pc.verifier_data, ct.public_fields
+         FROM provider_credentials pc
+         JOIN credential_types ct ON ct.id = pc.credential_type_id
+        WHERE pc.provider_id = $1 AND pc.status = 'verified'
+        ORDER BY pc.reviewed_at DESC NULLS LAST`,
+      [providerId],
+    );
+
+    return res.rows.map((row) => {
+      const details: Record<string, unknown> = {};
+      for (const key of row.public_fields ?? []) {
+        const value = row.verifier_data?.[key];
+        if (value !== undefined && value !== null) details[key] = value;
+      }
+      return {
+        credentialCode: row.code,
+        labels: row.labels,
+        domainCode: row.domain_code,
+        verifiedAt: row.reviewed_at ? row.reviewed_at.toISOString() : null,
+        details,
+      };
+    });
+  }
+
+  /**
+   * Their own history. `repeatSeekers` is the one number here a provider
+   * cannot talk their way into: people came back.
+   *
+   * Refunded engagements are counted and shown rather than hidden — a
+   * record that only reports successes is not a record.
+   */
+  private async trackRecord(providerId: string): Promise<ProviderTrackRecord> {
+    const res = await this.pool.query<{
+      completed: string; refunded: string; distinct_seekers: string;
+      repeat_seekers: string; first_at: Date | null; last_at: Date | null;
+    }>(
+      `WITH mine AS (
+         SELECT seeker_id, status, updated_at
+           FROM engagements
+          WHERE provider_id = $1 AND status IN ('completed', 'refunded')
+       ), per_seeker AS (
+         SELECT seeker_id, count(*) AS n FROM mine WHERE status = 'completed' GROUP BY seeker_id
+       )
+       SELECT
+         (SELECT count(*) FROM mine WHERE status = 'completed')::text        AS completed,
+         (SELECT count(*) FROM mine WHERE status = 'refunded')::text         AS refunded,
+         (SELECT count(*) FROM per_seeker)::text                             AS distinct_seekers,
+         (SELECT count(*) FROM per_seeker WHERE n > 1)::text                 AS repeat_seekers,
+         (SELECT min(updated_at) FROM mine WHERE status = 'completed')       AS first_at,
+         (SELECT max(updated_at) FROM mine WHERE status = 'completed')       AS last_at`,
+      [providerId],
+    );
+    const r = res.rows[0];
+    return {
+      completedEngagements: Number(r.completed),
+      refundedEngagements: Number(r.refunded),
+      distinctSeekers: Number(r.distinct_seekers),
+      repeatSeekers: Number(r.repeat_seekers),
+      firstCompletedAt: r.first_at ? r.first_at.toISOString() : null,
+      lastCompletedAt: r.last_at ? r.last_at.toISOString() : null,
+    };
   }
 
   private async cards(providerIds: string[]): Promise<ProviderCard[]> {

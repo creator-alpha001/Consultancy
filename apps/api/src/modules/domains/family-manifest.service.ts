@@ -63,13 +63,14 @@ export class FamilyManifestService {
       for (const c of manifest.credentialTypes) {
         await client.query(
           `INSERT INTO credential_types
-             (family_code, code, labels, verifier, min_tier_granted, active, requires_paid_work_sanction, grants_paid_work_sanction)
-           VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)
+             (family_code, code, labels, verifier, min_tier_granted, active, requires_paid_work_sanction, grants_paid_work_sanction, public_fields)
+           VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9::text[])
            ON CONFLICT (family_code, code) DO UPDATE
              SET labels = EXCLUDED.labels, verifier = EXCLUDED.verifier,
                  min_tier_granted = EXCLUDED.min_tier_granted, active = EXCLUDED.active,
                  requires_paid_work_sanction = EXCLUDED.requires_paid_work_sanction,
-                 grants_paid_work_sanction = EXCLUDED.grants_paid_work_sanction`,
+                 grants_paid_work_sanction = EXCLUDED.grants_paid_work_sanction,
+                 public_fields = EXCLUDED.public_fields`,
           [
             manifest.code,
             c.code,
@@ -79,6 +80,7 @@ export class FamilyManifestService {
             c.active ?? true,
             c.requiresPaidWorkSanction ?? false,
             c.grantsPaidWorkSanction ?? false,
+            c.publicFields ?? [],
           ],
         );
       }

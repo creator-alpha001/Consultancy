@@ -52,6 +52,8 @@ export interface ResolvedDomain {
   labels: { family: LabelMap; seeker: LabelMap; provider: LabelMap; engagement: LabelMap; domain: LabelMap };
   engagementTypes: string[];
   flagshipEngagement: string;
+  /** What a seeker rates a provider on. Family data — core names none of them. */
+  reviewDimensions?: Array<{ code: string; labels: LabelMap }>;
   languages: string[];
   defaultLanguage: string;
   priceBands: Record<string, [number, number]>;
@@ -83,4 +85,21 @@ export function leafCategories(
       ? [{ id: n.id, path: path.join(' · '), label: name }]
       : leafCategories(n.children, lang, path);
   });
+}
+
+/**
+ * Presents a published credential fact.
+ *
+ * The KEY comes from the family's manifest, so core cannot know what it
+ * means — but it can stop it looking like a database column. "year" → "Year",
+ * "examBoard" → "Exam board". Generic formatting, no domain knowledge.
+ */
+export function factLabel(key: string): string {
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+/** A domain code as something a person reads: "upsc_cse" → "UPSC CSE". */
+export function domainLabel(code: string): string {
+  return code.replace(/[_-]+/g, ' ').toUpperCase();
 }

@@ -167,6 +167,12 @@ export default function EngagementDetail(): JSX.Element {
         {e.status === 'completed' && (
           <Card>
             <Body>Done. The money has been released.</Body>
+            <View style={{ height: space.sm }} />
+            <Button
+              label="Leave a review"
+              variant="secondary"
+              onPress={() => router.push(`/engagement/${id}/review`)}
+            />
           </Card>
         )}
 

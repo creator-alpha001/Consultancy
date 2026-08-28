@@ -7,6 +7,14 @@ export const ReputationErrorCode = {
   REVIEW_ENGAGEMENT_NOT_ENDED: 'REVIEW_ENGAGEMENT_NOT_ENDED',
   REVIEW_NOT_A_PARTY: 'REVIEW_NOT_A_PARTY',
   REVIEW_RATING_OUT_OF_RANGE: 'REVIEW_RATING_OUT_OF_RANGE',
+  /** A dimension code the family's manifest does not define. */
+  REVIEW_UNKNOWN_DIMENSION: 'REVIEW_UNKNOWN_DIMENSION',
+  /** Only the subject of a review may reply to it. */
+  REVIEW_REPLY_NOT_SUBJECT: 'REVIEW_REPLY_NOT_SUBJECT',
+  /** One reply per review, and it is append-only. */
+  REVIEW_REPLY_ALREADY_EXISTS: 'REVIEW_REPLY_ALREADY_EXISTS',
+  /** A reply with nothing in it. */
+  REVIEW_REPLY_EMPTY: 'REVIEW_REPLY_EMPTY',
 } as const;
 
 export type ReputationErrorCode = (typeof ReputationErrorCode)[keyof typeof ReputationErrorCode];
@@ -48,4 +56,34 @@ export function reviewRatingOutOfRange(rating: number): AppError {
     `rating ${rating} is outside the permitted range of 1–5`,
     { status: HttpStatus.UNPROCESSABLE_ENTITY, detail: { rating } },
   );
+}
+
+export function reviewUnknownDimension(code: string, familyCode: string): AppError {
+  return new AppError(
+    ReputationErrorCode.REVIEW_UNKNOWN_DIMENSION,
+    `"${code}" is not a review dimension in family ${familyCode}`,
+    { status: HttpStatus.BAD_REQUEST, detail: { dimensionCode: code, familyCode } },
+  );
+}
+
+export function reviewReplyNotSubject(reviewId: string): AppError {
+  return new AppError(
+    ReputationErrorCode.REVIEW_REPLY_NOT_SUBJECT,
+    'only the person a review is about may reply to it',
+    { status: HttpStatus.FORBIDDEN, detail: { reviewId } },
+  );
+}
+
+export function reviewReplyAlreadyExists(reviewId: string): AppError {
+  return new AppError(
+    ReputationErrorCode.REVIEW_REPLY_ALREADY_EXISTS,
+    'you have already replied to this review, and a reply cannot be edited',
+    { status: HttpStatus.CONFLICT, detail: { reviewId } },
+  );
+}
+
+export function reviewReplyEmpty(): AppError {
+  return new AppError(ReputationErrorCode.REVIEW_REPLY_EMPTY, 'a reply needs something in it', {
+    status: HttpStatus.BAD_REQUEST,
+  });
 }

@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after apps/mobile — a real React Native app
+Last updated: 2026-08-28 · after profile achievements and a real review system
 
 ---
 
@@ -212,6 +212,46 @@ through react-native-web at a Pixel 7 viewport against the real API — it
 proves the screens compose, fetch and navigate, and it caught the
 Devanagari plural leak. It is not a substitute for a device. Run
 `npx expo start` and open it in Expo Go to actually hold it.
+
+### Profiles and reviews (0031)
+
+A profile showed a tier and a star average and nothing else, and a review
+was one integer plus a paragraph. Neither is enough to decide who to give
+money to, so both were rebuilt.
+
+**Achievements are credentials, published as conclusions.** The platform
+already held verified credentials — a published rank, mains cleared,
+interview appeared — and showed none of them. They now appear on a
+profile, filtered through an ALLOW-LIST each credential type declares in
+the family manifest (`publicFields`). It defaults to **empty**: a type
+that says nothing publishes only its own label. Core names no field, so a
+family verifying music grades publishes different facts with no code
+change. `verifier_data` holds the roll number, the claimed name and the
+document reference that PROVED each achievement, and a test asserts none
+of those three ever reach the response (#30).
+
+**Reviews gained dimensions, context and a right of reply.**
+- Per-dimension scores (`review_dimension_scores`), with the dimensions
+  themselves declared by the family — deliberately not an assessment
+  template, which grades the *work* against a category rubric (#16),
+  while these describe what the person was like to work with.
+- Each review carries the skills the engagement actually required
+  (snapshotted at `agree()`), so it counts toward the work it was for
+  rather than whatever the category maps to now.
+- A **right of reply**: one, by the review's subject only, append-only.
+  A review the reviewed party cannot answer is a weapon rather than a
+  record; one they could rewrite would be worth nothing.
+- A summary view with the rating distribution — a fact about that
+  person's own consistency. Still no rank, percentile or comparison to
+  any other provider (#17), and a test greps the response to prove it.
+
+**A track record**, computed from their own history: completed, distinct
+seekers, and *repeat* seekers — the one number a provider cannot talk
+their way into. Refunded engagements are shown rather than hidden; a
+record that reports only successes is not a record.
+
+Everything append-only, everything a view rather than a stored count,
+same reasoning as money's "no `balance` column".
 
 ### Why M9 is partial — what is real, and what is not
 
@@ -781,8 +821,8 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **297 tests, all passing**,
-  including a from-scratch run (`DROP DATABASE`, re-run all 30 migrations,
+- Full suite: `cd apps/api && npm test` — **317 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 31 migrations,
   full suite) to confirm migration order integrity, as of this update.
 - On a cold container the database is empty of *everything*, roles
   included. `service postgresql start`, then as the postgres superuser:

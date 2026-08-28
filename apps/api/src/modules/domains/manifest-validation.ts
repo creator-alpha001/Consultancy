@@ -3,6 +3,7 @@ import {
   AssessmentTemplateInput,
   CategoryNodeInput,
   CredentialTypeInput,
+  ReviewDimensionInput,
   DomainManifestInput,
   EngagementType,
   FamilyManifestInput,
@@ -152,8 +153,25 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
       active: typeof c.active === 'boolean' ? c.active : true,
       requiresPaidWorkSanction: typeof c.requiresPaidWorkSanction === 'boolean' ? c.requiresPaidWorkSanction : false,
       grantsPaidWorkSanction: typeof c.grantsPaidWorkSanction === 'boolean' ? c.grantsPaidWorkSanction : false,
+      // Fail closed: anything not a clean array of strings publishes
+      // nothing, rather than publishing whatever was there.
+      publicFields: Array.isArray(c.publicFields)
+        ? c.publicFields.filter((f): f is string => typeof f === 'string')
+        : [],
     };
   });
+
+  // Optional. A family with no dimensions gets a plain overall rating,
+  // which is what the product had before and is still valid.
+  const reviewDimensions = m.reviewDimensions === undefined
+    ? []
+    : v.array<ReviewDimensionInput>(m.reviewDimensions, 'reviewDimensions', (item, p) => {
+        const d = (item ?? {}) as Record<string, unknown>;
+        const dCode = v.string(d.code, `${p}.code`);
+        const dLabels = v.labelMap(d.labels, `${p}.labels`);
+        if (!dCode || !dLabels) return undefined;
+        return { code: dCode, labels: dLabels };
+      });
 
   const policyRaw = (m.policy ?? {}) as Record<string, unknown>;
   if (typeof policyRaw.minTierForPaidWork !== 'string') v.fail('policy.minTierForPaidWork', 'must be a string');
@@ -216,6 +234,7 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     skills,
     assessmentTemplates,
     credentialTypes,
+    reviewDimensions,
     policy: policyRaw as unknown as FamilyManifestInput['policy'],
     supportResources,
     theme: { signature: themeSignature!, tokens: themeRaw.tokens as Record<string, string> },

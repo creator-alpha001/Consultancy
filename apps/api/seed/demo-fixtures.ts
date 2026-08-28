@@ -61,6 +61,37 @@ async function main() {
     console.log(`provider ${p.email} verified on ${skillIds.length} skills at ${p.tier}`);
   }
 
+  // ── Verified achievements ────────────────────────────────────────────
+  // Real rows in provider_credentials, with evidence in verifier_data that
+  // the profile endpoint must NOT publish — only the keys each credential
+  // type's manifest lists in public_fields.
+  const admin = await pool.query<{ id: string }>(
+    `INSERT INTO users (email, role, status) VALUES ('demo.admin@demo.local', 'admin', 'active')
+     ON CONFLICT (email) DO UPDATE SET role = 'admin' RETURNING id`,
+  );
+  const adminId = admin.rows[0].id;
+
+  const achievements: Array<[string, string, Record<string, unknown>]> = [
+    ['asha.rathore@demo.local', 'exam_rank', { year: 2019, rank: 342, rollNumber: '0451923', claimedName: 'Asha Rathore' }],
+    ['asha.rathore@demo.local', 'interview_appeared', { year: 2020, documentRef: 's3://private/call-letter.pdf' }],
+    ['vikram.kulkarni@demo.local', 'mains_cleared', { year: 2021, rollNumber: '0662104' }],
+    ['meera.banerjee@demo.local', 'subject_expertise', { subject: 'Political Science', documentRef: 's3://private/phd.pdf' }],
+  ];
+
+  for (const [email, code, data] of achievements) {
+    const u = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [email]);
+    const t = await pool.query<{ id: string }>(`SELECT id FROM credential_types WHERE code = $1`, [code]);
+    if (!u.rows[0] || !t.rows[0]) continue;
+    await pool.query(
+      `INSERT INTO provider_credentials
+         (provider_id, credential_type_id, domain_code, verifier_data, status, reviewed_by, reviewed_at)
+       VALUES ($1, $2, $3, $4::jsonb, 'verified', $5, now() - interval '40 days')
+       ON CONFLICT DO NOTHING`,
+      [u.rows[0].id, t.rows[0].id, DOMAIN, JSON.stringify(data), adminId],
+    );
+    console.log(`credential ${code} verified for ${email}`);
+  }
+
   await pool.end();
   console.log('\ndemo fixtures ready');
 }

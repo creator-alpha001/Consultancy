@@ -32,12 +32,31 @@ export class ReputationController {
       rating: number;
       bodyOriginal?: string;
       bodyLang: string;
+      dimensionScores?: Array<{ dimensionCode: string; score: number }>;
     },
   ): Promise<ReviewRow> {
     await this.access.assertParty(engagementId, actor);
     // The subject is derived from the engagement inside the service — a
     // client cannot nominate who its review is about.
     return this.reviews.leave({ engagementId, reviewerId: actor.userId, ...body });
+  }
+
+  /**
+   * The right of reply. Only the person a review is about may use it,
+   * once, and never edit it afterwards — enforced by triggers in 0031.
+   */
+  @Post('reviews/:id/reply')
+  async reply(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { bodyOriginal?: string; bodyLang?: string },
+  ): Promise<unknown> {
+    return this.reviews.reply({
+      reviewId: id,
+      authorId: actor.userId,
+      bodyOriginal: body.bodyOriginal ?? '',
+      bodyLang: body.bodyLang ?? 'en',
+    });
   }
 
   @Get('engagements/:engagementId/reviews')

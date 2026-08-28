@@ -12,6 +12,7 @@ import { chromium, devices } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const APP = process.env.APP ?? 'http://localhost:8082';
+const API = process.env.API ?? 'http://localhost:3000';
 const OUT = process.env.OUT ?? '../../docs/screens/mobile';
 const PASS = 'a-long-enough-passphrase';
 const uniq = Date.now();
@@ -75,11 +76,23 @@ if ((await card.count()) > 0) {
   await card.click();
   await page.waitForTimeout(1800);
   body = await page.textContent('body');
-  body.includes('Verified for') ? ok('per-skill tiers shown') : bad('tiers missing');
-  (await page.getByText(/credential|document/i).count()) === 0
-    ? ok('no credential evidence on the profile')
-    : ok('note: the word appears only in the paid-work notice');
+  body.includes('Achievements') ? ok('achievements section present') : bad('achievements missing');
+  body.includes('Track record') ? ok('track record present') : bad('track record missing');
+  body.includes('Verified to teach') ? ok('per-skill tiers shown') : bad('tiers missing');
+  // The evidence that proved each achievement must never reach a client.
+  const profileRaw = await page.evaluate(
+    async (u) => JSON.stringify(await (await fetch(u)).json()),
+    `${API}/providers/${page.url().split('/mentor/')[1].split('?')[0]}`,
+  );
+  /rollNumber|claimedName|documentRef|s3:\/\//.test(profileRaw)
+    ? bad('the profile payload leaked credential evidence')
+    : ok('achievements published; the evidence that proved them withheld (#30)');
   await shot('mentor-profile');
+
+  // Scroll to the review block so the screenshot shows it.
+  await page.mouse.wheel(0, 900);
+  await page.waitForTimeout(900);
+  await shot('mentor-profile-reviews');
 }
 
 console.log('\n5. Register');

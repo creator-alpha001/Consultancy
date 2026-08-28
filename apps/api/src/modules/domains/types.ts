@@ -32,6 +32,30 @@ export interface CredentialTypeInput {
   requiresPaidWorkSanction?: boolean;
   /** Verified, this credential lifts a requiresPaidWorkSanction block (departmental sanction, in the exam family). */
   grantsPaidWorkSanction?: boolean;
+  /**
+   * Which `verifier_data` keys a public profile may show (CLAUDE.md #30:
+   * the conclusion, never the evidence).
+   *
+   * Defaults to none — a credential type that says nothing publishes only
+   * its own label. NEVER put anything identifying here: a roll number or
+   * a claimed name is how the achievement was PROVED, not what it is.
+   * Core names no field, so a family verifying music grades publishes
+   * different facts with no code change.
+   */
+  publicFields?: string[];
+}
+
+/**
+ * A dimension a seeker rates a provider on after working with them.
+ *
+ * Deliberately NOT an assessment template. Those grade the WORK against a
+ * rubric bound to a category and providers may not touch them (#16);
+ * these describe what the person was like to work with, and they are
+ * family-level because that is the scope on which they are comparable.
+ */
+export interface ReviewDimensionInput {
+  code: string;
+  labels: LabelMap;
 }
 
 /**
@@ -85,6 +109,8 @@ export interface FamilyManifestInput {
   skills: SkillInput[];
   assessmentTemplates: AssessmentTemplateInput[];
   credentialTypes: CredentialTypeInput[];
+  /** Optional: a family with none gets a single overall rating and nothing more. */
+  reviewDimensions?: ReviewDimensionInput[];
   policy: FamilyPolicy;
   supportResources: SupportResource[];
   theme: ThemeTokens;

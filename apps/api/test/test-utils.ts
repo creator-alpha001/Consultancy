@@ -13,7 +13,7 @@ export async function resetDatabase(pool: Pool): Promise<void> {
       ledger_entries, ledger_transactions, ledger_accounts,
       fee_schedules,
       dispute_appeals, dispute_rulings, dispute_evidence, disputes,
-      reviews,
+      review_replies, review_dimension_scores, reviews,
       assessment_scores, evaluations, submissions,
       engagement_skills, agenda_items, agendas,
       engagements,

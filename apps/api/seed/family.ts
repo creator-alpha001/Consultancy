@@ -150,10 +150,38 @@ export function civilServicesExamsFamily(): FamilyManifestInput {
     credentialTypes: [
       // minTierGranted values are PLACEHOLDERS pending business and
       // compliance sign-off — see seed/PROVENANCE.md and TRACKER.md.
-      { code: 'exam_rank', labels: { en: 'Exam rank' }, verifier: 'public_result_list', minTierGranted: 't3' },
-      { code: 'mains_cleared', labels: { en: 'Mains cleared' }, verifier: 'document_review', minTierGranted: 't2' },
-      { code: 'interview_appeared', labels: { en: 'Interview appeared' }, verifier: 'document_review', minTierGranted: 't2' },
-      { code: 'subject_expertise', labels: { en: 'Subject expertise' }, verifier: 'document_review', minTierGranted: 't2' },
+      // publicFields is an ALLOW-LIST of verifier_data keys a profile may
+      // show (#30). `year` and `rank` are the achievement; the roll
+      // number and claimed name that proved it are deliberately absent
+      // and must stay that way.
+      {
+        code: 'exam_rank',
+        labels: { en: 'Exam rank', hi: 'परीक्षा रैंक' },
+        verifier: 'public_result_list',
+        minTierGranted: 't3',
+        publicFields: ['year', 'rank'],
+      },
+      {
+        code: 'mains_cleared',
+        labels: { en: 'Mains cleared', hi: 'मुख्य परीक्षा उत्तीर्ण' },
+        verifier: 'document_review',
+        minTierGranted: 't2',
+        publicFields: ['year'],
+      },
+      {
+        code: 'interview_appeared',
+        labels: { en: 'Interview appeared', hi: 'साक्षात्कार में सम्मिलित' },
+        verifier: 'document_review',
+        minTierGranted: 't2',
+        publicFields: ['year'],
+      },
+      {
+        code: 'subject_expertise',
+        labels: { en: 'Subject expertise', hi: 'विषय विशेषज्ञता' },
+        verifier: 'document_review',
+        minTierGranted: 't2',
+        publicFields: ['subject'],
+      },
       // Generic flags, never a hardcoded credential code in core: a
       // serving officer needs departmental sanction before paid work.
       {
@@ -168,6 +196,17 @@ export function civilServicesExamsFamily(): FamilyManifestInput {
         verifier: 'sanction_document',
         grantsPaidWorkSanction: true,
       },
+    ],
+
+    // What a seeker rates a mentor on. Family-level, because that is the
+    // scope on which these are comparable — and deliberately NOT an
+    // assessment template, which grades the work rather than the person
+    // (#16).
+    reviewDimensions: [
+      { code: 'clarity', labels: { en: 'Made it clear', hi: 'स्पष्टता' } },
+      { code: 'depth', labels: { en: 'Went deep enough', hi: 'गहराई' } },
+      { code: 'candour', labels: { en: 'Told me the hard truth', hi: 'स्पष्टवादिता' } },
+      { code: 'punctuality', labels: { en: 'On time', hi: 'समयनिष्ठा' } },
     ],
 
     policy: {
