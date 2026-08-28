@@ -2,11 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
-import { Actor, SessionRow, UserRole } from './types';
+import { Actor, SessionRow, SessionScope, UserRole } from './types';
 
 interface SessionDbRow {
   id: string;
   user_id: string;
+  scope: SessionScope;
   mfa_satisfied: boolean;
   issued_at: Date;
   expires_at: Date;
@@ -17,6 +18,7 @@ function mapSession(row: SessionDbRow): SessionRow {
   return {
     id: row.id,
     userId: row.user_id,
+    scope: row.scope,
     mfaSatisfied: row.mfa_satisfied,
     issuedAt: row.issued_at,
     expiresAt: row.expires_at,
@@ -30,6 +32,8 @@ export function hashToken(token: string): string {
 }
 
 const SESSION_TTL_HOURS = 12;
+/** Minutes, not hours: an enrolment ticket is a bootstrap, not a login. */
+const ENROLMENT_TTL_MINUTES = 10;
 
 /**
  * Opaque server-side sessions. The bearer token is 32 random bytes,
@@ -48,19 +52,26 @@ export class SessionService {
   async create(input: {
     userId: string;
     mfaSatisfied: boolean;
+    scope?: SessionScope;
     userAgent?: string;
     ipPrefix?: string;
   }): Promise<{ token: string; session: SessionRow }> {
+    const scope: SessionScope = input.scope ?? 'full';
     const token = randomBytes(32).toString('base64url');
+    const ttl = scope === 'mfa_enrolment'
+      ? `${ENROLMENT_TTL_MINUTES} minutes`
+      : `${SESSION_TTL_HOURS} hours`;
+
     const res = await this.pool.query<SessionDbRow>(
-      `INSERT INTO user_sessions (user_id, token_hash, mfa_satisfied, expires_at, user_agent, ip_prefix)
-       VALUES ($1, $2, $3, now() + ($4 || ' hours')::interval, $5, $6)
+      `INSERT INTO user_sessions (user_id, token_hash, mfa_satisfied, scope, expires_at, user_agent, ip_prefix)
+       VALUES ($1, $2, $3, $4::session_scope, now() + $5::interval, $6, $7)
        RETURNING *`,
       [
         input.userId,
         hashToken(token),
         input.mfaSatisfied,
-        String(SESSION_TTL_HOURS),
+        scope,
+        ttl,
         input.userAgent ?? null,
         input.ipPrefix ?? null,
       ],
@@ -79,9 +90,10 @@ export class SessionService {
       session_id: string;
       user_id: string;
       role: UserRole;
+      scope: SessionScope;
       mfa_satisfied: boolean;
     }>(
-      `SELECT s.id AS session_id, s.user_id, u.role, s.mfa_satisfied
+      `SELECT s.id AS session_id, s.user_id, u.role, s.scope, s.mfa_satisfied
          FROM user_sessions s
          JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1
@@ -96,6 +108,7 @@ export class SessionService {
       userId: row.user_id,
       role: row.role,
       sessionId: row.session_id,
+      scope: row.scope,
       mfaSatisfied: row.mfa_satisfied,
     };
   }
@@ -124,6 +137,7 @@ export class SessionService {
     const res = await this.pool.query<SessionDbRow>(
       `SELECT * FROM user_sessions
         WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > now()
+          AND scope = 'full'
         ORDER BY issued_at DESC`,
       [userId],
     );

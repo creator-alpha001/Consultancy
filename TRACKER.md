@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after identity/auth
+Last updated: 2026-08-28 · after M9 (partial) + identity
 
 ---
 
@@ -25,7 +25,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
 | M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
-| M9 | Hardening | Not started | — |
+| M9 | Hardening | **Partial — not complete** | No — reconciliation, restore drill and a DB perf baseline are real and verified; 3G, accessibility and the security review are not. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
@@ -90,6 +90,63 @@ D13. The bar itself doesn't mention waves, so the milestone's actual
 acceptance criterion is met; the debt is that one listed feature is
 unimplemented and unclarified, not faked.
 
+### Why M9 is partial — what is real, and what is not
+
+M9 is "hardening: reconciliation, 3G load test, accessibility, security
+review, restore drill." Its bar is "restore verified; p95 within target
+on 3G." Half of that is genuinely buildable here and half is not, so
+half was built and the rest is named rather than faked.
+
+**Real, verified, and running:**
+
+- **Reconciliation** (`admin/ReconciliationService`, 10 checks). Read-only
+  by design — it reports, it never "fixes," because an automated
+  correction to a money table turns a detectable problem into an
+  undetectable one. Each check is tested against *manufactured
+  corruption* rather than a clean database: a reconciliation suite that
+  only proves "clean reports clean" would pass just as happily if every
+  check returned null. Two checks required disabling triggers to create
+  the corruption at all — the ledger genuinely cannot be unbalanced
+  through ordinary SQL — which is itself worth knowing.
+- **Restore drill** (`scripts/restore-drill.sh`). Dump → restore into a
+  fresh database → compare row counts per table → **re-test the
+  invariants on the restored copy**. That last step is the point: a
+  restore that brings back rows but loses the trigger enforcing hard rule
+  #12 has restored the data and lost the product. Verified against both
+  `sankalp_dev` and a `sankalp_test` containing real ledger rows.
+- **Database perf baseline** (`scripts/perf-baseline.sh`) and
+  **migration 0028**. An audit found 43 unindexed foreign keys; they were
+  *not* blanket-indexed, because every index costs write throughput on a
+  platform whose hot path is money. Each index added is justified by a
+  named call site. Measured on 48,800 synthetic engagements, the most
+  common query in the product — "my engagements" — went from a
+  **sequential scan at 3.3ms to an index scan at 0.057ms (~58×)**, and
+  from O(n) to O(log n).
+
+**Not built, and not fakeable here:**
+
+- **The 3G bar.** Needs traffic shaping (`tc`, absent, and needs
+  `NET_ADMIN` in this container) and a real client. The baseline above
+  measures the database layer only and says so in its own output; calling
+  it "p95 on 3G" would be a lie about what was tested.
+- **Accessibility.** There is no frontend — `apps/` contains only `api`.
+  360px layout, keyboard reachability and contrast ≥ 4.5:1 are properties
+  of a UI that does not exist. This is not blocked by infrastructure; it
+  is blocked by the frontend not being written.
+- **The security review.** Partly moot and partly premature: identity/
+  closed the biggest hole (see below), but object storage, signed URLs
+  and watermarking (#29) do not exist to review, and D18/D20/D21/D22
+  remain open. A review now would mostly re-list known debt.
+
+**Three drill bugs worth recording**, because each was the same mistake
+and it is an easy one to repeat: a check that passes *vacuously*. A
+`DELETE` on an empty table fires no row trigger; an `INSERT..SELECT`
+matching no rows succeeds trivially; a `Seq Scan` on an empty table is
+the correct plan. All three initially reported success or failure that
+had nothing to do with what was being tested. Every check now creates
+its own subject, and the perf script judges scans by rows read rather
+than by the words "Seq Scan".
+
 ### Why identity/auth was built out of order, before M9
 
 M9 is "hardening: reconciliation, 3G load test, accessibility, security
@@ -139,8 +196,9 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
+| D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
+| D24 | M9 | The restore drill is manual and local | `scripts/restore-drill.sh` is real and passes, but it dumps a local database on demand. There is no backup *storage*, no retention policy, no WAL archiving, and therefore no point-in-time recovery — so "restore verified" is verified for the mechanism, not for a production backup that does not exist yet. |
 | D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
-| D19 | identity | A provider cannot self-serve 2FA enrolment before their first login | #32 refuses a session until a factor is confirmed, but enrolment endpoints require a session — a genuine chicken-and-egg for a brand-new provider. Tests enrol via the service directly. Needs a short-lived, single-purpose enrolment ticket issued after password verification. **This blocks real provider onboarding.** |
 | D20 | identity | No email verification, password reset, or session-idle timeout | `users.email_verified_at` exists and nothing sets it; there is no reset flow (it would need the notifications relay, which nothing reads — see the `outbox` stub); sessions expire on a fixed 12h TTL with no idle timeout or renewal. |
 | D21 | identity | Password strength is length-only | 12-character minimum plus a check that it doesn't contain the email. No breach-corpus check (Have I Been Pwned k-anonymity or equivalent), which is the single highest-value addition and needs an outbound HTTP dependency decision. |
 | D22 | identity | No per-IP or global rate limiting | Per-account lockout exists (5 failures → 15 minutes). Nothing limits an attacker spreading attempts across many accounts, or hammering registration. Needs Redis, which the stack specifies but nothing uses yet. |
@@ -364,6 +422,29 @@ future task is surprised by something, it should be recorded here.
   that justify it. It aggregates over `engagement_skills` — the snapshot
   taken at `agree()` — so an engagement counts toward the skills it
   actually required when it ran, not whatever its category maps to now.
+- **The 2FA bootstrap is a *scoped session*, not a second token type.**
+  #32 refuses a session to a provider or admin without a confirmed
+  factor, which left a genuine chicken-and-egg for a new provider (the
+  old D19). Rather than a parallel token mechanism, `user_sessions`
+  gained a `scope`: an `mfa_enrolment` session is issued only after a
+  correct password, lives ten minutes, and the guard accepts it on the
+  two enrolment routes and nowhere else. One table, one lifecycle, one
+  revocation path. The column defaults to `full` — the *stricter* value —
+  so an INSERT that forgets to say cannot silently downgrade a session's
+  requirements, and confirming a factor burns every enrolment session the
+  user holds. Scope is checked *before* roles in the guard, so a ticket
+  cannot reach a route merely because its holder has the right role.
+- **Reconciliation never writes.** It has no "fix" endpoint and no
+  mutation of any kind. CLAUDE.md is explicit that corrections are
+  reversing entries made by a human who understands what happened; an
+  auto-repair would also destroy the evidence of whatever caused the
+  drift.
+- **Indexes were chosen per call site, not per foreign key.** 43 FKs were
+  unindexed; 0028 adds 17 indexes, each named against the query it
+  serves, and deliberately skips bookkeeping columns (`reviewed_by`,
+  `published_by`, `verified_by`, `created_by`) that are only ever read
+  one row at a time. Indexing all 43 would have slowed every write to
+  speed up queries nobody makes.
 - **Authentication is default-deny.** A global `AuthGuard` protects every
   route; `@Public()` opts one out. Guarding routes individually fails
   open, and the route someone forgets to guard is always the one that
@@ -460,12 +541,19 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **224 tests, all passing**,
-  including a from-scratch run (`DROP DATABASE`, re-run all 26 migrations,
+- Full suite: `cd apps/api && npm test` — **246 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 28 migrations,
   full suite) to confirm migration order integrity, as of this update.
 - `npm run migrate` and `npm run seed` need `DATABASE_URL` in the
   environment; they do not read `.env` themselves.
   `export $(grep -v '^#' .env | xargs)` first.
+- `./scripts/restore-drill.sh` (SOURCE_DB=… or DATABASE_URL) performs a
+  full dump/restore/verify cycle; `./scripts/perf-baseline.sh [N]` builds
+  a throwaway database with N synthetic engagements and reports plans and
+  timings. Both leave their scratch database behind for inspection and
+  print the `dropdb` command.
+- The `sankalp` role needs `CREATEDB` for those two scripts
+  (`ALTER ROLE sankalp CREATEDB;` as the postgres superuser).
 - `npm run seed` publishes the family + 19 domains and is idempotent
   (re-running supersedes manifest versions rather than duplicating;
   categories deactivate instead of deleting). Verified against a real

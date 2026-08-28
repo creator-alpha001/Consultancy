@@ -168,13 +168,88 @@ describe('identity: registration, login, mandatory 2FA, sessions', () => {
         .expect(201);
     }
 
-    it('refuses to sign a provider in until they have enrolled a second factor', async () => {
+    it('gives a brand-new provider an enrolment ticket instead of a dead end (D19)', async () => {
       await registerProvider();
       const res = await http()
         .post('/auth/login')
         .send({ email: 'mentor@test.local', password: strongPassword })
-        .expect(403);
-      expect(res.body.error.code).toBe('MFA_NOT_ENROLLED');
+        .expect(201);
+
+      // Not a session: a ticket, and the response says so plainly.
+      expect(res.body.outcome).toBe('mfa_enrolment_required');
+      expect(typeof res.body.enrolmentToken).toBe('string');
+
+      // It is stored as an enrolment-scoped session, never a full one.
+      const stored = await pool.query<{ scope: string; mfa_satisfied: boolean }>(
+        `SELECT scope, mfa_satisfied FROM user_sessions`,
+      );
+      expect(stored.rows[0].scope).toBe('mfa_enrolment');
+      expect(stored.rows[0].mfa_satisfied).toBe(false);
+    });
+
+    it('an enrolment ticket unlocks enrolment AND NOTHING ELSE', async () => {
+      await registerProvider();
+      const login = await http()
+        .post('/auth/login')
+        .send({ email: 'mentor@test.local', password: strongPassword })
+        .expect(201);
+      const ticket = `Bearer ${login.body.enrolmentToken}`;
+
+      // The whole safety argument for the ticket, tested directly.
+      await http().get('/auth/me').set('authorization', ticket).expect(401);
+      await http().get('/auth/sessions').set('authorization', ticket).expect(401);
+      await http().post('/auth/logout-others').set('authorization', ticket).expect(401);
+      await http().post('/auth/mfa/recovery-codes').set('authorization', ticket).expect(401);
+
+      // But enrolment works.
+      await http().post('/auth/mfa/enrol').set('authorization', ticket).expect(201);
+    });
+
+    it('completes the full bootstrap over HTTP: ticket -> enrol -> confirm -> real login', async () => {
+      await registerProvider();
+      const login = await http()
+        .post('/auth/login')
+        .send({ email: 'mentor@test.local', password: strongPassword })
+        .expect(201);
+      const ticket = `Bearer ${login.body.enrolmentToken}`;
+
+      const enrol = await http().post('/auth/mfa/enrol').set('authorization', ticket).expect(201);
+      expect(enrol.body.provisioningUri).toContain('otpauth://totp/');
+
+      const confirm = await http()
+        .post('/auth/mfa/confirm')
+        .set('authorization', ticket)
+        .send({ code: totp.codeAt(enrol.body.secret) })
+        .expect(201);
+      expect(confirm.body.codes).toHaveLength(10);
+
+      // The ticket is burned the moment it has served its purpose.
+      await http().post('/auth/mfa/enrol').set('authorization', ticket).expect(401);
+
+      // And the provider can now log in properly, with a code.
+      const real = await http()
+        .post('/auth/login')
+        .send({
+          email: 'mentor@test.local',
+          password: strongPassword,
+          totpCode: totp.codeAt(enrol.body.secret),
+        })
+        .expect(201);
+      expect(real.body.outcome).toBe('session');
+      expect(real.body.session.scope).toBe('full');
+
+      const me = await http().get('/auth/me').set('authorization', `Bearer ${real.body.token}`).expect(200);
+      expect(me.body.email).toBe('mentor@test.local');
+    });
+
+    it('never issues an enrolment ticket on a WRONG password', async () => {
+      await registerProvider();
+      await http()
+        .post('/auth/login')
+        .send({ email: 'mentor@test.local', password: 'wrong-password-entirely' })
+        .expect(401);
+      const stored = await pool.query(`SELECT 1 FROM user_sessions`);
+      expect(stored.rows).toHaveLength(0);
     });
 
     it('completes the enrol -> confirm -> login-with-code flow', async () => {

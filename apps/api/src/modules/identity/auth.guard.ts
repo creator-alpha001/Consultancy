@@ -14,6 +14,18 @@ export const REQUIRED_ROLES = 'identity:roles';
 export const Roles = (...roles: UserRole[]): MethodDecorator & ClassDecorator =>
   SetMetadata(REQUIRED_ROLES, roles);
 
+/**
+ * Marks the handful of routes an `mfa_enrolment`-scoped ticket may reach
+ * — the 2FA bootstrap for a provider or admin who cannot log in yet.
+ *
+ * Every other route requires a `full` session. That default is what
+ * makes the ticket safe: it proves a password and buys the holder
+ * nothing except the ability to finish enrolling.
+ */
+export const ALLOWS_ENROLMENT_SCOPE = 'identity:allows-enrolment-scope';
+export const AllowsEnrolmentScope = (): MethodDecorator & ClassDecorator =>
+  SetMetadata(ALLOWS_ENROLMENT_SCOPE, true);
+
 export interface AuthedRequest extends Request {
   actor?: Actor;
 }
@@ -48,6 +60,16 @@ export class AuthGuard implements CanActivate {
 
     const actor = await this.sessions.resolveActor(header.slice(7).trim());
     if (!actor) throw sessionInvalid();
+
+    // Scope is checked BEFORE roles: an enrolment ticket must not reach
+    // a route just because its holder happens to have the right role.
+    if (actor.scope !== 'full') {
+      const allowed = this.reflector.getAllAndOverride<boolean>(ALLOWS_ENROLMENT_SCOPE, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (!allowed) throw sessionInvalid();
+    }
 
     const required = this.reflector.getAllAndOverride<UserRole[]>(REQUIRED_ROLES, [
       context.getHandler(),

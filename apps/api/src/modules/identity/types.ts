@@ -1,4 +1,12 @@
 export type UserRole = 'seeker' | 'provider' | 'admin';
+
+/**
+ * `full` is an ordinary session. `mfa_enrolment` is issued after a
+ * correct password to a provider/admin with no confirmed factor yet, and
+ * the guard accepts it on the enrolment routes ONLY — it is a bootstrap,
+ * not a login.
+ */
+export type SessionScope = 'full' | 'mfa_enrolment';
 export type UserStatus = 'active' | 'suspended' | 'deactivated';
 
 export interface RegisterInput {
@@ -37,11 +45,21 @@ export interface LoginInput {
  */
 export type LoginResult =
   | { outcome: 'session'; token: string; session: SessionRow }
-  | { outcome: 'mfa_required'; userId: string };
+  | {
+      /**
+       * Password was correct, but this provider/admin has no second
+       * factor yet (#32). The ticket authorises enrolment and nothing
+       * else — see `SessionScope`.
+       */
+      outcome: 'mfa_enrolment_required';
+      enrolmentToken: string;
+      expiresAt: Date;
+    };
 
 export interface SessionRow {
   id: string;
   userId: string;
+  scope: SessionScope;
   mfaSatisfied: boolean;
   issuedAt: Date;
   expiresAt: Date;
@@ -53,6 +71,7 @@ export interface Actor {
   userId: string;
   role: UserRole;
   sessionId: string;
+  scope: SessionScope;
   mfaSatisfied: boolean;
 }
 

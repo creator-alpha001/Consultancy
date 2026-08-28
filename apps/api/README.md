@@ -182,6 +182,34 @@ CLAUDE.md #28, and the reason no module since M3 had an HTTP surface.
   `@Roles('admin')`; both were previously reachable by anyone who could
   set a header. Idempotency keys are scoped to the authenticated actor.
 
+**M9 — hardening is partial, and deliberately not marked complete** — see
+`TRACKER.md`. What is real and verified:
+
+- **Reconciliation** (`GET /admin/reconciliation`, admin-only): 10
+  read-only checks for money that has drifted — a ledger that no longer
+  sums to zero, an escrow whose status contradicts its transactions,
+  money still held for an engagement that ended, payouts stuck at
+  `initiated` (D4), a negative reserve (D7), outbox events nothing
+  dispatched. It reports and never repairs: an automated correction to a
+  money table turns a detectable problem into an undetectable one. Each
+  check is tested against manufactured corruption, not a clean database.
+- **Restore drill** (`scripts/restore-drill.sh`): dump → restore into a
+  fresh database → compare row counts → **re-test the invariants on the
+  restored copy**. A restore that returns rows but loses the trigger
+  behind hard rule #12 has restored the data and lost the product.
+- **Perf baseline** (`scripts/perf-baseline.sh`) and migration `0028`.
+  Measured on 48,800 synthetic engagements, "my engagements" — the most
+  common query in the product — went from a sequential scan at 3.3ms to
+  an index scan at **0.057ms (~58×)**, O(n) to O(log n). 43 foreign keys
+  were unindexed; they were not blanket-indexed, because every index
+  costs write throughput. Each of the 17 added is justified by a named
+  call site.
+
+Not built, and not fakeable here: the **3G bar** (needs traffic shaping
+and a real client), **accessibility** (there is no frontend yet), and a
+meaningful **security review** (object storage and signed URLs don't
+exist to review).
+
 `agenda/`, `engagements/`, `assessment/`, `verification/`, `sessions/`,
 `board/`, `reputation/`, and `disputes/` are still service-layer only — no
 HTTP controllers. There's no auth yet to give a route a real actor, so nothing
@@ -205,7 +233,13 @@ npm run seed              # publishes the exam family + 19 domains (idempotent)
 
 npm run test              # runs against $DATABASE_URL — point it at sankalp_test
 npm run start:dev
+
+./scripts/restore-drill.sh          # dump, restore, and re-verify invariants
+./scripts/perf-baseline.sh 50000    # synthetic volume + query plans
 ```
+
+The two scripts need `CREATEDB` on the `sankalp` role
+(`ALTER ROLE sankalp CREATEDB;` as the postgres superuser).
 
 `migrate` and `seed` read `DATABASE_URL` from the environment, not from
 `.env` — `export $(grep -v '^#' .env | xargs)` first.

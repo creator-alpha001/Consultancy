@@ -163,11 +163,20 @@ export class AuthService {
     const mfaMandatory = user.role === 'provider' || user.role === 'admin';
 
     if (mfaMandatory && !factor) {
-      // #32 in its awkward case: a provider who never enrolled. Refused
-      // rather than waved through — and the DB trigger would refuse the
-      // session anyway.
-      await this.recordEvent(this.pool, user.id, 'login_blocked', { reason: 'mfa_not_enrolled' }, input.ipPrefix);
-      throw mfaNotEnrolled(user.role);
+      // #32's awkward case: a provider who has never enrolled cannot log
+      // in, but enrolling requires being logged in. Rather than a dead
+      // end, issue a ticket scoped to enrolment ALONE — short-lived, and
+      // rejected by the guard on every other route. The password has
+      // been proven at this point; nothing else has.
+      const { token, session } = await this.sessions.create({
+        userId: user.id,
+        mfaSatisfied: false,
+        scope: 'mfa_enrolment',
+        userAgent: input.userAgent,
+        ipPrefix: input.ipPrefix,
+      });
+      await this.recordEvent(this.pool, user.id, 'mfa_enrolment_ticket_issued', {}, input.ipPrefix);
+      return { outcome: 'mfa_enrolment_required', enrolmentToken: token, expiresAt: session.expiresAt };
     }
 
     let mfaSatisfied = false;
@@ -199,6 +208,7 @@ export class AuthService {
     const { token, session } = await this.sessions.create({
       userId: user.id,
       mfaSatisfied,
+      scope: 'full',
       userAgent: input.userAgent,
       ipPrefix: input.ipPrefix,
     });
@@ -250,6 +260,13 @@ export class AuthService {
 
     await this.pool.query(
       `UPDATE auth_factors SET confirmed_at = now() WHERE user_id = $1 AND type = 'totp'`,
+      [userId],
+    );
+    // The ticket existed to get here. Burn every enrolment-scoped session
+    // now that it has served its purpose, so a leaked one is useless.
+    await this.pool.query(
+      `UPDATE user_sessions SET revoked_at = now()
+        WHERE user_id = $1 AND scope = 'mfa_enrolment' AND revoked_at IS NULL`,
       [userId],
     );
     await this.recordEvent(this.pool, userId, 'mfa_enrolled', {});

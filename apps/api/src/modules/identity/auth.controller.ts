@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
-import { CurrentActor, Public } from './auth.guard';
+import { AllowsEnrolmentScope, CurrentActor, Public } from './auth.guard';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 import { Actor, EnrolFactorResult, LoginResult, RecoveryCodesResult, SessionRow, UserRow } from './types';
@@ -84,14 +84,24 @@ export class AuthController {
     return this.sessions.listActiveForUser(actor.userId);
   }
 
-  /** Step one of 2FA enrolment. Mandatory for providers and admins (#32). */
+  /**
+   * Step one of 2FA enrolment. Mandatory for providers and admins (#32).
+   * Reachable with an enrolment ticket, so a brand-new provider who
+   * cannot yet log in can still get set up.
+   */
   @Post('mfa/enrol')
+  @AllowsEnrolmentScope()
   async beginEnrolment(@CurrentActor() actor: Actor): Promise<EnrolFactorResult> {
     return this.auth.beginFactorEnrolment(actor.userId);
   }
 
-  /** Step two: prove the authenticator works, and receive recovery codes once. */
+  /**
+   * Step two: prove the authenticator works, and receive recovery codes
+   * once. Confirming burns the enrolment ticket — from here the user
+   * logs in normally, with their code.
+   */
   @Post('mfa/confirm')
+  @AllowsEnrolmentScope()
   async confirmEnrolment(
     @CurrentActor() actor: Actor,
     @Body() body: { code: string },

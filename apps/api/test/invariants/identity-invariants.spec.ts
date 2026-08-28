@@ -111,6 +111,66 @@ describe('identity invariants (raw SQL)', () => {
     });
   });
 
+  describe('enrolment-scoped sessions (the D19 bootstrap)', () => {
+    async function insertScoped(userId: string, scope: string, mfa = false): Promise<unknown> {
+      return pool.query(
+        `INSERT INTO user_sessions (user_id, token_hash, mfa_satisfied, scope, expires_at)
+         VALUES ($1, $2, $3, $4::session_scope, now() + interval '10 minutes')`,
+        [userId, token(`s${Math.random().toString(36).slice(2)}`), mfa, scope],
+      );
+    }
+
+    it('lets a provider with NO factor hold an enrolment-scoped session', async () => {
+      const providerId = await makeUser('provider');
+      await expect(insertScoped(providerId, 'mfa_enrolment')).resolves.toBeDefined();
+    });
+
+    it('refuses an enrolment session that claims to have satisfied a factor', async () => {
+      const providerId = await makeUser('provider');
+      await expect(insertScoped(providerId, 'mfa_enrolment', true)).rejects.toThrow(
+        /cannot claim mfa_satisfied/,
+      );
+    });
+
+    it('refuses an enrolment session for a seeker — it exists only for the #32 bootstrap', async () => {
+      const seekerId = await makeUser('seeker');
+      await expect(insertScoped(seekerId, 'mfa_enrolment')).rejects.toThrow(
+        /exist for provider\/admin 2FA bootstrap/,
+      );
+    });
+
+    it('still refuses a FULL session for that same provider', async () => {
+      // The bootstrap must not become a way around #32.
+      const providerId = await makeUser('provider');
+      await insertScoped(providerId, 'mfa_enrolment');
+      await expect(insertScoped(providerId, 'full')).rejects.toThrow(/second factor is mandatory/);
+    });
+
+    it('still enforces 18+ on an enrolment session', async () => {
+      const providerId = await makeUser('provider', { adult: false });
+      await expect(insertScoped(providerId, 'mfa_enrolment')).rejects.toThrow(/has not confirmed they are 18\+/);
+    });
+
+    it('defaults to the STRICTER scope when none is given', async () => {
+      const providerId = await makeUser('provider');
+      // No scope column in this INSERT: it must default to 'full' and be
+      // refused, not silently become a permissive enrolment session.
+      await expect(insertSession(providerId, false)).rejects.toThrow(/second factor is mandatory/);
+    });
+
+    it('an enrolment session does not block re-enrolling a factor', async () => {
+      const providerId = await makeUser('provider');
+      await pool.query(
+        `INSERT INTO auth_factors (user_id, type, secret, confirmed_at)
+         VALUES ($1, 'totp', 'JBSWY3DPEHPK3PXP', now())`,
+        [providerId],
+      );
+      await insertScoped(providerId, 'mfa_enrolment');
+      // Only FULL sessions count as "live" for the removal guard.
+      await expect(pool.query(`DELETE FROM auth_factors WHERE user_id = $1`, [providerId])).resolves.toBeDefined();
+    });
+  });
+
   describe('hard rule #27 — the platform is 18+', () => {
     it('refuses a session for a user who has not confirmed they are an adult', async () => {
       const seekerId = await makeUser('seeker', { adult: false });
