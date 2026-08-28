@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   CallHandler,
   ExecutionContext,
   Inject,
@@ -8,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Observable, from } from 'rxjs';
+import { idempotencyActorUnresolved, idempotencyKeyRequired } from './errors';
 import { IdempotencyService } from './idempotency.service';
 
 /**
@@ -30,12 +30,12 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     const key = req.header('idempotency-key');
     if (!key) {
-      throw new BadRequestException('Idempotency-Key header is required');
+      throw idempotencyKeyRequired();
     }
     // Authenticated actor only. No header fallback — see the note above.
     const actorId = req.actor?.userId;
     if (!actorId) {
-      throw new BadRequestException('actor could not be determined for this request');
+      throw idempotencyActorUnresolved();
     }
 
     const requestHash = IdempotencyService.hashRequest(req.body);

@@ -62,6 +62,7 @@ export class ReconciliationService {
         this.heldEscrowOnEndedEngagement(),
         this.unrelayedOutbox(staleHours),
         this.orphanedProviderBalances(),
+        this.stuckIdempotencyKeys(staleHours),
       ])
     ).filter((f): f is ReconciliationFinding => f !== null);
 
@@ -257,6 +258,36 @@ export class ReconciliationService {
           AND NOT EXISTS (
             SELECT 1 FROM payouts p WHERE p.provider_id = la.owner_user_id AND p.currency = la.currency
           )`,
+    );
+  }
+
+  /**
+   * An idempotency key stranded `in_flight`: the process died between
+   * claiming it and recording an outcome, so nothing will ever complete
+   * or fail it. Every retry of that request now gets
+   * IDEMPOTENCY_REQUEST_IN_FLIGHT forever, which on a money endpoint
+   * leaves the caller choosing between abandoning the request and
+   * retrying under a NEW key — the thing that double-charges.
+   *
+   * Reported, never auto-released. Whether the original handler moved
+   * money before it died is exactly what a human has to establish; a
+   * timeout that flipped the row back to `failed` on its own would hand
+   * a second caller permission to run the handler again on the strength
+   * of a guess. See TRACKER.md D27.
+   */
+  private stuckIdempotencyKeys(hours: number): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'IDEMPOTENCY_KEY_STUCK_IN_FLIGHT',
+      'warning',
+      (n) =>
+        `${n} idempotency key(s) claimed over ${hours}h ago and never completed or failed — ` +
+        `every retry of those requests is being refused (D27)`,
+      `SELECT actor_id, key, endpoint, attempts, claimed_at
+         FROM idempotency_keys
+        WHERE state = 'in_flight' AND claimed_at < now() - ($1 || ' hours')::interval
+        ORDER BY claimed_at
+        LIMIT 100`,
+      [String(hours)],
     );
   }
 }

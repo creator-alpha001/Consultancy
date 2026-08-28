@@ -208,6 +208,33 @@ describe('M9: reconciliation', () => {
     expect(codes(report)).toContain('OUTBOX_UNRELAYED');
   });
 
+  it('surfaces an idempotency key stranded in flight', async () => {
+    // The shape a crashed process leaves behind: claimed, never
+    // completed or failed. Every retry of that request is now refused
+    // forever, which on a money endpoint pushes the caller toward
+    // retrying under a fresh key — the double-charge. See D27.
+    const { seekerId } = await seedUsers(pool);
+    await pool.query(
+      `INSERT INTO idempotency_keys (key, actor_id, endpoint, request_hash, claimed_at)
+       VALUES ('stranded', $1, 'POST /internal/escrows/x/hold', 'hash', now() - interval '3 days')`,
+      [seekerId],
+    );
+
+    const finding = (await reconciliation.run()).findings.find(
+      (f) => f.code === 'IDEMPOTENCY_KEY_STUCK_IN_FLIGHT',
+    );
+    expect(finding).toBeDefined();
+    expect(finding!.count).toBe(1);
+
+    // A key that completed normally is not a finding.
+    await pool.query(
+      `UPDATE idempotency_keys
+          SET state = 'completed', response_status = 201, response_body = '{}'::jsonb, completed_at = now()
+        WHERE key = 'stranded'`,
+    );
+    expect(codes(await reconciliation.run())).not.toContain('IDEMPOTENCY_KEY_STUCK_IN_FLIGHT');
+  });
+
   it('respects the staleness window rather than flagging everything', async () => {
     const { escrowId, providerId } = await seedHeldEscrow();
     await seedPayout(escrowId, providerId, { ageDays: 3 });

@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after the frontend (apps/web)
+Last updated: 2026-08-28 · after closing D5 (idempotency delete-on-failure race)
 
 ---
 
@@ -145,7 +145,7 @@ half was built and the rest is named rather than faked.
 
 **Real, verified, and running:**
 
-- **Reconciliation** (`admin/ReconciliationService`, 10 checks). Read-only
+- **Reconciliation** (`admin/ReconciliationService`, 11 checks). Read-only
   by design — it reports, it never "fixes," because an automated
   correction to a money table turns a detectable problem into an
   undetectable one. Each check is tested against *manufactured
@@ -233,7 +233,7 @@ currently tells.
 | # | From | Item | Why it matters |
 |---|---|---|---|
 | D4 | M1 | No payout/refund settle path | `payout_status`/`refund_status` carry `settled`/`failed`, but nothing transitions off `initiated`. No PA webhook handler. Money looks paid in our DB when it has not moved. |
-| D5 | M1 | `IdempotencyService` deletes its key on handler failure | A concurrent retry racing that window can double-execute. Acceptable with no live traffic; must close before M6 opens the board to real users. |
+| D27 | M1 | A crashed process strands an idempotency key `in_flight` forever | Closing D5 removed the delete-on-failure race, but if the process dies between claiming a key and recording an outcome, nothing ever completes or fails that row. Every retry of that request then gets `IDEMPOTENCY_REQUEST_IN_FLIGHT` permanently, pushing the caller toward retrying under a *new* key — the double-charge idempotency exists to prevent. Surfaced, not fixed: reconciliation reports `IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`. **The fix is a policy decision nobody should invent**: a lease that auto-releases a stale claim would hand a second caller permission to re-run a money handler on the strength of a guess about whether the first one moved money before it died. Options are (a) ops releases stranded keys by hand from the reconciliation report, (b) a lease window long enough that the original handler is certainly dead, relying on the ledger's own idempotency layer to catch a double-execution, or (c) handler-specific compensation. Needs a call from whoever owns money risk. |
 | D6 | M2 | Loader cache is per-process | Correct for one deployable. A second instance serves stale manifests until its own publish. Invalidation must become pub/sub before horizontal scaling, not after. |
 | D7 | M1 | Reserve balance is unmonitored | `resolvePlatformFailure` draws on `reserve` without limit and the account is expected to run negative. Nothing alerts when it does. Needs a reconciliation check in M9; deliberately not a runtime block, since refusing to make a wronged provider whole is the worse failure. |
 | D9 | M3 | No revision path short of a dispute | `evaluations.returned_at` is one-shot; a seeker who wants a small correction has no option between "accept it" and "raise a dispute." M7 built the dispute path (so an engagement *can* now reach `disputed`), but a lightweight revision request — the thing that should absorb most of these — still doesn't exist. |
@@ -258,7 +258,9 @@ currently tells.
 test), D3 (reserve-funded platform failure) — 2026-08-27. D8 (required-
 skill tier now enforced at proposal submission, both by
 `check_proposal_requires_skills_and_tier` and a `MatchingService`
-pre-check in `ProposalService.submit()`) — 2026-08-27.
+pre-check in `ProposalService.submit()`) — 2026-08-27. D5 (idempotency
+delete-on-failure; migration 0029 replaced it with a state machine —
+see Decisions) — 2026-08-28.
 
 ---
 
@@ -310,6 +312,47 @@ future task is surprised by something, it should be recorded here.
   the whole request) and ledger (`ledger_transactions.idempotency_key`,
   last line of defence if a handler somehow runs twice). This is
   deliberate redundancy on money paths, not an accident.
+- **An idempotency key is never deleted; it carries a state (0029).**
+  This closed D5. The old code removed its own key when the handler
+  threw, so that a transient failure would not poison the key forever —
+  but that opened a worse window: caller A inserts, caller B's
+  `ON CONFLICT DO NOTHING` returns nothing, A fails and deletes, and B's
+  follow-up SELECT finds **no row**. B then read `undefined.request_hash`
+  — a 500 on a money endpoint — and, had it re-inserted instead, would
+  have run a handler concurrently with a sibling carrying the same key.
+  A failed attempt is now recorded as `failed` and re-claimed by the next
+  retry through a conditional `UPDATE .. WHERE state = 'failed'`. That is
+  atomic without an explicit lock: under READ COMMITTED the loser blocks
+  on the row, re-evaluates its WHERE against the winner's committed row,
+  matches nothing, and is told the request is in flight. The claim loop
+  is bounded at three reads rather than spinning, and it still tolerates
+  a vanished row (an ops purge or a future retention job) by
+  re-inserting, because the alternative is the same 500 as before.
+  Verified non-vacuously: re-introducing the DELETE makes four of the
+  nine new tests fail.
+- **The two idempotency conflicts have distinct codes, deliberately.**
+  Both are 409 and both were previously a bare `ConflictException`,
+  which the envelope filter rendered as `code: "CONFLICT"`.
+  `IDEMPOTENCY_REQUEST_IN_FLIGHT` means "retry this exact call shortly"
+  and carries `detail.retryable`; `IDEMPOTENCY_KEY_REUSED` means "you
+  changed the body, never retry this". A client that cannot tell them
+  apart will either give up on a request that would have succeeded or
+  hammer one that never will — and on a money path the first choice
+  tempts a retry under a fresh key. `IDEMPOTENCY_KEY_REQUIRED` and
+  `IDEMPOTENCY_ACTOR_UNRESOLVED` follow the same registry pattern as
+  `money/errors.ts`.
+- **A re-claimed key re-runs a handler that may have already had a
+  partial effect.** This is a knowing trade. Refusing all retries after
+  a failure would poison the key permanently and force the caller to
+  retry under a new key, which is strictly more dangerous; the ledger's
+  own `idempotency_key` is the layer that catches a genuine
+  double-execution, which is exactly the redundancy noted above. What is
+  *not* decided here is the crashed-process case — see D27.
+- **`markFailed` swallows its own error.** The handler's exception is
+  what the caller needs; masking a declined payment behind a connection
+  reset would be worse than leaving a row `in_flight`. The cost of that
+  choice is D27, and it is reported by reconciliation rather than
+  hidden.
 - **No "at least two entries" ledger trigger.** `amount_paise <> 0` plus
   sum-to-zero already makes a single-entry transaction impossible; a second
   trigger for the same case was removed as dead weight.
@@ -482,6 +525,13 @@ future task is surprised by something, it should be recorded here.
   requirements, and confirming a factor burns every enrolment session the
   user holds. Scope is checked *before* roles in the guard, so a ticket
   cannot reach a route merely because its holder has the right role.
+- **Stranded idempotency keys are reported, never auto-released.** The
+  eleventh reconciliation check (`IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`)
+  surfaces a key claimed long ago and never resolved. It does not free
+  it, for the same reason nothing else in reconciliation writes: whether
+  the dead handler moved money before it died is precisely what a human
+  has to establish, and a timeout that flipped the row back to `failed`
+  would hand the next caller permission to re-run it on a guess.
 - **Reconciliation never writes.** It has no "fix" endpoint and no
   mutation of any kind. CLAUDE.md is explicit that corrections are
   reversing entries made by a human who understands what happened; an
@@ -589,9 +639,14 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **246 tests, all passing**,
-  including a from-scratch run (`DROP DATABASE`, re-run all 28 migrations,
+- Full suite: `cd apps/api && npm test` — **264 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 29 migrations,
   full suite) to confirm migration order integrity, as of this update.
+- On a cold container the database is empty of *everything*, roles
+  included. `service postgresql start`, then as the postgres superuser:
+  `CREATE ROLE sankalp WITH LOGIN PASSWORD 'sankalp' CREATEDB;` and
+  `CREATE DATABASE sankalp_test OWNER sankalp;` (plus `sankalp_dev`),
+  then `npm install && npm run migrate`.
 - `npm run migrate` and `npm run seed` need `DATABASE_URL` in the
   environment; they do not read `.env` themselves.
   `export $(grep -v '^#' .env | xargs)` first.
