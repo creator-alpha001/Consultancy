@@ -10,10 +10,11 @@ export interface EngagementSummary {
   categoryId: string | null;
   engagementType: string | null;
   currency: string;
-  agreedPricePaise: string | null;
+  /** The API names this `amountPaise` — confirmed against the list query, not guessed. */
+  amountPaise: string | null;
+  language: string | null;
   status: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface AgendaItem {
@@ -176,11 +177,22 @@ export const listProposals = (postId: string) =>
 
 /* ── Formatting helpers ────────────────────────────────────────── */
 
-/** Money is bigint paise everywhere. Never do arithmetic on it here. */
-export function rupees(paise: string | number | null, currency = 'INR'): string {
-  if (paise === null) return '—';
-  const value = Number(BigInt(paise)) / 100;
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value);
+/**
+ * Money is bigint paise everywhere. Never do arithmetic on it here.
+ *
+ * Guards undefined as well as null: a field the API does not send should
+ * render as "no amount", not take the whole page down with
+ * `BigInt(undefined)`. That is exactly what happened on /engagements
+ * when this type carried the wrong field name.
+ */
+export function rupees(paise: string | number | null | undefined, currency = 'INR'): string {
+  if (paise === null || paise === undefined || paise === '') return '—';
+  try {
+    const value = Number(BigInt(paise)) / 100;
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return '—';
+  }
 }
 
 export function when(iso: string | null, timeZone?: string): string {

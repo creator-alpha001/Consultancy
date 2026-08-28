@@ -209,7 +209,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
                       {e.engagementType?.replace(/_/g, ' ')}
                     </Link>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm tabular-nums">{rupees(e.agreedPricePaise, e.currency)}</span>
+                      <span className="text-sm tabular-nums">{rupees(e.amountPaise, e.currency)}</span>
                       <Status value={e.status} />
                     </div>
                   </div>

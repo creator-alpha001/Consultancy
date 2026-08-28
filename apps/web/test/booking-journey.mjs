@@ -50,10 +50,18 @@ async function signIn(page, email) {
   await page.fill('#f-email', email);
   await page.fill('#f-password', PASS);
   await page.click('button[type=submit]');
-  // The action sets an httpOnly cookie then redirects; networkidle alone can
-  // resolve before the navigation commits.
-  await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 20000 }).catch(() => undefined);
+  // The action sets an httpOnly cookie then redirects. Wait on a signal
+  // that only exists once signed in, rather than on a URL or a timer —
+  // a cold route can take seconds to compile on first hit.
+  await page.waitForSelector('button:has-text("Sign out")', { timeout: 45000 });
   await page.waitForLoadState('networkidle');
+}
+
+/** First hit of a route can be slow while it compiles; warm them up front. */
+async function warm(paths) {
+  for (const p of paths) {
+    await page.goto(`${WEB}${p}`, { waitUntil: 'domcontentloaded' }).catch(() => undefined);
+  }
 }
 
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
@@ -78,13 +86,31 @@ body.includes('no sort-by-price')
 console.log('   → ' + (await shot(page, 'find-a-mentor')));
 
 console.log('\n2. Mentor profile');
-await page.click('a:has-text("Rathore")');
+await Promise.all([
+  page.waitForURL(/\/mentors\/[0-9a-f-]{36}/, { timeout: 45000 }),
+  page.locator('a[href^="/mentors/"]:not([href*="book"])').first().click(),
+]);
 await page.waitForLoadState('networkidle');
 body = await page.textContent('body');
 body.includes('verified') ? ok('per-skill tiers shown as conclusions') : bad('tiers missing');
-(await page.locator('text=/credential|document|evidence/i').count()) === 0
-  ? ok('no verification evidence is exposed on the profile (#30)')
-  : bad('profile leaked verification evidence');
+// Check the PAYLOAD, not the page's prose. The earlier version of this
+// assertion searched the rendered text for "credential" and matched the
+// UI's own explanation of why credentials are never shown — testing for
+// a word rather than for leaked data.
+const profileId = page.url().split('/mentors/')[1].split('?')[0];
+const profileJson = await page.evaluate(
+  async (id) => (await fetch(`${location.origin.replace('3001', '3000')}/providers/${id}`)).json(),
+  profileId,
+);
+const leakedKeys = Object.keys(profileJson).filter((k) =>
+  /credential|verifier|document|evidence|email/i.test(k),
+);
+leakedKeys.length === 0
+  ? ok('the profile payload carries no credential, verifier or contact field (#30)')
+  : bad('profile payload leaked: ' + leakedKeys.join(', '));
+JSON.stringify(profileJson).includes('@')
+  ? bad('an email address reached the profile payload')
+  : ok('no email address in the profile payload');
 console.log('   → ' + (await shot(page, 'mentor-profile')));
 
 // ── 2. Seeker signs up and books ─────────────────────────────────────
@@ -92,14 +118,20 @@ console.log('\n3. Register and sign in as an aspirant');
 const seeker = `book-seeker-${uniq}@test.local`;
 await register(page, seeker, 'seeker');
 await signIn(page, seeker);
-page.url().includes('/dashboard') ? ok('signed in') : bad('sign-in failed: ' + page.url());
+(await page.locator('button:has-text("Sign out")').count()) > 0
+  ? ok('signed in')
+  : bad('sign-in failed: ' + page.url());
+await warm(['/mentors', '/engagements', '/sessions', '/board', '/board/new']);
 
 console.log('\n4. The booking screen');
 await page.goto(`${WEB}/mentors`, { waitUntil: 'networkidle' });
 (await page.textContent('body')).includes('Sign out')
   ? ok('the session survived the navigation')
   : bad('signed out unexpectedly on /mentors');
-await Promise.all([page.waitForURL('**/book**', { timeout: 20000 }), page.click('a:has-text("Book")')]);
+await Promise.all([
+  page.waitForURL('**/book**', { timeout: 45000 }),
+  page.locator('a[href*="/book"]').first().click(),
+]);
 await page.waitForLoadState('networkidle');
 body = await page.textContent('body');
 body.includes('document review') ? ok('engagement types come from the pack') : bad('engagement types missing');
@@ -160,6 +192,27 @@ body.includes('Locked') ? ok('agenda locked and hashed') : bad('lock failed');
   ? ok('no edit affordance survives the lock')
   : bad('agenda still editable after locking');
 console.log('   → ' + (await shot(page, 'agenda-locked')));
+
+// ── 3b. The engagement hub ───────────────────────────────────────────
+// Added after a walkthrough found /engagements throwing a 500: the type
+// carried `agreedPricePaise` where the API sends `amountPaise`, so
+// rupees() hit BigInt(undefined). Every route the UI links to needs a
+// check, not just the ones the happy path happens to pass through.
+console.log('\n8b. The engagement list and hub');
+await page.goto(`${WEB}/engagements`, { waitUntil: 'networkidle' });
+body = await page.textContent('body');
+body.includes('Application error')
+  ? bad('/engagements threw a server-side exception')
+  : ok('/engagements renders');
+/₹|—/.test(body) ? ok('money renders without crashing on a missing field') : bad('no amount rendered');
+const hubLink = page.locator('a[href^="/engagements/"]').first();
+(await hubLink.count()) > 0 ? ok('the new engagement is listed') : bad('engagement missing from the list');
+await Promise.all([page.waitForURL(/\/engagements\/[0-9a-f-]{36}/, { timeout: 20000 }), hubLink.click()]);
+await page.waitForLoadState('networkidle');
+body = await page.textContent('body');
+body.includes('Application error') ? bad('the engagement hub threw') : ok('the engagement hub renders');
+body.includes('What happens next') ? ok('the hub offers the next action') : bad('no next action shown');
+console.log('   → ' + (await shot(page, 'engagement-hub')));
 
 // ── 4. Sessions ──────────────────────────────────────────────────────
 console.log('\n9. The session list and room');

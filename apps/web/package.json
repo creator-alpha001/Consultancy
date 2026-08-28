@@ -8,7 +8,8 @@
     "start": "next start -p 3001",
     "typecheck": "tsc --noEmit",
     "journey": "node test/journey.mjs",
-    "journey:booking": "node test/booking-journey.mjs"
+    "journey:booking": "node test/booking-journey.mjs",
+    "walkthrough": "node test/walkthrough.mjs"
   },
   "dependencies": {
     "next": "14.2.15",

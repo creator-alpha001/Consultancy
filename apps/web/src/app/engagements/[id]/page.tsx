@@ -86,9 +86,9 @@ export default async function EngagementPage({ params }: { params: { id: string 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Status value={engagement.status} />
           <span className="text-sm tabular-nums">
-            {rupees(engagement.agreedPricePaise, engagement.currency)}
-            {engagement.agreedPricePaise && (
-              <span className="ml-2 text-xs text-ink-muted">{engagement.agreedPricePaise} paise</span>
+            {rupees(engagement.amountPaise, engagement.currency)}
+            {engagement.amountPaise && (
+              <span className="ml-2 text-xs text-ink-muted">{engagement.amountPaise} paise</span>
             )}
           </span>
         </div>

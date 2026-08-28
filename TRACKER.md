@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after the booking + mentorship UI (apps/web) and its two enabling controllers
+Last updated: 2026-08-28 · after the booking UI, plus docs/RUNNING.md and a walkthrough recording
 
 ---
 
@@ -266,7 +266,7 @@ currently tells.
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
 | D25 | web | Screens still missing: dispute detail, admin queues, credential submission | The booking + mentorship loop is now built and driven in a browser (mentor search, profile, booking with slot picking, agenda draft/lock, session room, submission, rubric evaluation, accept/dispute, review, board post + propose + accept). What remains unbuilt: the dispute *detail* and appeal screens (raising one works), the admin adjudication and moderation queues, and provider credential submission. |
-| D26 | web | No frontend test suite beyond the browser journeys | `test/journey.mjs` and `test/booking-journey.mjs` (25 checks) drive the real flows and catch a lot, but there are no component tests and nothing runs in CI. Both need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
+| D26 | web | No frontend test suite beyond the browser journeys | `test/journey.mjs` and `test/booking-journey.mjs` (31 checks) drive the real flows and catch a lot — the latter found a 500 on `/engagements` that the happy path had walked past — but there are no component tests and nothing runs in CI. Both need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
 | D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
 | D24 | M9 | The restore drill is manual and local | `scripts/restore-drill.sh` is real and passes, but it dumps a local database on demand. There is no backup *storage*, no retention policy, no WAL archiving, and therefore no point-in-time recovery — so "restore verified" is verified for the mechanism, not for a production backup that does not exist yet. |
 | D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
@@ -602,6 +602,15 @@ future task is surprised by something, it should be recorded here.
   now would mean inventing an "in flight" moment that does not exist, so
   `release()`'s postings were left alone rather than rewritten around a
   step that has not been built.
+- **A frontend type that guessed a field name took a page down.**
+  `EngagementSummary` carried `agreedPricePaise`; the API sends
+  `amountPaise`. `rupees()` guarded `null` but not `undefined`, so
+  `/engagements` died on `BigInt(undefined)` — a 500 on a route the
+  booking journey happened never to visit. Two fixes, and the second is
+  the one that matters: the field name was corrected *against the actual
+  query*, and `rupees()` now degrades to an em dash rather than taking a
+  whole page down for a missing amount. The journey test now walks every
+  route the UI links to, not only the ones the happy path passes through.
 - **Stranded idempotency keys are reported, never auto-released.** The
   eleventh reconciliation check (`IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`)
   surfaces a key claimed long ago and never resolved. It does not free
