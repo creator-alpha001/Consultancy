@@ -41,11 +41,46 @@ export interface RefundToSeekerInput {
   idempotencyKey: string;
 }
 
+export const PAYMENT_AGGREGATOR = 'PAYMENT_AGGREGATOR';
+
+/**
+ * What a settlement webhook tells us, once the aggregator-specific
+ * envelope has been unwrapped. Deliberately small: the four outcomes
+ * that move a payout or refund off `initiated`, plus enough to find the
+ * row they refer to.
+ *
+ * `eventId` is the AGGREGATOR's id for the delivery, not ours — it is
+ * what makes an at-least-once redelivery detectable.
+ */
+export interface PaWebhookEvent {
+  eventId: string;
+  targetType: 'payout' | 'refund';
+  /** Our own payouts.id / refunds.id, echoed back by the aggregator. */
+  targetId: string;
+  outcome: 'settled' | 'failed';
+  /** The aggregator's transfer/settlement reference, recorded on the row. */
+  paReference: string | null;
+  /** Required when outcome is 'failed' — a failure nobody can explain is not investigable. */
+  failureReason: string | null;
+}
+
 export interface PaymentAggregator {
   readonly code: PaymentAggregatorCode;
   captureOrder(input: CaptureOrderInput): Promise<PaymentAggregatorResult>;
   transferToProvider(input: TransferToProviderInput): Promise<PaymentAggregatorResult>;
   refundToSeeker(input: RefundToSeekerInput): Promise<PaymentAggregatorResult>;
-}
 
-export const PAYMENT_AGGREGATOR = 'PAYMENT_AGGREGATOR';
+  /**
+   * Authenticates a webhook against the shared secret. The RAW body is
+   * required, not the parsed object: re-serialising JSON does not
+   * reproduce the bytes that were signed.
+   *
+   * Fails closed — no secret configured means no webhook is trusted.
+   * An unauthenticated endpoint that flips payout statuses is a way to
+   * make our books say money was delivered when it was not.
+   */
+  verifyWebhookSignature(input: { rawBody: Buffer; signature: string | null }): boolean;
+
+  /** Returns null when the body is not a settlement event we act on. */
+  parseWebhookEvent(rawBody: Buffer): PaWebhookEvent | null;
+}

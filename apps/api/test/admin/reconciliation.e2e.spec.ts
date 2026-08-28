@@ -163,7 +163,7 @@ describe('M9: reconciliation', () => {
     expect(report.ok).toBe(false);
   });
 
-  it('surfaces payouts stuck at initiated — TRACKER.md D4, made visible', async () => {
+  it('surfaces payouts stuck at initiated — no settlement webhook ever arrived', async () => {
     const { engagementId, escrowId, providerId } = await seedHeldEscrow();
     await pool.query(`UPDATE engagements SET status = 'agreed' WHERE id = $1`, [engagementId]);
     await seedPayout(escrowId, providerId, { ageDays: 3 });
@@ -233,6 +233,34 @@ describe('M9: reconciliation', () => {
         WHERE key = 'stranded'`,
     );
     expect(codes(await reconciliation.run())).not.toContain('IDEMPOTENCY_KEY_STUCK_IN_FLIGHT');
+  });
+
+  it('surfaces a webhook recorded but never applied', async () => {
+    // What a crash mid-apply leaves: the aggregator believes it told us,
+    // and the payout row does not know.
+    await pool.query(
+      `INSERT INTO pa_webhook_events (pa_provider, pa_event_id, event_type, payload, received_at)
+       VALUES ('razorpay_route', 'evt-stuck', 'payout.settled', '{}'::jsonb, now() - interval '3 days')`,
+    );
+    const report = await reconciliation.run();
+    expect(codes(report)).toContain('PA_WEBHOOK_UNPROCESSED');
+    expect(report.criticalCount).toBeGreaterThan(0);
+
+    await pool.query(`UPDATE pa_webhook_events SET processed_at = now(), outcome = 'applied'`);
+    expect(codes(await reconciliation.run())).not.toContain('PA_WEBHOOK_UNPROCESSED');
+  });
+
+  it('surfaces a failed payout as money still owed', async () => {
+    const { escrowId, providerId } = await seedHeldEscrow();
+    await seedPayout(escrowId, providerId, {});
+    await pool.query(
+      `UPDATE payouts SET status = 'failed', failed_at = now(), failure_reason = 'bank rejected'`,
+    );
+
+    const finding = (await reconciliation.run()).findings.find((f) => f.code === 'SETTLEMENT_FAILED_UNRESOLVED');
+    expect(finding).toBeDefined();
+    expect(finding!.count).toBe(1);
+    expect(finding!.samples[0]).toMatchObject({ kind: 'payout', failure_reason: 'bank rejected' });
   });
 
   it('respects the staleness window rather than flagging everything', async () => {

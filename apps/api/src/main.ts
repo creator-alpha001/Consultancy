@@ -4,7 +4,9 @@ import { AppModule } from './app.module';
 import { ErrorEnvelopeFilter } from './common/errors/error-envelope.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: the payment aggregator's webhook signature is computed over
+  // the bytes as sent, and a re-serialised body will never verify.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.useGlobalFilters(new ErrorEnvelopeFilter());
 
   // The web app runs on its own origin in development and calls this API

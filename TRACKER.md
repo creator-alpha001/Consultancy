@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after closing D5 (idempotency delete-on-failure race)
+Last updated: 2026-08-28 · after closing D5 (idempotency race) and D4 (settlement)
 
 ---
 
@@ -145,7 +145,7 @@ half was built and the rest is named rather than faked.
 
 **Real, verified, and running:**
 
-- **Reconciliation** (`admin/ReconciliationService`, 11 checks). Read-only
+- **Reconciliation** (`admin/ReconciliationService`, 13 checks). Read-only
   by design — it reports, it never "fixes," because an automated
   correction to a money table turns a detectable problem into an
   undetectable one. Each check is tested against *manufactured
@@ -232,7 +232,7 @@ currently tells.
 
 | # | From | Item | Why it matters |
 |---|---|---|---|
-| D4 | M1 | No payout/refund settle path | `payout_status`/`refund_status` carry `settled`/`failed`, but nothing transitions off `initiated`. No PA webhook handler. Money looks paid in our DB when it has not moved. |
+| D28 | M1 | Nothing *dispatches* a payout to the aggregator | D4's inbound half is closed — a settlement webhook now moves a payout or refund off `initiated`. The outbound half is not: `release()` writes `payout.initiated` to `outbox` and **nothing reads `outbox`**, so no transfer is ever instructed and in practice no webhook will ever arrive. Reconciliation reports it (`PAYOUT_STUCK_INITIATED`), which is why this is visible rather than silent, but a provider still does not get paid without the relay. Needs the `notifications/` outbox relay — the same missing piece behind D14 and D23. |
 | D27 | M1 | A crashed process strands an idempotency key `in_flight` forever | Closing D5 removed the delete-on-failure race, but if the process dies between claiming a key and recording an outcome, nothing ever completes or fails that row. Every retry of that request then gets `IDEMPOTENCY_REQUEST_IN_FLIGHT` permanently, pushing the caller toward retrying under a *new* key — the double-charge idempotency exists to prevent. Surfaced, not fixed: reconciliation reports `IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`. **The fix is a policy decision nobody should invent**: a lease that auto-releases a stale claim would hand a second caller permission to re-run a money handler on the strength of a guess about whether the first one moved money before it died. Options are (a) ops releases stranded keys by hand from the reconciliation report, (b) a lease window long enough that the original handler is certainly dead, relying on the ledger's own idempotency layer to catch a double-execution, or (c) handler-specific compensation. Needs a call from whoever owns money risk. |
 | D6 | M2 | Loader cache is per-process | Correct for one deployable. A second instance serves stale manifests until its own publish. Invalidation must become pub/sub before horizontal scaling, not after. |
 | D7 | M1 | Reserve balance is unmonitored | `resolvePlatformFailure` draws on `reserve` without limit and the account is expected to run negative. Nothing alerts when it does. Needs a reconciliation check in M9; deliberately not a runtime block, since refusing to make a wronged provider whole is the worse failure. |
@@ -259,8 +259,9 @@ test), D3 (reserve-funded platform failure) — 2026-08-27. D8 (required-
 skill tier now enforced at proposal submission, both by
 `check_proposal_requires_skills_and_tier` and a `MatchingService`
 pre-check in `ProposalService.submit()`) — 2026-08-27. D5 (idempotency
-delete-on-failure; migration 0029 replaced it with a state machine —
-see Decisions) — 2026-08-28.
+delete-on-failure; migration 0029 replaced it with a state machine) and
+D4 (settlement webhooks; migration 0030 — the *inbound* half only, see
+D28 for what remains) — 2026-08-28. Both in Decisions below.
 
 ---
 
@@ -271,8 +272,8 @@ trusting any of them.**
 
 | Thing | Reality | Replaced in |
 |---|---|---|
-| `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money | M1 debt / pre-launch |
-| `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires | `notifications/` relay |
+| `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money. **One exception: `verifyWebhookSignature` is real** — a real HMAC-SHA256 over the real bytes, compared in constant time. A sandbox that trusted every caller would train the codebase to accept an endpoint that must not be trusting | M1 debt / pre-launch |
+| `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires. This is now the *only* thing between a completed engagement and a provider actually being paid — see D28 | `notifications/` relay |
 | `MoneyController` (`/internal/escrows/*`) | Ops scaffolding from M1, now superseded by the real path: `engagements/` orchestrates hold/release via `EscrowService` directly. Kept only for ops tooling and the M1/M2 tests that predate the engagement loop — don't extend it. | Superseded by `engagements/` |
 | `agenda/`, `engagements/`, `assessment/`, `verification/`, `board/`, `sessions/`, `reputation/`, `disputes/` | **Service layer only — no HTTP controllers.** Every M3–M7 test drives the services directly. There is no public API for the engagement loop, credential pipeline, board, sessions, reviews or disputes yet; that arrives with identity/auth (routes need a real actor, not a header) | Whichever milestone adds real auth |
 | Dispute evidence packet | Real, and assembled from the engagement's own record in the original languages — but it copies **text**, not artefacts. `submissions.content_ref` and any recording are referenced by pointer only, and there is no object storage behind those pointers yet, so an adjudicator cannot actually open the disputed file | When object storage is wired up |
@@ -525,6 +526,59 @@ future task is surprised by something, it should be recorded here.
   requirements, and confirming a factor burns every enrolment session the
   user holds. Scope is checked *before* roles in the guard, so a ticket
   cannot reach a route merely because its holder has the right role.
+- **Settlement is inbound-by-webhook, and the signature is the whole
+  gate.** Closing D4 meant accepting a callback from a machine that holds
+  no session and never will, so `POST /webhooks/payment-aggregator` is
+  `@Public()` — which makes the HMAC the only authentication the route
+  has. It verifies before parsing, over the RAW bytes (a re-serialised
+  body is different bytes and would never verify, which is why `main.ts`
+  and `createTestApp` both enable Nest's `rawBody`), and it **fails
+  closed**: no configured secret means no webhook is trusted. Notably it
+  is NOT behind `IdempotencyInterceptor` — that enforces a header we
+  require of *our* clients, scoped to an authenticated actor, and there
+  is no actor here.
+- **Replay safety comes from the aggregator's event id, not from us.**
+  Every aggregator guarantees at-least-once delivery, so a duplicate
+  webhook is normal traffic rather than an anomaly. `pa_webhook_events`
+  is unique on `(pa_provider, pa_event_id)`; a redelivery inserts nothing
+  and returns `applied: false` without touching the payout. The ledger's
+  own `idempotency_key` (`payout-settled:<id>`) sits behind that as the
+  second layer, the same deliberate redundancy noted above. The event row
+  is written *before* it is applied, inside the same transaction, so a
+  crash mid-apply rolls both back rather than leaving a duplicate marker
+  for something that never happened.
+- **A settled payout posts to the ledger; a failed one does not.**
+  `release()` credited `provider_wallet` — what we owe the provider — and
+  settlement discharges that liability (`provider_wallet` →
+  `payment_aggregator`, mirroring `hold()`'s capture in the opposite
+  direction). A *failed* payout posts nothing at all, because the money
+  never left `provider_wallet`: it is still owed and the ledger already
+  says so. Inventing a reversal would put two entries in an append-only
+  record describing a movement that did not happen.
+- **A settled refund posts nothing; a failed one moves to
+  `seeker_wallet`.** The asymmetry with payouts is real rather than an
+  oversight: `refund()` already posts escrow → `payment_aggregator` at
+  *initiation*, so the ledger has said "on its way back to the seeker"
+  since then and confirmation adds nothing. A failure is the case that
+  needs a posting — the money is stranded with the aggregator and still
+  owed to a named person, so it moves to their `seeker_wallet` (an
+  account type that has existed since 0003 for exactly this). Leaving it
+  in `payment_aggregator` would hide a debt to a real person inside a
+  clearing account. **This one is a judgement call the specs are silent
+  on; worth confirming with whoever owns money risk.**
+- **A settlement outcome is terminal, enforced by trigger.** Money
+  confirmed as delivered must not quietly become undelivered because a
+  stale webhook arrived out of order, and a failure must not be papered
+  over by a late success. A contradicting event gets
+  `SETTLEMENT_ALREADY_TERMINAL` (409) and needs a human — a redelivery of
+  the *same* event is still a silent no-op, so this only fires on a
+  genuine conflict.
+- **`payout_clearing` is still unused, deliberately.** 0003 defined it as
+  "funds in flight to a provider's bank account", which belongs to the
+  dispatch step — and nothing dispatches yet (D28). Posting through it
+  now would mean inventing an "in flight" moment that does not exist, so
+  `release()`'s postings were left alone rather than rewritten around a
+  step that has not been built.
 - **Stranded idempotency keys are reported, never auto-released.** The
   eleventh reconciliation check (`IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`)
   surfaces a key claimed long ago and never resolved. It does not free
@@ -639,8 +693,8 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **264 tests, all passing**,
-  including a from-scratch run (`DROP DATABASE`, re-run all 29 migrations,
+- Full suite: `cd apps/api && npm test` — **297 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 30 migrations,
   full suite) to confirm migration order integrity, as of this update.
 - On a cold container the database is empty of *everything*, roles
   included. `service postgresql start`, then as the postgres superuser:

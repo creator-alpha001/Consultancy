@@ -30,6 +30,14 @@ export const MoneyErrorCode = {
   ESCROW_NOT_FREEZABLE: 'ESCROW_NOT_FREEZABLE',
   /** A split settlement was asked for that isn't strictly inside (0, escrow amount). Always a caller bug. */
   ESCROW_SPLIT_OUT_OF_RANGE: 'ESCROW_SPLIT_OUT_OF_RANGE',
+  /** A webhook did not carry a valid signature for the configured aggregator. Never retryable. */
+  PA_WEBHOOK_SIGNATURE_INVALID: 'PA_WEBHOOK_SIGNATURE_INVALID',
+  /** Signature was valid but the body is not a settlement event we act on. */
+  PA_WEBHOOK_MALFORMED: 'PA_WEBHOOK_MALFORMED',
+  /** The webhook names a payout/refund that does not exist. Investigate; never guess at which row was meant. */
+  SETTLEMENT_TARGET_NOT_FOUND: 'SETTLEMENT_TARGET_NOT_FOUND',
+  /** The row already settled or failed, and the webhook says otherwise. Needs a human, not a redelivery. */
+  SETTLEMENT_ALREADY_TERMINAL: 'SETTLEMENT_ALREADY_TERMINAL',
 } as const;
 
 export type MoneyErrorCode = (typeof MoneyErrorCode)[keyof typeof MoneyErrorCode];
@@ -107,5 +115,40 @@ export function ledgerAccountUnresolvable(description: string): AppError {
     MoneyErrorCode.LEDGER_ACCOUNT_UNRESOLVABLE,
     `ledger account ${description} not found after insert race`,
     { status: HttpStatus.INTERNAL_SERVER_ERROR },
+  );
+}
+
+export function paWebhookSignatureInvalid(): AppError {
+  return new AppError(
+    MoneyErrorCode.PA_WEBHOOK_SIGNATURE_INVALID,
+    'webhook signature could not be verified',
+    { status: HttpStatus.UNAUTHORIZED },
+  );
+}
+
+export function paWebhookMalformed(detail: string): AppError {
+  return new AppError(MoneyErrorCode.PA_WEBHOOK_MALFORMED, `unusable webhook body: ${detail}`, {
+    status: HttpStatus.BAD_REQUEST,
+  });
+}
+
+export function settlementTargetNotFound(targetType: string, targetId: string): AppError {
+  return new AppError(
+    MoneyErrorCode.SETTLEMENT_TARGET_NOT_FOUND,
+    `no ${targetType} ${targetId} to settle`,
+    { status: HttpStatus.NOT_FOUND, detail: { targetType, targetId } },
+  );
+}
+
+export function settlementAlreadyTerminal(
+  targetType: string,
+  targetId: string,
+  status: string,
+  attempted: string,
+): AppError {
+  return new AppError(
+    MoneyErrorCode.SETTLEMENT_ALREADY_TERMINAL,
+    `${targetType} ${targetId} is already ${status}; refusing to record ${attempted}`,
+    { status: HttpStatus.CONFLICT, detail: { targetType, targetId, status, attempted } },
   );
 }

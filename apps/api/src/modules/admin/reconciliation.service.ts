@@ -34,7 +34,7 @@ const SAMPLE_LIMIT = 20;
  * make each individual transaction balance; nothing until now looked
  * across transactions for the shapes that mean something has gone wrong
  * anyway — a released escrow whose engagement never completed, a payout
- * that has sat at `initiated` for a week (TRACKER.md D4), a reserve
+ * that has sat at `initiated` for a week, a reserve
  * account quietly going deeper into the red (D7).
  *
  * Deliberately READ-ONLY. It reports; it never "fixes." An automated
@@ -63,6 +63,8 @@ export class ReconciliationService {
         this.unrelayedOutbox(staleHours),
         this.orphanedProviderBalances(),
         this.stuckIdempotencyKeys(staleHours),
+        this.unprocessedWebhooks(staleHours),
+        this.failedSettlements(),
       ])
     ).filter((f): f is ReconciliationFinding => f !== null);
 
@@ -145,16 +147,17 @@ export class ReconciliationService {
   }
 
   /**
-   * TRACKER.md D4 made visible: nothing transitions a payout off
-   * `initiated`, so in our DB money looks paid when it has not moved.
-   * Until the PA webhook handler exists, this is the check that stops
-   * that being invisible.
+   * A payout the aggregator has never confirmed. Since D4 closed there
+   * IS a settle path, so a row still `initiated` after the window means
+   * the settlement webhook never arrived — or was never triggered,
+   * because nothing dispatches the payout instruction yet (the outbox
+   * relay, still unbuilt). Either way the provider has not been paid.
    */
   private stalePayouts(hours: number): Promise<ReconciliationFinding | null> {
     return this.check(
       'PAYOUT_STUCK_INITIATED',
       'warning',
-      (n) => `${n} payout(s) still 'initiated' after ${hours}h — no settlement confirmation has ever arrived (D4)`,
+      (n) => `${n} payout(s) still 'initiated' after ${hours}h — no settlement confirmation has ever arrived`,
       `SELECT id, escrow_id, provider_id, amount_paise::text, created_at
          FROM payouts
         WHERE status = 'initiated' AND created_at < now() - ($1 || ' hours')::interval
@@ -167,7 +170,7 @@ export class ReconciliationService {
     return this.check(
       'REFUND_STUCK_INITIATED',
       'warning',
-      (n) => `${n} refund(s) still 'initiated' after ${hours}h — the seeker may not have their money (D4)`,
+      (n) => `${n} refund(s) still 'initiated' after ${hours}h — the seeker may not have their money`,
       `SELECT id, escrow_id, seeker_id, amount_paise::text, created_at
          FROM refunds
         WHERE status = 'initiated' AND created_at < now() - ($1 || ' hours')::interval
@@ -258,6 +261,46 @@ export class ReconciliationService {
           AND NOT EXISTS (
             SELECT 1 FROM payouts p WHERE p.provider_id = la.owner_user_id AND p.currency = la.currency
           )`,
+    );
+  }
+
+  /**
+   * A webhook we recorded but never finished applying. The row exists
+   * because it is written before it is acted on, so this is the shape a
+   * crash mid-apply leaves behind: the aggregator believes it told us,
+   * and our payout or refund row does not know.
+   */
+  private unprocessedWebhooks(hours: number): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'PA_WEBHOOK_UNPROCESSED',
+      'critical',
+      (n) => `${n} payment-aggregator webhook(s) received over ${hours}h ago and never applied`,
+      `SELECT id, pa_provider, pa_event_id, event_type, received_at
+         FROM pa_webhook_events
+        WHERE processed_at IS NULL AND received_at < now() - ($1 || ' hours')::interval
+        ORDER BY received_at
+        LIMIT 100`,
+      [String(hours)],
+    );
+  }
+
+  /**
+   * A failed payout is money we still owe a provider: `release()`
+   * credited their wallet and the transfer did not happen, so nothing
+   * has discharged it. A failed refund is the same debt owed to a
+   * seeker. Neither retries itself — both need someone to act.
+   */
+  private failedSettlements(): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'SETTLEMENT_FAILED_UNRESOLVED',
+      'warning',
+      (n) => `${n} failed payout(s)/refund(s) — money is still owed and nothing is retrying`,
+      `SELECT 'payout' AS kind, id, provider_id AS counterparty_id, amount_paise::text, failure_reason, failed_at
+         FROM payouts WHERE status = 'failed'
+        UNION ALL
+       SELECT 'refund' AS kind, id, seeker_id AS counterparty_id, amount_paise::text, failure_reason, failed_at
+         FROM refunds WHERE status = 'failed'
+        ORDER BY failed_at`,
     );
   }
 

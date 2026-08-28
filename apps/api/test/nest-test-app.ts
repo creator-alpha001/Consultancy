@@ -31,7 +31,9 @@ export async function createTestApp(
   }
   const moduleRef = await builder.compile();
 
-  const app = moduleRef.createNestApplication();
+  // rawBody, as in main.ts — the settlement webhook cannot verify a
+  // signature without the bytes as sent.
+  const app = moduleRef.createNestApplication({ rawBody: true });
   app.useGlobalFilters(new ErrorEnvelopeFilter());
   await app.init();
   return app;

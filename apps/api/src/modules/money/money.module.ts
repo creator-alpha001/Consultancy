@@ -4,6 +4,8 @@ import { FeeScheduleService } from './fee-schedule.service';
 import { LedgerAccountsService } from './ledger-accounts.service';
 import { LedgerService } from './ledger.service';
 import { MoneyController } from './money.controller';
+import { SettlementController } from './settlement.controller';
+import { SettlementService } from './settlement.service';
 import { OutboxService } from './outbox.service';
 import { CashfreeEasySplitSandbox } from './pa/cashfree-easy-split.sandbox';
 import { PAYMENT_AGGREGATOR } from './pa/payment-aggregator.interface';
@@ -16,13 +18,14 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
  * the surface other modules are meant to call.
  */
 @Module({
-  controllers: [MoneyController],
+  controllers: [MoneyController, SettlementController],
   providers: [
     LedgerAccountsService,
     LedgerService,
     FeeScheduleService,
     OutboxService,
     EscrowService,
+    SettlementService,
     RazorpayRouteSandbox,
     CashfreeEasySplitSandbox,
     {
@@ -30,6 +33,6 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
       useExisting: process.env.MONEY_PA_PROVIDER === 'cashfree_easy_split' ? CashfreeEasySplitSandbox : RazorpayRouteSandbox,
     },
   ],
-  exports: [LedgerService, LedgerAccountsService, FeeScheduleService, OutboxService, EscrowService],
+  exports: [LedgerService, LedgerAccountsService, FeeScheduleService, OutboxService, EscrowService, SettlementService],
 })
 export class MoneyModule {}
