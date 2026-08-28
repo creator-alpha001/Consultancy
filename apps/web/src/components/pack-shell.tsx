@@ -48,8 +48,22 @@ export function PackShell({
             <Link href="/domains" className="hover:underline">
               Explore
             </Link>
+            <Link href="/mentors" className="hover:underline">
+              Find a mentor
+            </Link>
             {actor ? (
               <>
+                <Link href="/engagements" className="hover:underline">
+                  Engagements
+                </Link>
+                <Link href="/sessions" className="hover:underline">
+                  Sessions
+                </Link>
+                {actor.role === 'provider' && (
+                  <Link href="/mentor" className="hover:underline">
+                    Workspace
+                  </Link>
+                )}
                 <Link href="/dashboard" className="hover:underline">
                   Dashboard
                 </Link>

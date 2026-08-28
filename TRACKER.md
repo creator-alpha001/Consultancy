@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after closing D5 (idempotency race) and D4 (settlement)
+Last updated: 2026-08-28 · after the booking + mentorship UI (apps/web) and its two enabling controllers
 
 ---
 
@@ -27,7 +27,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
 | M9 | Hardening | **Partial — not complete** | No — reconciliation, restore drill and a DB perf baseline are real and verified; 3G, accessibility and the security review are not. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
-| — | **apps/web** (frontend, unscheduled) | **First vertical slice working** | n/a — see below |
+| — | **apps/web** (frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt
@@ -121,20 +121,43 @@ overflow on every public page; skip-link as first tab stop and a visible
   is why the header renders in Hindi on `upsc_cse` without a line of
   language-switching code.
 
-**Screens that exist:** landing, domain catalogue, domain detail (real
-category tree from `taxonomy/`, with the seeded patterns' provisional
-status surfaced from `categories.traits`), register, login (including the
-2FA challenge and recovery-code path), 2FA enrolment, dashboard
-(seeker and provider variants), board with the question flow, engagement
-detail (agenda, lock state, hash, escrow status, lifecycle progress), and
-admin reconciliation.
+**Screens that exist (23 routes):** landing, domain catalogue, domain
+detail, register, login (2FA challenge and recovery codes), 2FA
+enrolment, dashboard, admin reconciliation — plus the booking and
+mentorship loop added 2026-08-28:
 
-**Not built yet:** the write paths for most of the loop — creating a
-board post, submitting a proposal, drafting and locking an agenda,
-submitting work, evaluating it, and the dispute screens — are read-only
-or absent in the UI even though every one of those endpoints now exists
-and is tested. Recorded as D25 rather than half-built behind a button
-that does nothing.
+| Route | What it does |
+|---|---|
+| `/mentors` | Search verified mentors by category + language. No price sort, at any layer |
+| `/mentors/[id]` | Profile: per-skill tiers, reviews. Never the credential evidence (#30) |
+| `/mentors/[id]/book` | Engagement type, slot picker, language, price against the pack's band |
+| `/engagements` · `/engagements/[id]` | List, and the action hub for whatever the lifecycle allows now |
+| `/engagements/[id]/agenda` | Add/remove goals, out-of-scope, lock with explicit confirmation |
+| `/engagements/[id]/evaluate` | The rubric: one slider per template dimension, return gated on completeness |
+| `/sessions` · `/sessions/[id]` | Session list, and the room: consent gate, live checklist, audio fallback |
+| `/board/new` · `/board/[id]` | Post a request; propose on one; accept a proposal |
+| `/mentor` | Mentor workspace: what needs marking, upcoming sessions, eligible requests, own stats |
+
+**Verified in a real browser, not just compiled.** `test/booking-journey.mjs`
+drives the whole flow against the real API and a seeded database — 25
+checks, all passing, screenshots in `docs/screens/booking/`. It proves
+the things that are easy to claim and easy to get wrong: that no price
+sort control exists on the mentor list, that the profile leaks no
+verification evidence, that declining a recording is offered with the
+same weight as agreeing, that the lock button is disabled until
+confirmed and no edit affordance survives locking, and that both new
+screens fit 360px without horizontal overflow.
+
+**Two enabling controllers were written for it.** `assessment/` and
+`sessions/` had been service-only since M3/M5 — real, tested, and
+unreachable over HTTP. Booking cannot exist without them, so
+`SessionsController` and `AssessmentController` were added, plus
+`ProvidersController` (in `reputation/`, because `verification/ →
+reputation/` would have been a module cycle) for mentor discovery.
+
+**Still not built:** dispute detail and appeal screens (raising one
+works), the admin adjudication and moderation queues, and provider
+credential submission. See D25.
 
 ### Why M9 is partial — what is real, and what is not
 
@@ -242,8 +265,8 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
-| D25 | web | The UI reads more of the loop than it writes | Board-post creation, proposal submission, agenda drafting/locking, submission, evaluation and the dispute screens are not built, though every endpoint exists and is tested. The engagement page shows an agenda and its lock state but cannot create one. This is the next slice, not a design gap. |
-| D26 | web | No frontend test suite beyond the browser journey | `test/journey.mjs` drives the real flows and catches a lot, but there are no component tests and nothing runs in CI. It also needs a live API and a seeded database, so it is a smoke test of a running stack rather than a unit suite. |
+| D25 | web | Screens still missing: dispute detail, admin queues, credential submission | The booking + mentorship loop is now built and driven in a browser (mentor search, profile, booking with slot picking, agenda draft/lock, session room, submission, rubric evaluation, accept/dispute, review, board post + propose + accept). What remains unbuilt: the dispute *detail* and appeal screens (raising one works), the admin adjudication and moderation queues, and provider credential submission. |
+| D26 | web | No frontend test suite beyond the browser journeys | `test/journey.mjs` and `test/booking-journey.mjs` (25 checks) drive the real flows and catch a lot, but there are no component tests and nothing runs in CI. Both need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
 | D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
 | D24 | M9 | The restore drill is manual and local | `scripts/restore-drill.sh` is real and passes, but it dumps a local database on demand. There is no backup *storage*, no retention policy, no WAL archiving, and therefore no point-in-time recovery — so "restore verified" is verified for the mechanism, not for a production backup that does not exist yet. |
 | D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
@@ -275,7 +298,7 @@ trusting any of them.**
 | `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money. **One exception: `verifyWebhookSignature` is real** — a real HMAC-SHA256 over the real bytes, compared in constant time. A sandbox that trusted every caller would train the codebase to accept an endpoint that must not be trusting | M1 debt / pre-launch |
 | `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires. This is now the *only* thing between a completed engagement and a provider actually being paid — see D28 | `notifications/` relay |
 | `MoneyController` (`/internal/escrows/*`) | Ops scaffolding from M1, now superseded by the real path: `engagements/` orchestrates hold/release via `EscrowService` directly. Kept only for ops tooling and the M1/M2 tests that predate the engagement loop — don't extend it. | Superseded by `engagements/` |
-| `assessment/`, `sessions/`, `safety/`, `taxonomy/`, `notifications/` | **Service layer only — no HTTP controllers.** Their tests drive the services directly, so there is no way to submit work, score an evaluation, book or run a session, or reach the moderation queue over HTTP. `agenda/`, `engagements/`, `board/`, `verification/`, `reputation/` and `disputes/` were in this row until identity/auth landed and now have real controllers — this row was stale until 2026-08-28 and is corrected here | Whichever milestone needs the screen |
+| `safety/`, `taxonomy/`, `notifications/` | **Service layer only — no HTTP controllers.** No way to reach the moderation queue over HTTP; the relay reads nothing. `assessment/` and `sessions/` left this row on 2026-08-28 when the booking UI needed them | Whichever milestone needs the screen |
 | Dispute evidence packet | Real, and assembled from the engagement's own record in the original languages — but it copies **text**, not artefacts. `submissions.content_ref` and any recording are referenced by pointer only, and there is no object storage behind those pointers yet, so an adjudicator cannot actually open the disputed file | When object storage is wired up |
 | `disputes/` reviewer assignment | A ruling records *which* admin made it, and the DB enforces that they are one. Nothing assigns disputes to reviewers, balances a queue, or prevents the same admin ruling on their own escalation — `listAwaitingRuling()` is the whole queue | Admin queue work, with M9's ops hardening |
 | `ScreeningService` (`safety/`) | A handful of deterministic regexes for distress language and off-platform-contact mentions — **not a real classifier, no ML, no clinical review of the patterns.** Enough to prove the hold/never-auto-publish/never-auto-reject mechanism (CLAUDE.md #25) works; the patterns themselves are a placeholder, same spirit as M4's illustrative tier thresholds | Needs clinical/policy input before this reaches real users, not another regex |
