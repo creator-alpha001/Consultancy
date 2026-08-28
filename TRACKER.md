@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after M9 (partial) + identity
+Last updated: 2026-08-28 · after the frontend (apps/web)
 
 ---
 
@@ -27,6 +27,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
 | M9 | Hardening | **Partial — not complete** | No — reconciliation, restore drill and a DB perf baseline are real and verified; 3G, accessibility and the security review are not. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
+| — | **apps/web** (frontend, unscheduled) | **First vertical slice working** | n/a — see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt
@@ -89,6 +90,51 @@ spec is silent, ask rather than invent"), nothing was built for it — see
 D13. The bar itself doesn't mention waves, so the milestone's actual
 acceptance criterion is met; the debt is that one listed feature is
 unimplemented and unclarified, not faked.
+
+### The frontend (apps/web) — what exists
+
+Built so the product could be *seen* before more backend goes in. Next.js
+App Router, server-rendered, talking to the real API against the seeded
+19-domain database. Verified by driving Chromium against a running stack
+(`npm run journey`), not just by compiling — screenshots in
+`docs/screens/`.
+
+**Working end to end, checked in a real browser:** the public catalogue
+(19 domains, pack-driven labels and theme); register → sign in → session
+cookie → dashboard; the 18+ attestation refusing registration (#27); a
+provider being routed to the 2FA bootstrap rather than locked out (D19);
+a distress-flagged question answered with the family's three real
+helplines and never the word "rejected" (#25); 360px with no horizontal
+overflow on every public page; skip-link as first tab stop and a visible
+3px focus ring.
+
+**Two decisions worth carrying forward:**
+- *The browser never talks to the API.* Every call is a server component
+  or server action; the session token is in an `httpOnly` cookie page JS
+  cannot read. An XSS bug on a screen cannot steal a session that moves
+  money.
+- *Nothing in the frontend hardcodes a label, a colour or a domain.*
+  "Aspirant" and "Mentor" do not appear in the source — they resolve
+  from `labels.seeker`/`labels.provider` at runtime, and Tailwind reads
+  CSS custom properties fed by the pack's `theme.tokens` rather than
+  holding colour values. This is the frontend half of §3's claim, and it
+  is why the header renders in Hindi on `upsc_cse` without a line of
+  language-switching code.
+
+**Screens that exist:** landing, domain catalogue, domain detail (real
+category tree from `taxonomy/`, with the seeded patterns' provisional
+status surfaced from `categories.traits`), register, login (including the
+2FA challenge and recovery-code path), 2FA enrolment, dashboard
+(seeker and provider variants), board with the question flow, engagement
+detail (agenda, lock state, hash, escrow status, lifecycle progress), and
+admin reconciliation.
+
+**Not built yet:** the write paths for most of the loop — creating a
+board post, submitting a proposal, drafting and locking an agenda,
+submitting work, evaluating it, and the dispute screens — are read-only
+or absent in the UI even though every one of those endpoints now exists
+and is tested. Recorded as D25 rather than half-built behind a button
+that does nothing.
 
 ### Why M9 is partial — what is real, and what is not
 
@@ -196,6 +242,8 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
+| D25 | web | The UI reads more of the loop than it writes | Board-post creation, proposal submission, agenda drafting/locking, submission, evaluation and the dispute screens are not built, though every endpoint exists and is tested. The engagement page shows an agenda and its lock state but cannot create one. This is the next slice, not a design gap. |
+| D26 | web | No frontend test suite beyond the browser journey | `test/journey.mjs` drives the real flows and catches a lot, but there are no component tests and nothing runs in CI. It also needs a live API and a seeded database, so it is a smoke test of a running stack rather than a unit suite. |
 | D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
 | D24 | M9 | The restore drill is manual and local | `scripts/restore-drill.sh` is real and passes, but it dumps a local database on demand. There is no backup *storage*, no retention policy, no WAL archiving, and therefore no point-in-time recovery — so "restore verified" is verified for the mechanism, not for a production backup that does not exist yet. |
 | D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
