@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-27 · after M6
+Last updated: 2026-08-28 · after M7
 
 ---
 
@@ -23,7 +23,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M4 | Supply: provider onboarding, result-list verifier, per-skill tiers | **Complete** | Yes — a provider verifies once and appears in matching for multiple domains |
 | M5 | Sessions | **Partial — not complete** | No — see below |
 | M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
-| M7 | Trust: reviews, disputes, appeals | Not started | — |
+| M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
 | M8 | Seed 15 more domains as data only | Not started | — |
 | M9 | Hardening | Not started | — |
 
@@ -103,7 +103,9 @@ currently tells.
 | D5 | M1 | `IdempotencyService` deletes its key on handler failure | A concurrent retry racing that window can double-execute. Acceptable with no live traffic; must close before M6 opens the board to real users. |
 | D6 | M2 | Loader cache is per-process | Correct for one deployable. A second instance serves stale manifests until its own publish. Invalidation must become pub/sub before horizontal scaling, not after. |
 | D7 | M1 | Reserve balance is unmonitored | `resolvePlatformFailure` draws on `reserve` without limit and the account is expected to run negative. Nothing alerts when it does. Needs a reconciliation check in M9; deliberately not a runtime block, since refusing to make a wronged provider whole is the worse failure. |
-| D9 | M3 | No revision path | `evaluations.returned_at` is one-shot; a seeker has no way to ask for changes short of a full dispute. `disputed` is a valid transition target from every working-and-later state but nothing drives an engagement into it yet — that's M7. |
+| D9 | M3 | No revision path short of a dispute | `evaluations.returned_at` is one-shot; a seeker who wants a small correction has no option between "accept it" and "raise a dispute." M7 built the dispute path (so an engagement *can* now reach `disputed`), but a lightweight revision request — the thing that should absorb most of these — still doesn't exist. |
+| D14 | M7 | Dispute tier `responseHours` is declared but not enforced | The ladder carries an SLA per rung and nothing counts against it: no timer, no escalation on expiry, no notification. A dispute can sit at tier 1 forever. Needs the scheduler/notification path (`outbox` relay, D4's neighbourhood) before it means anything. |
+| D15 | M7 | Nothing recomputes or caps a provider's exposure after an upheld dispute | `provider_skill_stats` counts refunded engagements, but no policy acts on that count — a provider who loses ten disputes is still matched exactly like one who has lost none, and their tier is untouched. Whether repeated upheld disputes should suspend, demote, or merely flag is a business/verification-threshold call, not one to invent. |
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
@@ -129,7 +131,9 @@ trusting any of them.**
 | `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money | M1 debt / pre-launch |
 | `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires | `notifications/` relay |
 | `MoneyController` (`/internal/escrows/*`) | Ops scaffolding from M1, now superseded by the real path: `engagements/` orchestrates hold/release via `EscrowService` directly. Kept only for ops tooling and the M1/M2 tests that predate the engagement loop — don't extend it. | Superseded by `engagements/` |
-| `agenda/`, `engagements/`, `assessment/`, `verification/`, `board/`, `sessions/` | **Service layer only — no HTTP controllers.** Every M3–M6 test drives the services directly. There is no public API for the engagement loop, credential pipeline, board, or sessions yet; that arrives with identity/auth (routes need a real actor, not a header) | Whichever milestone adds real auth |
+| `agenda/`, `engagements/`, `assessment/`, `verification/`, `board/`, `sessions/`, `reputation/`, `disputes/` | **Service layer only — no HTTP controllers.** Every M3–M7 test drives the services directly. There is no public API for the engagement loop, credential pipeline, board, sessions, reviews or disputes yet; that arrives with identity/auth (routes need a real actor, not a header) | Whichever milestone adds real auth |
+| Dispute evidence packet | Real, and assembled from the engagement's own record in the original languages — but it copies **text**, not artefacts. `submissions.content_ref` and any recording are referenced by pointer only, and there is no object storage behind those pointers yet, so an adjudicator cannot actually open the disputed file | When object storage is wired up |
+| `disputes/` reviewer assignment | A ruling records *which* admin made it, and the DB enforces that they are one. Nothing assigns disputes to reviewers, balances a queue, or prevents the same admin ruling on their own escalation — `listAwaitingRuling()` is the whole queue | Admin queue work, with M9's ops hardening |
 | `ScreeningService` (`safety/`) | A handful of deterministic regexes for distress language and off-platform-contact mentions — **not a real classifier, no ML, no clinical review of the patterns.** Enough to prove the hold/never-auto-publish/never-auto-reject mechanism (CLAUDE.md #25) works; the patterns themselves are a placeholder, same spirit as M4's illustrative tier thresholds | Needs clinical/policy input before this reaches real users, not another regex |
 | `submissions.content_ref` | A plain text column standing in for a real private-storage pointer. No S3, no `attachment_grants`, no signed URLs (CLAUDE.md #29 unmet) | When object storage is wired up |
 | `assessment_scores.score` range (0–100) | Placeholder scale. `SPEC-FEATURES.md`, which would define the real one, was never supplied — confirm before this reaches an evaluator screen | Pending SPEC-FEATURES.md |
@@ -276,6 +280,62 @@ future task is surprised by something, it should be recorded here.
   spec document defines it for the board; the only other occurrence of
   "wave" in SPEC-PLATFORM.md is the unrelated multi-year expansion
   roadmap (§15's "Wave 1–5"). Recorded as D13 rather than guessed at.
+- **The dispute tier ladder is family-manifest data, not core code.**
+  `policy.disputeTiers` is an array of rungs; `disputes/` walks it and
+  never names a tier, counts them, or hardcodes which is final. This is
+  what makes M7's "no code change" bar literally true, and it is proven
+  by a test that republishes the family with a two-rung ladder instead
+  of three and shows the same code walking it. A family that supplies no
+  ladder gets `DEFAULT_DISPUTE_TIERS` — deliberately generic, naming no
+  domain concept. Publish-time validation rejects a ladder that cannot
+  be walked (non-contiguous rungs, no final rung, or a final rung that
+  isn't last), because an appeal escalating into a tier nobody
+  adjudicates is worse than a rejected manifest.
+- **Hard rule #18 ("AI never rules on a dispute") is enforced by a DB
+  trigger on `ruled_by`, not by convention.** A ruling's author must be
+  a `users` row holding the admin role, so there is no system or service
+  actor that can record one. An AI can draft a rationale for a human to
+  accept; it cannot be the author, and the database is what makes that
+  true rather than the code's good intentions.
+- **Rulings, appeals, evidence and reviews are all append-only.** An
+  overturned tier-1 ruling stays in the record next to the tier-2 one
+  that replaced it; a review cannot be rewritten after a dispute goes
+  badly. Corrections are new rows, exactly as in the ledger.
+- **A dispute freezes the money *before* the packet is assembled.**
+  `raise()` calls `engagements.markDisputed()` (which freezes the escrow
+  via `money/`) first, then writes the dispute and its evidence in a
+  transaction. If packet assembly fails, the money is already safe; the
+  reverse order could leave a disputed engagement with a releasable
+  escrow.
+- **Split settlement charges the platform fee pro rata on the earned
+  portion only.** `EscrowService.settleSplit` computes
+  `fee = fullFee * providerGross / amount` and pays the provider
+  `providerGross - fee`. Charging the full fee on a half-delivered job
+  would take the platform's cut out of the seeker's refund. bigint
+  division truncates, so the rounding remainder stays with the provider
+  — deliberate, and the four entries balance exactly with nothing lost.
+  `settled_split` is reachable only from `disputed_hold`: partially
+  settling an engagement nobody disputed is not a thing that should be
+  possible.
+- **A split settlement leaves the engagement `completed`, not
+  `refunded`.** Work was done and partly paid for. Marking it `refunded`
+  would misreport it in every stat that counts refunds against a
+  provider.
+- **Per-skill stats are a VIEW (`provider_skill_stats`), never stored
+  counts.** Same reasoning as money's "no `balance` column": a stored
+  review count or average would eventually disagree with the reviews
+  that justify it. It aggregates over `engagement_skills` — the snapshot
+  taken at `agree()` — so an engagement counts toward the skills it
+  actually required when it ran, not whatever its category maps to now.
+- **Ranking exists, but exposes no position to anyone (hard rule #17).**
+  `RankingService.rankProviders` returns provider ids *in an order* for
+  one specific search; there is no rank number, percentile, streak,
+  badge, or "top providers" query anywhere, and a provider reading their
+  own stats sees only their own history. Ordering is tier → rating →
+  experience → recency, and unreviewed providers are ordered on the rest
+  rather than buried, because a pure rating sort is a cold-start trap
+  that quietly closes the marketplace to new supply. No ordering
+  anywhere considers price (#15).
 
 ---
 
@@ -285,9 +345,11 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **142 tests, all passing**,
-  including a from-scratch run (`DROP DATABASE`, re-run all 21 migrations,
+- Full suite: `cd apps/api && npm test` — **181 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 24 migrations,
   full suite) to confirm migration order integrity, as of this update.
+- `npm run migrate` needs `DATABASE_URL` in the environment; it does not
+  read `.env` itself. `export $(grep -v '^#' .env | xargs)` first.
 - Docker is unavailable in this environment; use the local cluster.
 
 ---

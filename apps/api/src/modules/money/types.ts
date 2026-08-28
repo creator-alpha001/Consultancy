@@ -36,7 +36,7 @@ export interface PostTransactionResult {
   deduped: boolean;
 }
 
-export type EscrowStatus = 'pending' | 'held' | 'released' | 'refunded' | 'disputed_hold';
+export type EscrowStatus = 'pending' | 'held' | 'released' | 'refunded' | 'disputed_hold' | 'settled_split';
 
 export interface EscrowRow {
   id: string;

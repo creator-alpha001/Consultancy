@@ -97,11 +97,48 @@ through M3's full lifecycle to completion with money moving correctly. See
 Complete — one listed M6 feature ("waves") is undefined in every supplied
 spec document and was not guessed at.
 
+**M7 — trust** is implemented: `reputation/` and `disputes/`.
+
+The dispute tier ladder is **family-manifest data** (`policy.
+disputeTiers`), and `disputes/` walks it without ever naming a tier,
+counting them, or hardcoding which is final — that is what makes M7's
+"a dispute is raised, ruled, appealed, settled — *no code change*" bar
+literally true, and
+`test/disputes/dispute-lifecycle.e2e.spec.ts` proves it by republishing
+the family with a two-rung ladder instead of three and running the same
+code against it. `DisputeService` freezes the engagement and its escrow
+*before* assembling the evidence packet, so a failure mid-assembly still
+leaves the money safe. The packet is a snapshot of the engagement's own
+record — the locked agenda and each goal in **their original languages**
+(hard rule #20), the returned assessment, every submission, and the
+session consent record *including a refusal*, which CLAUDE.md #21 makes
+evidence in its own right. Rulings, appeals, evidence and reviews are all
+append-only: an overturned tier-1 ruling stays in the record beside the
+tier-2 one that replaced it.
+
+Hard rule #18 — "AI never rules on a dispute" — is a DB trigger on
+`dispute_rulings.ruled_by`, not a convention: the author must be a user
+holding the admin role, so no service or system actor can record a
+ruling at all. Settlement moves money only through `engagements/` →
+`money/`; `disputes/` never touches an escrow or ledger row. A partial
+ruling uses the new `EscrowService.settleSplit`, which charges the
+platform fee **pro rata on the portion the provider actually earned** —
+billing a full fee on half-delivered work would take the platform's cut
+out of the seeker's refund.
+
+`reputation/` covers reviews (immutable, one per direction, only on an
+engagement that actually ended) and per-skill stats, which are a **view**
+(`provider_skill_stats`) rather than stored counts — the same
+no-derived-column reasoning as money's `balance` rule. `RankingService`
+orders matched providers for a search and deliberately exposes no rank,
+percentile, streak, or badge to anyone (hard rule #17); a provider sees
+only their own history, and no ordering anywhere considers price (#15).
+
 `agenda/`, `engagements/`, `assessment/`, `verification/`, `sessions/`,
-and `board/` are service-layer only — no HTTP controllers. There's no
-auth yet to give a route a real actor, so nothing is exposed publicly;
-every M3–M6 test drives the services directly, same as production code
-eventually will.
+`board/`, `reputation/`, and `disputes/` are service-layer only — no HTTP
+controllers. There's no auth yet to give a route a real actor, so nothing
+is exposed publicly; every M3–M7 test drives the services directly, same
+as production code eventually will.
 
 Every other module directory is a placeholder — see the comment at the
 top of each `*.module.ts` for which milestone fills it in.
@@ -258,3 +295,28 @@ Reserve is expected to run negative; that's what a reserve is (see D7 in
   distress- or contact-leak-flagged question is invisible to providers,
   not just to the public list. A published question flips to `answered`
   automatically on its first answer.
+
+## Trust invariants enforced by the database
+
+- **`trg_ruling_author_is_human_admin`** — CLAUDE.md #18 ("AI never rules
+  on a dispute") as something the database refuses rather than something
+  the code promises: `dispute_rulings.ruled_by` must reference a user
+  holding the admin role. A seeker, a provider, or any non-admin actor
+  is rejected outright.
+- `dispute_rulings`, `dispute_appeals`, `dispute_evidence` and `reviews`
+  are **append-only** (the same `reject_mutation()` trigger the ledger
+  uses). Rulings are additionally one-per-tier, and a ruling can only be
+  appealed once, to a strictly higher tier, by a party to the engagement.
+- A `split` ruling must actually split: `seeker_refund_paise` is required
+  for `split`, forbidden otherwise, and checked against the engagement's
+  real escrow so a ruling can never award more than is held — awarding
+  the whole amount is a refund and must be recorded as one.
+- `escrows` reaches `settled_split` **only** from `disputed_hold`. There
+  is no partial settlement of an engagement nobody disputed.
+- A review requires an engagement that has genuinely ended
+  (`completed`/`refunded`), and must be written by that engagement's own
+  seeker or provider in the direction their role implies — a third party
+  cannot review, and neither party can review in the other's direction.
+- `disputes.status` follows a fixed transition table, and there is one
+  dispute per engagement: a second grievance is evidence on the existing
+  dispute, not a new one.

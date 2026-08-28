@@ -62,9 +62,40 @@ export function familyManifestV1(): unknown {
       freeQuestionsPerDay: 3,
       proposalQuotaPerWeek: 10,
       regulatedCategories: [],
+      // The dispute ladder is pack data, not core code — M7's bar is
+      // "raised, ruled, appealed, settled, no code change." Three rungs
+      // here; `familyManifestTwoTierLadder()` proves a different-shaped
+      // ladder needs no code change to work.
+      disputeTiers: [
+        { tier: 1, code: 'direct_resolution', responseHours: 48 },
+        { tier: 2, code: 'platform_review', responseHours: 120 },
+        { tier: 3, code: 'appeal_panel', responseHours: 240, final: true },
+      ],
     },
     supportResources: [{ label: 'Tele-MANAS', value: '14416' }],
     theme: { signature: 'ruled_answer_sheet', tokens: { '--color-ink': '#1a1a2e' } },
+  };
+}
+
+/**
+ * The same family with a SHORTER dispute ladder — two rungs, appeal
+ * final at tier 2 instead of tier 3. Used to prove M7's "no code change"
+ * bar: core walks whatever ladder the pack supplies and never assumes a
+ * count or which rung is last.
+ */
+export function familyManifestTwoTierLadder(): unknown {
+  const base = familyManifestV1() as Record<string, unknown>;
+  const policy = base.policy as Record<string, unknown>;
+  return {
+    ...base,
+    version: '2.0.0',
+    policy: {
+      ...policy,
+      disputeTiers: [
+        { tier: 1, code: 'platform_review', responseHours: 72 },
+        { tier: 2, code: 'final_review', responseHours: 168, final: true },
+      ],
+    },
   };
 }
 

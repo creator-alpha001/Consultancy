@@ -26,6 +26,10 @@ export const MoneyErrorCode = {
   LEDGER_TRANSACTION_INVALID: 'LEDGER_TRANSACTION_INVALID',
   /** Lost an account-creation race and the row still wasn't there. Always a bug in our code. */
   LEDGER_ACCOUNT_UNRESOLVABLE: 'LEDGER_ACCOUNT_UNRESOLVABLE',
+  /** Escrow exists but its status forbids freezing it for a dispute. Not retryable. */
+  ESCROW_NOT_FREEZABLE: 'ESCROW_NOT_FREEZABLE',
+  /** A split settlement was asked for that isn't strictly inside (0, escrow amount). Always a caller bug. */
+  ESCROW_SPLIT_OUT_OF_RANGE: 'ESCROW_SPLIT_OUT_OF_RANGE',
 } as const;
 
 export type MoneyErrorCode = (typeof MoneyErrorCode)[keyof typeof MoneyErrorCode];
@@ -50,6 +54,29 @@ export function escrowNotRefundable(escrowId: string, status: string): AppError 
     MoneyErrorCode.ESCROW_NOT_REFUNDABLE,
     `cannot refund escrow ${escrowId} from status ${status}`,
     { status: HttpStatus.CONFLICT, detail: { escrowId, escrowStatus: status } },
+  );
+}
+
+export function escrowNotFreezable(escrowId: string, status: string): AppError {
+  return new AppError(
+    MoneyErrorCode.ESCROW_NOT_FREEZABLE,
+    `cannot freeze escrow ${escrowId} for a dispute from status ${status}`,
+    { status: HttpStatus.CONFLICT, detail: { escrowId, escrowStatus: status } },
+  );
+}
+
+export function escrowSplitOutOfRange(escrowId: string, seekerRefundPaise: bigint, amountPaise: bigint): AppError {
+  return new AppError(
+    MoneyErrorCode.ESCROW_SPLIT_OUT_OF_RANGE,
+    `split of ${seekerRefundPaise} is not strictly inside (0, ${amountPaise}) for escrow ${escrowId} — a full award is a release or a refund, not a split`,
+    {
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      detail: {
+        escrowId,
+        seekerRefundPaise: seekerRefundPaise.toString(),
+        amountPaise: amountPaise.toString(),
+      },
+    },
   );
 }
 

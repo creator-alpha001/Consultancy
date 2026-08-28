@@ -56,6 +56,64 @@ describe('validateFamilyManifest', () => {
     const issues = issuesOf(() => validateFamilyManifest(raw));
     expect(issues.some((i) => i.includes('dimensions'))).toBe(true);
   });
+
+  // The dispute ladder is pack data (M7). A ladder that cannot be walked
+  // would let an appeal escalate into a tier nobody adjudicates, so the
+  // shape is validated at publish rather than discovered at appeal time.
+  describe('dispute ladder', () => {
+    function withTiers(tiers: unknown): Record<string, unknown> {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      (raw.policy as Record<string, unknown>).disputeTiers = tiers;
+      return raw;
+    }
+
+    it('accepts a family with no ladder at all (disputes/ supplies a default)', () => {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      delete (raw.policy as Record<string, unknown>).disputeTiers;
+      expect(() => validateFamilyManifest(raw)).not.toThrow();
+    });
+
+    it('rejects non-contiguous tier numbers', () => {
+      const issues = issuesOf(() =>
+        validateFamilyManifest(
+          withTiers([
+            { tier: 1, code: 'a', responseHours: 24 },
+            { tier: 3, code: 'b', responseHours: 24, final: true },
+          ]),
+        ),
+      );
+      expect(issues.some((i) => i.includes('disputeTiers[1].tier'))).toBe(true);
+    });
+
+    it('rejects a ladder with no final rung', () => {
+      const issues = issuesOf(() =>
+        validateFamilyManifest(
+          withTiers([
+            { tier: 1, code: 'a', responseHours: 24 },
+            { tier: 2, code: 'b', responseHours: 24 },
+          ]),
+        ),
+      );
+      expect(issues.some((i) => i.includes('exactly one rung marked final'))).toBe(true);
+    });
+
+    it('rejects a ladder whose final rung is not the last', () => {
+      const issues = issuesOf(() =>
+        validateFamilyManifest(
+          withTiers([
+            { tier: 1, code: 'a', responseHours: 24, final: true },
+            { tier: 2, code: 'b', responseHours: 24 },
+          ]),
+        ),
+      );
+      expect(issues.some((i) => i.includes('final rung must be the last'))).toBe(true);
+    });
+
+    it('rejects an empty ladder', () => {
+      const issues = issuesOf(() => validateFamilyManifest(withTiers([])));
+      expect(issues.some((i) => i.includes('disputeTiers'))).toBe(true);
+    });
+  });
 });
 
 describe('validateDomainManifest', () => {

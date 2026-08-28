@@ -1,7 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
-import { escrowNotFound, escrowNotRefundable, escrowNotReleasable, paymentCaptureFailed } from './errors';
+import {
+  escrowNotFound,
+  escrowNotFreezable,
+  escrowNotRefundable,
+  escrowNotReleasable,
+  escrowSplitOutOfRange,
+  paymentCaptureFailed,
+} from './errors';
 import { LedgerAccountsService } from './ledger-accounts.service';
 import { LedgerService } from './ledger.service';
 import { FeeScheduleService } from './fee-schedule.service';
@@ -29,6 +36,17 @@ export interface RefundEscrowInput {
   escrowId: string;
   idempotencyKey: string;
   reason: string;
+}
+
+export interface SettleSplitInput {
+  escrowId: string;
+  idempotencyKey: string;
+  /** Strictly inside (0, escrow amount) — a full award either way is a release or a refund, and must be recorded as one. */
+  seekerRefundPaise: bigint;
+  /** The ruling this carries out. Recorded on the refund row so a split is never mistaken for an ordinary refund. */
+  reason: string;
+  bankAccountLast4?: string;
+  bankIfsc?: string;
 }
 
 export interface PlatformFailureInput {
@@ -387,6 +405,195 @@ export class EscrowService {
    * here blocks on its balance, because refusing to make a wronged
    * provider whole would be the worse failure.
    */
+  /**
+   * Freezes a held escrow while a dispute is adjudicated. No ledger
+   * movement — the money stays exactly where it is; only its status
+   * changes, so neither `release()` nor `refund()` can be called
+   * casually while a ruling is pending. Both still accept
+   * `disputed_hold`, because carrying out a ruling is precisely what
+   * they are for.
+   *
+   * Idempotent: freezing an already-frozen escrow is a no-op, so a
+   * retried dispute-raise cannot fail on the money leg.
+   */
+  async freezeForDispute(escrowId: string): Promise<EscrowRow> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const res = await client.query<EscrowDbRow>(`SELECT * FROM escrows WHERE id = $1 FOR UPDATE`, [escrowId]);
+      const escrow = res.rows[0];
+      if (!escrow) throw escrowNotFound(escrowId);
+
+      if (escrow.status === 'disputed_hold') {
+        await client.query('COMMIT');
+        return mapEscrowRow(escrow); // idempotent no-op
+      }
+      if (escrow.status !== 'held') {
+        throw escrowNotFreezable(escrow.id, escrow.status);
+      }
+
+      const updated = await client.query<EscrowDbRow>(
+        `UPDATE escrows SET status = 'disputed_hold' WHERE id = $1 RETURNING *`,
+        [escrow.id],
+      );
+      await client.query('COMMIT');
+      return mapEscrowRow(updated.rows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Carries out a partial dispute ruling: part of the escrow goes back
+   * to the seeker, the rest to the provider.
+   *
+   * The platform fee is charged **pro rata on the portion the provider
+   * actually earned**, never on the whole engagement — billing a full
+   * fee on half-delivered work would take the platform's cut out of the
+   * seeker's refund. `providerNet = providerGross - fee` by construction,
+   * so the four entries balance exactly with no rounding remainder to
+   * lose: integer division truncates the fee downward, and the
+   * difference stays with the provider rather than evaporating.
+   *
+   * Reachable only from `disputed_hold` (enforced by the escrow
+   * transition trigger, 0024): there is no such thing as partially
+   * settling an engagement nobody disputed.
+   */
+  async settleSplit(input: SettleSplitInput): Promise<EscrowRow> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const res = await client.query<EscrowDbRow>(`SELECT * FROM escrows WHERE id = $1 FOR UPDATE`, [input.escrowId]);
+      const escrow = res.rows[0];
+      if (!escrow) throw escrowNotFound(input.escrowId);
+
+      if (escrow.status === 'settled_split') {
+        await client.query('COMMIT');
+        return mapEscrowRow(escrow); // idempotent no-op
+      }
+      if (escrow.status !== 'disputed_hold') {
+        throw escrowNotReleasable(escrow.id, escrow.status);
+      }
+
+      const amountPaise = BigInt(escrow.amount_paise);
+      const seekerRefundPaise = input.seekerRefundPaise;
+      if (seekerRefundPaise <= 0n || seekerRefundPaise >= amountPaise) {
+        throw escrowSplitOutOfRange(escrow.id, seekerRefundPaise, amountPaise);
+      }
+
+      const fullFeePaise = BigInt(escrow.platform_fee_paise ?? 0n);
+      const providerGrossPaise = amountPaise - seekerRefundPaise;
+      // Pro-rata fee on the earned portion only. bigint division truncates,
+      // which rounds the fee in the provider's favour — deliberate.
+      const feePaise = (fullFeePaise * providerGrossPaise) / amountPaise;
+      const providerNetPaise = providerGrossPaise - feePaise;
+
+      const escrowAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'escrow',
+        ownerUserId: null,
+        currency: escrow.currency,
+      });
+      const paAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'payment_aggregator',
+        ownerUserId: null,
+        currency: escrow.currency,
+      });
+      const providerAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'provider_wallet',
+        ownerUserId: escrow.provider_id,
+        currency: escrow.currency,
+      });
+      const feeAccountId = await this.ledgerAccounts.getOrCreate(client, {
+        type: 'platform_fee_revenue',
+        ownerUserId: null,
+        currency: escrow.currency,
+      });
+
+      const ledgerResult = await this.ledger.postTransaction(client, {
+        idempotencyKey: input.idempotencyKey,
+        reason: 'escrow_split_settlement',
+        referenceType: 'escrow',
+        referenceId: escrow.id,
+        entries: [
+          { accountId: escrowAccountId, currency: escrow.currency, amountPaise: -amountPaise },
+          { accountId: paAccountId, currency: escrow.currency, amountPaise: seekerRefundPaise },
+          { accountId: providerAccountId, currency: escrow.currency, amountPaise: providerNetPaise },
+          { accountId: feeAccountId, currency: escrow.currency, amountPaise: feePaise },
+        ],
+      });
+
+      const updated = await client.query<EscrowDbRow>(
+        `UPDATE escrows SET status = 'settled_split', resolution_transaction_id = $2 WHERE id = $1 RETURNING *`,
+        [escrow.id, ledgerResult.transactionId],
+      );
+
+      await client.query(
+        `INSERT INTO refunds (escrow_id, seeker_id, currency, amount_paise, reason, refund_transaction_id, pa_provider)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (escrow_id) DO NOTHING`,
+        [
+          escrow.id,
+          escrow.seeker_id,
+          escrow.currency,
+          seekerRefundPaise.toString(),
+          input.reason,
+          ledgerResult.transactionId,
+          this.paymentAggregator.code,
+        ],
+      );
+      await client.query(
+        `INSERT INTO payouts (escrow_id, provider_id, currency, amount_paise, release_transaction_id, pa_provider, bank_account_last4, bank_ifsc)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (escrow_id) DO NOTHING`,
+        [
+          escrow.id,
+          escrow.provider_id,
+          escrow.currency,
+          providerNetPaise.toString(),
+          ledgerResult.transactionId,
+          this.paymentAggregator.code,
+          input.bankAccountLast4 ?? null,
+          input.bankIfsc ?? null,
+        ],
+      );
+
+      await this.outbox.append(client, {
+        aggregateType: 'escrow',
+        aggregateId: escrow.id,
+        eventType: 'refund.initiated',
+        payload: {
+          seekerId: escrow.seeker_id,
+          amountPaise: seekerRefundPaise,
+          currency: escrow.currency,
+          reason: input.reason,
+        },
+      });
+      await this.outbox.append(client, {
+        aggregateType: 'escrow',
+        aggregateId: escrow.id,
+        eventType: 'payout.initiated',
+        payload: {
+          providerId: escrow.provider_id,
+          amountPaise: providerNetPaise,
+          currency: escrow.currency,
+        },
+      });
+
+      await client.query('COMMIT');
+      return mapEscrowRow(updated.rows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   async resolvePlatformFailure(input: PlatformFailureInput): Promise<EscrowRow> {
     const client = await this.pool.connect();
     try {

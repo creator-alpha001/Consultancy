@@ -11,6 +11,8 @@ export async function resetDatabase(pool: Pool): Promise<void> {
       outbox, idempotency_keys, refunds, payouts, escrows,
       ledger_entries, ledger_transactions, ledger_accounts,
       fee_schedules,
+      dispute_appeals, dispute_rulings, dispute_evidence, disputes,
+      reviews,
       assessment_scores, evaluations, submissions,
       engagement_skills, agenda_items, agendas,
       engagements,

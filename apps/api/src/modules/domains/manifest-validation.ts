@@ -161,6 +161,36 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
   if (typeof policyRaw.proposalQuotaPerWeek !== 'number') v.fail('policy.proposalQuotaPerWeek', 'must be a number');
   if (!Array.isArray(policyRaw.regulatedCategories)) v.fail('policy.regulatedCategories', 'must be an array');
 
+  // Optional — a family without a ladder falls back to the default in
+  // disputes/. But a ladder that IS supplied must be walkable: rungs
+  // contiguous from 1, and exactly one final rung, or an appeal could
+  // escalate into a tier nobody adjudicates.
+  if (policyRaw.disputeTiers !== undefined) {
+    if (!Array.isArray(policyRaw.disputeTiers)) {
+      v.fail('policy.disputeTiers', 'must be an array when present');
+    } else {
+      const tiers = policyRaw.disputeTiers as Array<Record<string, unknown>>;
+      if (tiers.length === 0) v.fail('policy.disputeTiers', 'must not be empty when present');
+      tiers.forEach((t, i) => {
+        if (t.tier !== i + 1) {
+          v.fail(`policy.disputeTiers[${i}].tier`, `must be ${i + 1} — rungs are contiguous from 1`);
+        }
+        if (typeof t.code !== 'string' || t.code.length === 0) {
+          v.fail(`policy.disputeTiers[${i}].code`, 'must be a non-empty string');
+        }
+        if (typeof t.responseHours !== 'number') {
+          v.fail(`policy.disputeTiers[${i}].responseHours`, 'must be a number');
+        }
+      });
+      if (tiers.filter((t) => t.final === true).length !== 1) {
+        v.fail('policy.disputeTiers', 'must have exactly one rung marked final');
+      }
+      if (tiers.length > 0 && tiers[tiers.length - 1].final !== true) {
+        v.fail('policy.disputeTiers', 'the final rung must be the last one');
+      }
+    }
+  }
+
   const supportResources = v.array(m.supportResources, 'supportResources', (item, p) => {
     const r = (item ?? {}) as Record<string, unknown>;
     const label = v.string(r.label, `${p}.label`);

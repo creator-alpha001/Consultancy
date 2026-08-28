@@ -34,11 +34,31 @@ export interface CredentialTypeInput {
   grantsPaidWorkSanction?: boolean;
 }
 
+/**
+ * One rung of a family's dispute ladder. Core walks this array and never
+ * names a rung, counts them, or knows which is final — that is what
+ * makes M7's "a dispute is raised, ruled, appealed, settled — no code
+ * change" bar true for a family whose ladder looks nothing like the exam
+ * family's.
+ */
+export interface DisputeTier {
+  /** 1-based rung. Must be contiguous from 1 — validated on publish. */
+  tier: number;
+  /** Family vocabulary, e.g. 'direct_resolution'. Never switched on in core. */
+  code: string;
+  /** How long this rung has to respond, for SLA display. Not enforced as a timer yet — see TRACKER.md. */
+  responseHours: number;
+  /** No appeal past this rung. A ladder with no final rung is rejected on publish. */
+  final?: boolean;
+}
+
 export interface FamilyPolicy {
   minTierForPaidWork: string;
   freeQuestionsPerDay: number;
   proposalQuotaPerWeek: number;
   regulatedCategories: string[];
+  /** Optional: a family with none gets DEFAULT_DISPUTE_TIERS from disputes/. */
+  disputeTiers?: DisputeTier[];
 }
 
 export interface SupportResource {

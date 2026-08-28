@@ -163,6 +163,82 @@ export class EngagementsService {
     return this.get(engagementId);
   }
 
+  /**
+   * Freezes an in-flight engagement while a dispute is adjudicated.
+   * Called by `disputes/` — the engagement lifecycle stays owned here,
+   * and the escrow leg stays owned by `money/`; neither module reaches
+   * into the other's tables.
+   */
+  async markDisputed(engagementId: string): Promise<EngagementRow> {
+    const engagement = await this.get(engagementId);
+    if (!['working', 'delivered', 'assessed'].includes(engagement.status)) {
+      throw engagementWrongStatus(engagementId, engagement.status, ['working', 'delivered', 'assessed']);
+    }
+
+    await this.pool.query(`UPDATE engagements SET status = 'disputed' WHERE id = $1`, [engagementId]);
+
+    const escrow = await this.escrows.findByEngagementId(engagementId);
+    if (escrow && escrow.status === 'held') {
+      await this.escrows.freezeForDispute(escrow.id);
+    }
+
+    return this.get(engagementId);
+  }
+
+  /**
+   * Carries out a dispute ruling against the escrow and ends the
+   * engagement accordingly. `disputes/` decides *what* the outcome is
+   * (a human ruling); this decides what that means for the lifecycle and
+   * delegates every rupee of it to `money/`.
+   */
+  async settleFromDispute(
+    engagementId: string,
+    outcome: 'release_to_provider' | 'refund_to_seeker' | 'split',
+    options?: { seekerRefundPaise?: bigint; reason?: string; bankAccountLast4?: string; bankIfsc?: string },
+  ): Promise<EngagementRow> {
+    const engagement = await this.get(engagementId);
+    if (engagement.status !== 'disputed') {
+      throw engagementWrongStatus(engagementId, engagement.status, ['disputed']);
+    }
+
+    const escrow = await this.escrows.findByEngagementId(engagementId);
+    if (!escrow) throw engagementEscrowMissing(engagementId);
+
+    const reason = options?.reason ?? 'dispute_ruling';
+
+    if (outcome === 'release_to_provider') {
+      await this.escrows.release({
+        escrowId: escrow.id,
+        idempotencyKey: `dispute-release:${escrow.id}`,
+        bankAccountLast4: options?.bankAccountLast4,
+        bankIfsc: options?.bankIfsc,
+      });
+      await this.pool.query(`UPDATE engagements SET status = 'completed' WHERE id = $1`, [engagementId]);
+    } else if (outcome === 'refund_to_seeker') {
+      await this.escrows.refund({
+        escrowId: escrow.id,
+        idempotencyKey: `dispute-refund:${escrow.id}`,
+        reason,
+      });
+      await this.pool.query(`UPDATE engagements SET status = 'refunded' WHERE id = $1`, [engagementId]);
+    } else {
+      await this.escrows.settleSplit({
+        escrowId: escrow.id,
+        idempotencyKey: `dispute-split:${escrow.id}`,
+        seekerRefundPaise: options?.seekerRefundPaise ?? 0n,
+        reason,
+        bankAccountLast4: options?.bankAccountLast4,
+        bankIfsc: options?.bankIfsc,
+      });
+      // Work was done and partly paid for: the engagement completed, on
+      // adjusted terms. Marking a split 'refunded' would misreport it in
+      // every stat that counts refunds against a provider.
+      await this.pool.query(`UPDATE engagements SET status = 'completed' WHERE id = $1`, [engagementId]);
+    }
+
+    return this.get(engagementId);
+  }
+
   /** Ends the engagement before any work started. Refunds escrow if one was already held (agenda not yet locked). */
   async cancel(engagementId: string): Promise<EngagementRow> {
     const engagement = await this.get(engagementId);
