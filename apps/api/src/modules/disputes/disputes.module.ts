@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DomainsModule } from '../domains/domains.module';
 import { EngagementsModule } from '../engagements/engagements.module';
+import { DisputesController } from './disputes.controller';
 import { DisputeService } from './dispute.service';
 import { EvidenceService } from './evidence.service';
 
@@ -12,6 +13,7 @@ import { EvidenceService } from './evidence.service';
  */
 @Module({
   imports: [DomainsModule, EngagementsModule],
+  controllers: [DisputesController],
   providers: [DisputeService, EvidenceService],
   exports: [DisputeService, EvidenceService],
 })

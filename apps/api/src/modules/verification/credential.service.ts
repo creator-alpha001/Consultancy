@@ -112,6 +112,25 @@ export class CredentialService {
     return this.hydrate(res.rows[0]);
   }
 
+  /** A provider's own credentials — the conclusion of each review, never the evidence behind it (#30). */
+  async listForProvider(providerId: string): Promise<ProviderCredentialRow[]> {
+    const res = await this.pool.query<CredentialDbRow>(
+      `SELECT * FROM provider_credentials WHERE provider_id = $1 ORDER BY created_at DESC`,
+      [providerId],
+    );
+    return Promise.all(res.rows.map((row) => this.hydrate(row)));
+  }
+
+  /** The admin review queue: everything a human still has to decide. */
+  async listAwaitingReview(): Promise<ProviderCredentialRow[]> {
+    const res = await this.pool.query<CredentialDbRow>(
+      `SELECT * FROM provider_credentials
+        WHERE status IN ('submitted', 'under_review')
+        ORDER BY created_at ASC`,
+    );
+    return Promise.all(res.rows.map((row) => this.hydrate(row)));
+  }
+
   /** Advisory only — always leaves the credential at 'under_review' for a human, whatever the result. */
   async runAutomatedCheck(credentialId: string): Promise<ProviderCredentialRow> {
     const res = await this.pool.query<CredentialDbRow & { verifier: string }>(

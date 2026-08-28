@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
+import { BigIntSerializerInterceptor } from './common/serialization/bigint.interceptor';
 import { DbModule } from './database/db.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthGuard } from './modules/identity/auth.guard';
@@ -40,6 +41,9 @@ import { VerificationModule } from './modules/verification/verification.module';
     // @Public(). The inverse — guarding routes one by one — fails open,
     // and the route someone forgets is the one that matters.
     { provide: APP_GUARD, useClass: AuthGuard },
+    // Money is bigint paise everywhere; JSON.stringify throws on those.
+    // Convert once at the boundary rather than per controller.
+    { provide: APP_INTERCEPTOR, useClass: BigIntSerializerInterceptor },
   ],
 })
 export class AppModule {}

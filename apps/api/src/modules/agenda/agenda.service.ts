@@ -127,6 +127,25 @@ export class AgendaService {
    * both see progress. Allowed post-lock by the DB trigger in 0011 —
    * this is the only agenda mutation a live session performs.
    */
+  /**
+   * Which engagement an agenda item belongs to. Exists so an HTTP caller
+   * handing over an item id can be access-checked against that
+   * engagement BEFORE anything is mutated (CLAUDE.md #28) — without it a
+   * controller would have to trust the id, which is the whole thing that
+   * rule forbids.
+   */
+  async getItemEngagement(itemId: string): Promise<{ engagementId: string }> {
+    const res = await this.pool.query<{ engagement_id: string }>(
+      `SELECT a.engagement_id
+         FROM agenda_items ai
+         JOIN agendas a ON a.id = ai.agenda_id
+        WHERE ai.id = $1`,
+      [itemId],
+    );
+    if (!res.rows[0]) throw agendaNotFound(itemId);
+    return { engagementId: res.rows[0].engagement_id };
+  }
+
   async tickItem(itemId: string): Promise<AgendaItemRow> {
     const res = await this.pool.query<AgendaItemDbRow>(
       `UPDATE agenda_items SET checked_at = now() WHERE id = $1 RETURNING *`,

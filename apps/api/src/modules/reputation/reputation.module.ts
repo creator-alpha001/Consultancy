@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { EngagementsModule } from '../engagements/engagements.module';
 import { RankingService } from './ranking.service';
+import { ReputationController } from './reputation.controller';
 import { ReviewService } from './review.service';
 
 /**
@@ -8,6 +10,8 @@ import { ReviewService } from './review.service';
  * (CLAUDE.md #17) — see `ranking.service.ts` for what that rules out.
  */
 @Module({
+  imports: [EngagementsModule],
+  controllers: [ReputationController],
   providers: [ReviewService, RankingService],
   exports: [ReviewService, RankingService],
 })

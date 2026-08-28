@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { MoneyModule } from '../money/money.module';
 import { TaxonomyModule } from '../taxonomy/taxonomy.module';
 import { VerificationModule } from '../verification/verification.module';
+import { EngagementAccessService } from './engagement-access.service';
+import { EngagementsController } from './engagements.controller';
 import { EngagementsService } from './engagements.service';
 
 /**
@@ -11,7 +13,8 @@ import { EngagementsService } from './engagements.service';
  */
 @Module({
   imports: [TaxonomyModule, MoneyModule, VerificationModule],
-  providers: [EngagementsService],
-  exports: [EngagementsService],
+  controllers: [EngagementsController],
+  providers: [EngagementsService, EngagementAccessService],
+  exports: [EngagementsService, EngagementAccessService],
 })
 export class EngagementsModule {}
