@@ -8,6 +8,7 @@ export function createPool(): Pool {
 export async function resetDatabase(pool: Pool): Promise<void> {
   await pool.query(`
     TRUNCATE TABLE
+      auth_events, recovery_codes, auth_factors, user_sessions,
       outbox, idempotency_keys, refunds, payouts, escrows,
       ledger_entries, ledger_transactions, ledger_accounts,
       fee_schedules,

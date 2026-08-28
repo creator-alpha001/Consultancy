@@ -4,12 +4,14 @@ import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PG_POOL } from '../../src/database/db.module';
 import { MoneyModule } from '../../src/modules/money/money.module';
+import { authenticate } from '../auth-helpers';
 import { closeTestApp, createTestApp } from '../nest-test-app';
 import { findAccountId, accountBalance, resetDatabase, seedEngagement, seedFeeSchedule, seedUsers } from '../test-utils';
 
 describe('Idempotency-Key on mutating money endpoints', () => {
   let app: INestApplication;
   let pool: Pool;
+  let adminBearer: string;
 
   beforeEach(async () => {
     if (!app) {
@@ -17,6 +19,8 @@ describe('Idempotency-Key on mutating money endpoints', () => {
       pool = app.get<Pool>(PG_POOL);
     }
     await resetDatabase(pool);
+    // A real admin session: these routes move money and are admin-only (#32 applies).
+    adminBearer = (await authenticate(app, 'admin')).bearer;
     await seedFeeSchedule(pool, 'INR', 1000); // 10%
   });
 
@@ -30,7 +34,7 @@ describe('Idempotency-Key on mutating money endpoints', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 10_000 });
 
     expect(res.status).toBe(400);
@@ -43,7 +47,7 @@ describe('Idempotency-Key on mutating money endpoints', () => {
 
     const first = await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', 'award-key-1')
       .send(body);
     expect(first.status).toBe(201);
@@ -51,7 +55,7 @@ describe('Idempotency-Key on mutating money endpoints', () => {
 
     const second = await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', 'award-key-1')
       .send(body);
     expect(second.status).toBe(201);
@@ -72,14 +76,14 @@ describe('Idempotency-Key on mutating money endpoints', () => {
 
     await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', 'reused-key')
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 10_000 })
       .expect(201);
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', 'reused-key')
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 99_999 });
 
@@ -91,7 +95,7 @@ describe('Idempotency-Key on mutating money endpoints', () => {
     const engagementId = await seedEngagement(pool, seekerId, providerId);
     const held = await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `hold:${engagementId}`)
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 50_000 })
       .expect(201);
@@ -100,14 +104,14 @@ describe('Idempotency-Key on mutating money endpoints', () => {
 
     const firstRelease = await request(app.getHttpServer())
       .post(`/internal/escrows/${escrowId}/release`)
-      .set('x-actor-id', providerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `release:${escrowId}`)
       .send({})
       .expect(201);
 
     const secondRelease = await request(app.getHttpServer())
       .post(`/internal/escrows/${escrowId}/release`)
-      .set('x-actor-id', providerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `release:${escrowId}`)
       .send({})
       .expect(201);

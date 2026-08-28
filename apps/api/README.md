@@ -161,9 +161,30 @@ marks; every category carries `traits.patternSource =
 domain** — it lists exactly what is trustworthy and what a human must
 confirm first.
 
+**identity/ — auth, sessions, mandatory 2FA** was built out of order,
+before M9, because a security review of a system with no authentication
+is not a security review. Until this landed, actor identity came from an
+`x-actor-id` **request header trusted blindly** — a direct violation of
+CLAUDE.md #28, and the reason no module since M3 had an HTTP surface.
+
+- **Default-deny**: a global `AuthGuard` protects every route; `@Public()`
+  opts one out. Guarding routes one-by-one fails open.
+- **Opaque server-side sessions, not JWTs** — revocation has to actually
+  work on a platform holding escrowed money. The token is 32 random
+  bytes, returned once, stored only as a SHA-256 digest; the role is
+  re-read from the database on every request, so a demotion takes effect
+  at once.
+- **argon2id** (`hash-wasm`, OWASP parameters), **TOTP** on `node:crypto`
+  (RFC 6238, constant-time, ±1 step window), single-use recovery codes.
+- **Login does not leak account existence**: identical code, message and
+  timing for a wrong password and an unknown address.
+- The admin pack editor and money's internal escrow routes are now
+  `@Roles('admin')`; both were previously reachable by anyone who could
+  set a header. Idempotency keys are scoped to the authenticated actor.
+
 `agenda/`, `engagements/`, `assessment/`, `verification/`, `sessions/`,
-`board/`, `reputation/`, and `disputes/` are service-layer only — no HTTP
-controllers. There's no auth yet to give a route a real actor, so nothing
+`board/`, `reputation/`, and `disputes/` are still service-layer only — no
+HTTP controllers. There's no auth yet to give a route a real actor, so nothing
 is exposed publicly; every M3–M7 test drives the services directly, same
 as production code eventually will.
 
@@ -326,6 +347,25 @@ Reserve is expected to run negative; that's what a reserve is (see D7 in
   distress- or contact-leak-flagged question is invisible to providers,
   not just to the public list. A published question flips to `answered`
   automatically on its first answer.
+
+## Identity invariants enforced by the database
+
+- **`trg_session_preconditions`** — CLAUDE.md #32 ("2FA mandatory for
+  provider and admin accounts") as a rule the database keeps, not one the
+  service remembers. No session row may exist for a provider or admin
+  unless `mfa_satisfied` is true **and** a confirmed `auth_factors` row
+  actually exists — so a caller cannot simply assert `mfa_satisfied`.
+  The same trigger enforces #27 (18+): no session for a user with no
+  `adult_confirmed_at`, whatever their role. Revocation is deliberately
+  exempt, so suspending an account can never strand its sessions open.
+- A confirmed second factor cannot be deleted or un-confirmed while its
+  owner holds a live session — that would leave them authenticated under
+  a rule that would now refuse them.
+- Session tokens and recovery codes are `CHECK`-constrained to digest
+  length, so a plaintext credential cannot be stored by mistake.
+- `auth_events` is append-only (#14): a login history cannot be quietly
+  rewritten, and a failed attempt for a non-existent address is recorded
+  without naming a user.
 
 ## Trust invariants enforced by the database
 

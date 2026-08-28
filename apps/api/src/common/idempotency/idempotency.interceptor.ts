@@ -12,25 +12,28 @@ import { IdempotencyService } from './idempotency.service';
 
 /**
  * Enforces the `Idempotency-Key` header (CLAUDE.md hard rule #10) on the
- * route it decorates. `actorId` is read from `req.actorId` — populated
- * by auth middleware once identity/ exists; until then a caller may set
- * the `x-actor-id` header directly, which is fine for M1's
- * internal/ops-triggered money endpoints but must not survive past the
- * real auth module landing.
+ * route it decorates.
+ *
+ * The actor comes from `req.actor`, set by `AuthGuard` from a real
+ * session. The `x-actor-id` header this once accepted is GONE: it let a
+ * client claim any identity, violating CLAUDE.md #28, and scoping
+ * idempotency keys by a caller-chosen id would also have let one caller
+ * collide with (or replay) another's key.
  */
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
   constructor(@Inject(IdempotencyService) private readonly idempotency: IdempotencyService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const req = context.switchToHttp().getRequest<Request & { actorId?: string }>();
+    const req = context.switchToHttp().getRequest<Request & { actor?: { userId: string } }>();
     const res = context.switchToHttp().getResponse<Response>();
 
     const key = req.header('idempotency-key');
     if (!key) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
-    const actorId = req.actorId ?? req.header('x-actor-id');
+    // Authenticated actor only. No header fallback — see the note above.
+    const actorId = req.actor?.userId;
     if (!actorId) {
       throw new BadRequestException('actor could not be determined for this request');
     }

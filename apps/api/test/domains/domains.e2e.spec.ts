@@ -9,8 +9,9 @@ import { DomainManifestService } from '../../src/modules/domains/domain-manifest
 import { DomainsModule } from '../../src/modules/domains/domains.module';
 import { FamilyManifestService } from '../../src/modules/domains/family-manifest.service';
 import { TaxonomyService } from '../../src/modules/taxonomy/taxonomy.service';
+import { authenticate } from '../auth-helpers';
 import { closeTestApp, createTestApp } from '../nest-test-app';
-import { resetDatabase, seedAdminUser } from '../test-utils';
+import { resetDatabase } from '../test-utils';
 import { domainManifestV1, domainManifestV2, familyManifestV1 } from './manifest-fixtures';
 
 describe('domain engine: publish, resolve, inheritance', () => {
@@ -187,10 +188,12 @@ describe('domain engine: publish, resolve, inheritance', () => {
 
   describe('via the admin pack-editor HTTP surface', () => {
     it('publishes a family and a domain manifest end to end and exposes them read-only', async () => {
-      const adminId = await seedAdminUser(pool);
+      // A real admin session — the pack editor is admin-only, and admins
+      // must hold a second factor (#32), so this exercises both.
+      const { bearer } = await authenticate(app, 'admin');
       const familyRes = await request(app.getHttpServer())
         .post('/admin/families/manifest')
-        .set('x-actor-id', adminId)
+        .set('authorization', bearer)
         .set('idempotency-key', 'publish-family-1')
         .send(familyManifestV1())
         .expect(201);
@@ -198,7 +201,7 @@ describe('domain engine: publish, resolve, inheritance', () => {
 
       const domainRes = await request(app.getHttpServer())
         .post('/admin/domains/manifest')
-        .set('x-actor-id', adminId)
+        .set('authorization', bearer)
         .set('idempotency-key', 'publish-domain-1')
         .send(domainManifestV1())
         .expect(201);
@@ -212,13 +215,13 @@ describe('domain engine: publish, resolve, inheritance', () => {
     });
 
     it('rejects an invalid manifest with the standard error envelope', async () => {
-      const adminId = await seedAdminUser(pool);
+      const { bearer } = await authenticate(app, 'admin');
       const raw = familyManifestV1() as Record<string, unknown>;
       delete raw.code;
 
       const res = await request(app.getHttpServer())
         .post('/admin/families/manifest')
-        .set('x-actor-id', adminId)
+        .set('authorization', bearer)
         .set('idempotency-key', 'publish-family-invalid')
         .send(raw);
 

@@ -5,6 +5,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PG_POOL } from '../../src/database/db.module';
 import { EscrowService } from '../../src/modules/money/escrow.service';
 import { MoneyModule } from '../../src/modules/money/money.module';
+import { authenticate } from '../auth-helpers';
 import { closeTestApp, createTestApp } from '../nest-test-app';
 import {
   accountBalance,
@@ -27,6 +28,7 @@ import {
 describe('platform-failure resolution (reserve-funded)', () => {
   let app: INestApplication;
   let pool: Pool;
+  let adminBearer: string;
   let escrows: EscrowService;
 
   beforeEach(async () => {
@@ -36,6 +38,8 @@ describe('platform-failure resolution (reserve-funded)', () => {
       escrows = app.get(EscrowService);
     }
     await resetDatabase(pool);
+    // A real admin session: these routes move money and are admin-only (#32 applies).
+    adminBearer = (await authenticate(app, 'admin')).bearer;
     await seedFeeSchedule(pool, 'INR', 1500); // 15%
   });
 
@@ -168,7 +172,7 @@ describe('platform-failure resolution (reserve-funded)', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${escrow.id}/platform-failure`)
-      .set('x-actor-id', escrow.seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `pf:${escrow.id}`)
       .send({ failureDetail: 'SFU outage' })
       .expect(201);
@@ -182,7 +186,7 @@ describe('platform-failure resolution (reserve-funded)', () => {
     const { escrow } = await heldEscrow(10_000n);
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${escrow.id}/platform-failure`)
-      .set('x-actor-id', escrow.seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `pf-nodetail:${escrow.id}`)
       .send({});
     expect(res.status).toBe(400);

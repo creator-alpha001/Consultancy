@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { DbModule } from './database/db.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AuthGuard } from './modules/identity/auth.guard';
+import { IdentityModule } from './modules/identity/identity.module';
 import { AgendaModule } from './modules/agenda/agenda.module';
 import { AssessmentModule } from './modules/assessment/assessment.module';
 import { BoardModule } from './modules/board/board.module';
@@ -30,6 +33,13 @@ import { VerificationModule } from './modules/verification/verification.module';
     BoardModule,
     ReputationModule,
     DisputesModule,
+    IdentityModule,
+  ],
+  providers: [
+    // Authentication is the DEFAULT, opted out of per-route with
+    // @Public(). The inverse — guarding routes one by one — fails open,
+    // and the route someone forgets is the one that matters.
+    { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })
 export class AppModule {}

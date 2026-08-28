@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after M8
+Last updated: 2026-08-28 · after identity/auth
 
 ---
 
@@ -26,6 +26,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
 | M9 | Hardening | Not started | — |
+| — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt
@@ -89,6 +90,35 @@ D13. The bar itself doesn't mention waves, so the milestone's actual
 acceptance criterion is met; the debt is that one listed feature is
 unimplemented and unclarified, not faked.
 
+### Why identity/auth was built out of order, before M9
+
+M9 is "hardening: reconciliation, 3G load test, accessibility, security
+review, restore drill." Two of those (accessibility, the real 3G bar)
+need a frontend that does not exist, and one (security review) would
+have been reviewing a system with **no authentication at all**: actor
+identity was an `x-actor-id` request header, trusted blindly, in direct
+violation of CLAUDE.md #28. Hardening a system before it has a front
+door is the wrong order, so identity/ was built first. This was put to
+the user as a choice and they chose it.
+
+**What it changed, beyond adding a module:** every HTTP route is now
+authenticated *by default* (a global `AuthGuard`, opted out of with
+`@Public()`), because the inverse fails open. The admin pack editor and
+money's internal escrow routes are `@Roles('admin')` — both were
+previously reachable by anyone who could set a header. The idempotency
+interceptor now scopes keys to the authenticated actor rather than a
+caller-supplied id, which also closed a cross-caller key-collision hole.
+`createTestApp` registers the same global guard, so no test runs against
+a more permissive app than production.
+
+Three CLAUDE.md rules became **database** invariants rather than service
+checks (`0026`), with 16 raw-SQL tests attempting the violations:
+  - **#32** 2FA mandatory for provider and admin accounts — and
+    "satisfied" must mean a factor that exists *and was confirmed*, so a
+    caller cannot simply assert `mfa_satisfied`.
+  - **#27** 18+ — no session for a user who has not attested.
+  - **#14** the auth audit is append-only.
+
 ---
 
 ## Open debt
@@ -109,6 +139,11 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
+| D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
+| D19 | identity | A provider cannot self-serve 2FA enrolment before their first login | #32 refuses a session until a factor is confirmed, but enrolment endpoints require a session — a genuine chicken-and-egg for a brand-new provider. Tests enrol via the service directly. Needs a short-lived, single-purpose enrolment ticket issued after password verification. **This blocks real provider onboarding.** |
+| D20 | identity | No email verification, password reset, or session-idle timeout | `users.email_verified_at` exists and nothing sets it; there is no reset flow (it would need the notifications relay, which nothing reads — see the `outbox` stub); sessions expire on a fixed 12h TTL with no idle timeout or renewal. |
+| D21 | identity | Password strength is length-only | 12-character minimum plus a check that it doesn't contain the email. No breach-corpus check (Have I Been Pwned k-anonymity or equivalent), which is the single highest-value addition and needs an outbound HTTP dependency decision. |
+| D22 | identity | No per-IP or global rate limiting | Per-account lockout exists (5 failures → 15 minutes). Nothing limits an attacker spreading attempts across many accounts, or hammering registration. Needs Redis, which the stack specifies but nothing uses yet. |
 | D16 | M8 | **Every seeded exam pattern is unverified** | 19 domains are seeded with category trees that were *not* confirmed against any current official notification — CLAUDE.md says so explicitly and it has not been done. Mitigated, not solved: every category carries `traits.patternSource = 'unverified_placeholder'` in the database, every domain is `publicly_listed = false`, and `seed/PROVENANCE.md` lists exactly what is and isn't trustworthy. **A human must confirm each pattern before that domain is listed.** |
 | D17 | M8 | Seeded price bands and calendar month hints are invented | `priceBands` have no market data behind them and `calendar[].monthHint` is indicative only — real exam calendars shift with each notification. Same status as the platform fee %: exercises the mechanism, decides nothing. |
 | D13 | M6 | "Waves" (SPEC-PLATFORM.md §18's M6 row) not implemented | No supplied spec document defines what a wave is on the board (staggered proposal visibility? cohort release to providers? something else) — confirmed there is no second, board-relevant occurrence of the word anywhere in SPEC-PLATFORM.md. Per CLAUDE.md, not invented. Needs a one-line clarification from the business before it's buildable. |
@@ -128,8 +163,6 @@ trusting any of them.**
 
 | Thing | Reality | Replaced in |
 |---|---|---|
-| `users` table | Email + role only. No auth, no password, no 2FA (CLAUDE.md #32 unmet) | Identity module |
-| Actor identity | Read from an `x-actor-id` **request header**, trusted blindly. Violates CLAUDE.md #28 — must not survive auth landing | Identity module |
 | `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money | M1 debt / pre-launch |
 | `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires | `notifications/` relay |
 | `MoneyController` (`/internal/escrows/*`) | Ops scaffolding from M1, now superseded by the real path: `engagements/` orchestrates hold/release via `EscrowService` directly. Kept only for ops tooling and the M1/M2 tests that predate the engagement loop — don't extend it. | Superseded by `engagements/` |
@@ -331,6 +364,49 @@ future task is surprised by something, it should be recorded here.
   that justify it. It aggregates over `engagement_skills` — the snapshot
   taken at `agree()` — so an engagement counts toward the skills it
   actually required when it ran, not whatever its category maps to now.
+- **Authentication is default-deny.** A global `AuthGuard` protects every
+  route; `@Public()` opts one out. Guarding routes individually fails
+  open, and the route someone forgets to guard is always the one that
+  matters. The only `@Public()` surfaces are register, login, and the
+  read-only domain catalogue (pack data published in order to be seen,
+  which SSR public pages need pre-login).
+- **Sessions are opaque and server-side, not JWTs.** A JWT cannot be
+  revoked before expiry without a denylist that recreates this table
+  anyway — and on a platform holding escrowed money, where an admin can
+  rule on disputes, "log this session out now" has to actually work. The
+  bearer token is 32 random bytes, returned once, stored only as a
+  SHA-256 digest, so a database leak yields no usable session. The role
+  is re-read from `users` on every request rather than carried in the
+  token, so a demotion takes effect immediately.
+- **One error for "wrong password" and "no such account."** Same code,
+  same message, and the password verifier runs against a dummy hash even
+  when no user matched, so timing does not differ either. Distinguishing
+  them would turn login into an account-enumeration oracle — on this
+  platform, that leaks who is preparing for a civil services exam.
+- **argon2id via `hash-wasm`, at OWASP's parameters** (m=19 MiB, t=3,
+  p=1; ~100ms measured). WASM rather than a native binding on purpose:
+  no compiler needed at install time, so a deploy cannot fail on a
+  missing toolchain and tempt someone into a weaker fallback.
+- **TOTP is implemented on `node:crypto`, not a dependency.** RFC 6238 is
+  about thirty lines; a supply-chain surface on the 2FA path is a poor
+  trade. Codes are compared in constant time, across a ±1 step window,
+  and the loop does not short-circuit on a match (which would leak which
+  step matched through timing).
+- **Recovery codes are hashed with plain SHA-256, deliberately.** Unlike
+  a chosen password, each is 80 bits of our own randomness, so there is
+  nothing to brute-force faster than the keyspace and a slow KDF buys
+  nothing.
+- **18+ is an attestation timestamp, not a date of birth.** `#27` needs
+  us to refuse minors, not to know anyone's birthday; the payment
+  aggregator owns KYC. Personal data we do not need is data we should
+  not hold.
+- **Seekers are not forced into 2FA.** #32 names providers and admins.
+  Quietly extending a security requirement to a population the spec
+  didn't name would be inventing policy — seekers *may* enrol, and the
+  code path supports it.
+- **A confirmed factor cannot be removed while its owner holds a live
+  session.** Otherwise a provider would keep an authenticated session
+  that #32 would now refuse to issue.
 - **M8 changed zero files under `apps/api/src/`.** Verified, not asserted:
   after seeding 19 domains, `git diff -- apps/api/src/` was empty. The
   milestone added `seed/` (data), `test/seed/` (one test), and a single
@@ -384,8 +460,8 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **191 tests, all passing**,
-  including a from-scratch run (`DROP DATABASE`, re-run all 24 migrations,
+- Full suite: `cd apps/api && npm test` — **224 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 26 migrations,
   full suite) to confirm migration order integrity, as of this update.
 - `npm run migrate` and `npm run seed` need `DATABASE_URL` in the
   environment; they do not read `.env` themselves.

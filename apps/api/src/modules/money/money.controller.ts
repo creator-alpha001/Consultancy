@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Inject, Param, Post, UseInterceptors } from '@nestjs/common';
 import { EscrowService } from './escrow.service';
 import { IdempotencyInterceptor } from '../../common/idempotency/idempotency.interceptor';
+import { Roles } from '../identity/auth.guard';
 import { EscrowRow } from './types';
 
 /**
@@ -10,8 +11,13 @@ import { EscrowRow } from './types';
  * controller exists so the money spine has an exercisable HTTP surface
  * (and a real Idempotency-Key test) before that lifecycle exists.
  * Expect it to be superseded, not extended, once M3 lands.
+ *
+ * Admin-only, and therefore 2FA-only (#32). These routes move real money
+ * on someone else's behalf; before identity/ existed they were reachable
+ * by anyone who could set a header.
  */
 @Controller('internal/escrows')
+@Roles('admin')
 export class MoneyController {
   constructor(@Inject(EscrowService) private readonly escrows: EscrowService) {}
 

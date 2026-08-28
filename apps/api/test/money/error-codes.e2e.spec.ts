@@ -7,6 +7,7 @@ import { EscrowService } from '../../src/modules/money/escrow.service';
 import { LedgerService } from '../../src/modules/money/ledger.service';
 import { MoneyModule } from '../../src/modules/money/money.module';
 import { PAYMENT_AGGREGATOR, PaymentAggregator } from '../../src/modules/money/pa/payment-aggregator.interface';
+import { authenticate } from '../auth-helpers';
 import { closeTestApp, createTestApp } from '../nest-test-app';
 import { resetDatabase, seedEngagement, seedFeeSchedule, seedUsers } from '../test-utils';
 
@@ -23,6 +24,7 @@ import { resetDatabase, seedEngagement, seedFeeSchedule, seedUsers } from '../te
 describe('money error codes', () => {
   let app: INestApplication;
   let pool: Pool;
+  let adminBearer: string;
   let escrows: EscrowService;
 
   beforeEach(async () => {
@@ -32,6 +34,8 @@ describe('money error codes', () => {
       escrows = app.get(EscrowService);
     }
     await resetDatabase(pool);
+    // A real admin session: these routes move money and are admin-only (#32 applies).
+    adminBearer = (await authenticate(app, 'admin')).bearer;
     await seedFeeSchedule(pool, 'INR', 1500);
   });
 
@@ -59,7 +63,7 @@ describe('money error codes', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${missingId}/release`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', 'missing-escrow')
       .send({});
 
@@ -75,7 +79,7 @@ describe('money error codes', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${escrowId}/release`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `release-after-refund:${escrowId}`)
       .send({});
 
@@ -90,7 +94,7 @@ describe('money error codes', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${escrowId}/refund`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `refund-after-release:${escrowId}`)
       .send({ reason: 'dispute_ruling' });
 
@@ -106,7 +110,7 @@ describe('money error codes', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `hold-no-fees:${engagementId}`)
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 10_000 });
 
@@ -135,6 +139,7 @@ describe('money error codes', () => {
 describe('money error codes — payment aggregator failure', () => {
   let app: INestApplication;
   let pool: Pool;
+  let adminBearer: string;
 
   /** Stands in for a declined capture: the one PA outcome the sandbox adapters never produce. */
   const decliningAggregator: PaymentAggregator = {
@@ -157,6 +162,7 @@ describe('money error codes — payment aggregator failure', () => {
     }
     await resetDatabase(pool);
     await seedFeeSchedule(pool, 'INR', 1500);
+    adminBearer = (await authenticate(app, 'admin')).bearer;
   });
 
   afterAll(async () => {
@@ -169,7 +175,7 @@ describe('money error codes — payment aggregator failure', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/internal/escrows/${engagementId}/hold`)
-      .set('x-actor-id', seekerId)
+      .set('authorization', adminBearer)
       .set('idempotency-key', `hold-declined:${engagementId}`)
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 10_000 });
 

@@ -1,0 +1,204 @@
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { createPool, resetDatabase } from '../test-utils';
+
+/**
+ * Raw-SQL invariant tests for identity. These bypass every service — if
+ * a rule only holds because `AuthService` remembers to check it, it does
+ * not hold, and these are the tests that say so.
+ *
+ * The two that matter most:
+ *   CLAUDE.md #32 — 2FA is MANDATORY for provider and admin accounts.
+ *   CLAUDE.md #27 — the platform is 18+.
+ */
+describe('identity invariants (raw SQL)', () => {
+  const pool = createPool();
+
+  beforeEach(async () => {
+    await resetDatabase(pool);
+  });
+
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  async function makeUser(role: string, opts: { adult?: boolean; status?: string } = {}): Promise<string> {
+    const unique = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const res = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, role, adult_confirmed_at, status)
+       VALUES ($1, $2::user_role, $3, $4::user_status) RETURNING id`,
+      [
+        `${role}+${unique}@test.local`,
+        role,
+        opts.adult === false ? null : new Date(),
+        opts.status ?? 'active',
+      ],
+    );
+    return res.rows[0].id;
+  }
+
+  const token = (n: string): string => n.padStart(64, '0');
+
+  async function insertSession(userId: string, mfaSatisfied: boolean, tokenSeed = 'a'): Promise<unknown> {
+    return pool.query(
+      `INSERT INTO user_sessions (user_id, token_hash, mfa_satisfied, expires_at)
+       VALUES ($1, $2, $3, now() + interval '1 hour')`,
+      [userId, token(`${tokenSeed}${Math.random().toString(36).slice(2)}`), mfaSatisfied],
+    );
+  }
+
+  describe('hard rule #32 — 2FA mandatory for providers and admins', () => {
+    it('refuses a provider session with no second factor satisfied', async () => {
+      const providerId = await makeUser('provider');
+      await expect(insertSession(providerId, false)).rejects.toThrow(
+        /a second factor is mandatory and was not satisfied/,
+      );
+    });
+
+    it('refuses an admin session with no second factor satisfied', async () => {
+      const adminId = await makeUser('admin');
+      await expect(insertSession(adminId, false)).rejects.toThrow(
+        /a second factor is mandatory and was not satisfied/,
+      );
+    });
+
+    it('refuses a provider session claiming mfa_satisfied with NO factor enrolled', async () => {
+      // The important one: a caller cannot simply assert mfa_satisfied.
+      const providerId = await makeUser('provider');
+      await expect(insertSession(providerId, true)).rejects.toThrow(/no confirmed second factor enrolled/);
+    });
+
+    it('refuses when the enrolled factor was never confirmed', async () => {
+      const providerId = await makeUser('provider');
+      await pool.query(
+        `INSERT INTO auth_factors (user_id, type, secret) VALUES ($1, 'totp', 'JBSWY3DPEHPK3PXP')`,
+        [providerId],
+      );
+      await expect(insertSession(providerId, true)).rejects.toThrow(/no confirmed second factor enrolled/);
+    });
+
+    it('allows a provider session once a CONFIRMED factor exists and mfa was satisfied', async () => {
+      const providerId = await makeUser('provider');
+      await pool.query(
+        `INSERT INTO auth_factors (user_id, type, secret, confirmed_at)
+         VALUES ($1, 'totp', 'JBSWY3DPEHPK3PXP', now())`,
+        [providerId],
+      );
+      await expect(insertSession(providerId, true)).resolves.toBeDefined();
+    });
+
+    it('allows a seeker session without any second factor — the rule names providers and admins only', async () => {
+      const seekerId = await makeUser('seeker');
+      await expect(insertSession(seekerId, false)).resolves.toBeDefined();
+    });
+
+    it('refuses to remove a provider\'s confirmed factor while they hold a live session', async () => {
+      const providerId = await makeUser('provider');
+      await pool.query(
+        `INSERT INTO auth_factors (user_id, type, secret, confirmed_at)
+         VALUES ($1, 'totp', 'JBSWY3DPEHPK3PXP', now())`,
+        [providerId],
+      );
+      await insertSession(providerId, true);
+
+      await expect(
+        pool.query(`DELETE FROM auth_factors WHERE user_id = $1`, [providerId]),
+      ).rejects.toThrow(/revoke them before removing their second factor/);
+
+      // Un-confirming is the same hole by another name.
+      await expect(
+        pool.query(`UPDATE auth_factors SET confirmed_at = NULL WHERE user_id = $1`, [providerId]),
+      ).rejects.toThrow(/revoke them before removing their second factor/);
+    });
+  });
+
+  describe('hard rule #27 — the platform is 18+', () => {
+    it('refuses a session for a user who has not confirmed they are an adult', async () => {
+      const seekerId = await makeUser('seeker', { adult: false });
+      await expect(insertSession(seekerId, false)).rejects.toThrow(/has not confirmed they are 18\+/);
+    });
+
+    it('applies to every role, not just seekers', async () => {
+      const adminId = await makeUser('admin', { adult: false });
+      await pool.query(
+        `INSERT INTO auth_factors (user_id, type, secret, confirmed_at)
+         VALUES ($1, 'totp', 'JBSWY3DPEHPK3PXP', now())`,
+        [adminId],
+      );
+      await expect(insertSession(adminId, true)).rejects.toThrow(/has not confirmed they are 18\+/);
+    });
+  });
+
+  describe('account status', () => {
+    it('refuses a session for a suspended account', async () => {
+      const seekerId = await makeUser('seeker', { status: 'suspended' });
+      await expect(insertSession(seekerId, false)).rejects.toThrow(/is suspended; no session/);
+    });
+
+    it('still permits revoking an existing session after the account is suspended', async () => {
+      // Revocation must never be blocked by the rules about *creating*
+      // sessions — otherwise suspending an account would strand its
+      // live sessions open.
+      const seekerId = await makeUser('seeker');
+      await insertSession(seekerId, false);
+      await pool.query(`UPDATE users SET status = 'suspended' WHERE id = $1`, [seekerId]);
+      await expect(
+        pool.query(`UPDATE user_sessions SET revoked_at = now() WHERE user_id = $1`, [seekerId]),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('credential storage', () => {
+    it('rejects a session token_hash that is not a sha256 digest', async () => {
+      const seekerId = await makeUser('seeker');
+      await expect(
+        pool.query(
+          `INSERT INTO user_sessions (user_id, token_hash, expires_at)
+           VALUES ($1, 'plaintext-token', now() + interval '1 hour')`,
+          [seekerId],
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('rejects a recovery code stored at the wrong length', async () => {
+      const seekerId = await makeUser('seeker');
+      await expect(
+        pool.query(`INSERT INTO recovery_codes (user_id, code_hash) VALUES ($1, 'ABC-123')`, [seekerId]),
+      ).rejects.toThrow();
+    });
+
+    it('rejects a session that expires before it was issued', async () => {
+      const seekerId = await makeUser('seeker');
+      await expect(
+        pool.query(
+          `INSERT INTO user_sessions (user_id, token_hash, expires_at)
+           VALUES ($1, $2, now() - interval '1 hour')`,
+          [seekerId, token('b')],
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('auth audit is append-only (#14)', () => {
+    it('rejects editing or deleting an auth event', async () => {
+      const seekerId = await makeUser('seeker');
+      const event = await pool.query<{ id: string }>(
+        `INSERT INTO auth_events (user_id, event_type) VALUES ($1, 'login_failed') RETURNING id`,
+        [seekerId],
+      );
+      await expect(
+        pool.query(`UPDATE auth_events SET event_type = 'login_succeeded' WHERE id = $1`, [event.rows[0].id]),
+      ).rejects.toThrow(/append-only/);
+      await expect(
+        pool.query(`DELETE FROM auth_events WHERE id = $1`, [event.rows[0].id]),
+      ).rejects.toThrow(/append-only/);
+    });
+
+    it('records a failed attempt for an address with no account, without naming a user', async () => {
+      await expect(
+        pool.query(
+          `INSERT INTO auth_events (user_id, event_type, detail) VALUES (NULL, 'login_failed', '{"reason":"no_such_user"}'::jsonb)`,
+        ),
+      ).resolves.toBeDefined();
+    });
+  });
+});
