@@ -8,6 +8,7 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "migrate": "ts-node src/database/migrate.ts",
+    "seed": "ts-node seed/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit"

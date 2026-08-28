@@ -134,6 +134,33 @@ orders matched providers for a search and deliberately exposes no rank,
 percentile, streak, or badge to anyone (hard rule #17); a provider sees
 only their own history, and no ordering anywhere considers price (#15).
 
+**M8 — the architecture's exam** is passed. `seed/` publishes the civil
+services family and **19 domains** (UPSC CSE plus 18 state PSCs) through
+the ordinary `domains/` publish API. The bar SPEC-PLATFORM.md §18 sets is
+"zero core code changed," and that was verified rather than asserted:
+after seeding, `git diff -- apps/api/src/` was **empty**. The milestone
+added `seed/`, one test file, and a single `npm run seed` script line —
+no migration, no module, no branch on a domain code. `test/seed/
+architecture-exam.e2e.spec.ts` also adds a twentieth domain at runtime,
+in a language no other domain uses, to show the claim generalises.
+
+The number that matters: **one verified skill reaches all 19 domains.**
+`answer_writing.gs.polity` maps to a category in every one of them, so a
+mentor verified once is matchable family-wide — the supply-liquidity
+argument from §2, measured on seeded data rather than asserted. State GS
+is deliberately a separate skill per state, so that same mentor is *not*
+silently treated as competent in eighteen different states' histories.
+
+⚠️ **Every seeded exam pattern is unverified.** CLAUDE.md requires
+confirmation against the current official notification before seeding,
+and that was not possible here. So the trees state only what matching
+needs (stages → papers → skills) rather than inventing paper counts or
+marks; every category carries `traits.patternSource =
+'unverified_placeholder'` in the database; and every domain is seeded
+`publicly_listed = false`. **Read `seed/PROVENANCE.md` before listing any
+domain** — it lists exactly what is trustworthy and what a human must
+confirm first.
+
 `agenda/`, `engagements/`, `assessment/`, `verification/`, `sessions/`,
 `board/`, `reputation/`, and `disputes/` are service-layer only — no HTTP
 controllers. There's no auth yet to give a route a real actor, so nothing
@@ -153,10 +180,14 @@ createdb sankalp_test -O sankalp
 
 npm install
 npm run migrate           # applies src/database/migrations/*.sql in order
+npm run seed              # publishes the exam family + 19 domains (idempotent)
 
 npm run test              # runs against $DATABASE_URL — point it at sankalp_test
 npm run start:dev
 ```
+
+`migrate` and `seed` read `DATABASE_URL` from the environment, not from
+`.env` — `export $(grep -v '^#' .env | xargs)` first.
 
 ## Migrations
 

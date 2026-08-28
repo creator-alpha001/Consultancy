@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after M7
+Last updated: 2026-08-28 · after M8
 
 ---
 
@@ -24,7 +24,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M5 | Sessions | **Partial — not complete** | No — see below |
 | M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
 | M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
-| M8 | Seed 15 more domains as data only | Not started | — |
+| M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
 | M9 | Hardening | Not started | — |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
@@ -109,6 +109,8 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
+| D16 | M8 | **Every seeded exam pattern is unverified** | 19 domains are seeded with category trees that were *not* confirmed against any current official notification — CLAUDE.md says so explicitly and it has not been done. Mitigated, not solved: every category carries `traits.patternSource = 'unverified_placeholder'` in the database, every domain is `publicly_listed = false`, and `seed/PROVENANCE.md` lists exactly what is and isn't trustworthy. **A human must confirm each pattern before that domain is listed.** |
+| D17 | M8 | Seeded price bands and calendar month hints are invented | `priceBands` have no market data behind them and `calendar[].monthHint` is indicative only — real exam calendars shift with each notification. Same status as the platform fee %: exercises the mechanism, decides nothing. |
 | D13 | M6 | "Waves" (SPEC-PLATFORM.md §18's M6 row) not implemented | No supplied spec document defines what a wave is on the board (staggered proposal visibility? cohort release to providers? something else) — confirmed there is no second, board-relevant occurrence of the word anywhere in SPEC-PLATFORM.md. Per CLAUDE.md, not invented. Needs a one-line clarification from the business before it's buildable. |
 
 **Recently closed:** D1 (money error codes), D2 (per-currency sum-to-zero
@@ -143,6 +145,8 @@ trusting any of them.**
 | Session booking | Booked directly against a fixed `scheduled_start`/`scheduled_end` chosen by the caller. No RRULE availability, exceptions, buffers, or notice periods (§9) | Not built — see the M5 note above |
 | `sessions.mode = 'audio_only'` | Records that a session is in audio-only mode; nothing actually adapts bitrate or detects network quality to trigger it | Needs a real client + SFU |
 | `transcripts.content_ref` | Same placeholder pattern as `submissions.content_ref` — no object storage, no real transcript ever generated | When object storage is wired up |
+| `seed/domains.ts` exam patterns | **The single most misleading-looking thing in the repo.** Nineteen plausible, structurally-reasonable exam trees, none confirmed against an official notification. They are marked unverified in the DB and none is publicly listed — but they will look authoritative to anyone who skims them. Read `seed/PROVENANCE.md` first | Human confirmation, per domain, before listing |
+| `result_list_entries` for all 19 seeded domains | Every domain declares a `resultSource` and the verifier reading it is real, but **nothing populates the table** (D12). Every `exam_rank` credential in every seeded domain will fail its automated check and fall to manual review | The import pipeline (D12) |
 | `docs/reference/schema-v4-family.sql` | Reference only; never applied. Assumes tables from schema v1–v3 we never received | n/a |
 
 ---
@@ -327,6 +331,41 @@ future task is surprised by something, it should be recorded here.
   that justify it. It aggregates over `engagement_skills` — the snapshot
   taken at `agree()` — so an engagement counts toward the skills it
   actually required when it ran, not whatever its category maps to now.
+- **M8 changed zero files under `apps/api/src/`.** Verified, not asserted:
+  after seeding 19 domains, `git diff -- apps/api/src/` was empty. The
+  milestone added `seed/` (data), `test/seed/` (one test), and a single
+  `npm run seed` script line in `package.json` — nothing else. That is
+  the architecture's exam, and it passed on the terms SPEC-PLATFORM.md
+  §18 set.
+- **Seeded exam patterns are deliberately coarse, and marked unverified
+  in the database.** CLAUDE.md forbids trusting any exam pattern that
+  hasn't been checked against a current official notification, and no
+  such check was possible here. Rather than either inventing precise
+  paper counts and marks (which would look authoritative and be wrong)
+  or refusing to seed at all (which would fail the milestone), the trees
+  state only what matching genuinely needs — stages, papers, and their
+  skill mappings — and carry
+  `traits.patternSource = 'unverified_placeholder'` on every node.
+  `categories.traits` is an existing column (SPEC-PLATFORM.md §16's
+  forward-compat hook), so this needed no schema change either.
+- **Nothing seeded is publicly listed.** All 19 land with
+  `publicly_listed = false`, the column default; the seed script never
+  sets it true. Opening a domain is a human decision per domain, gated
+  on a confirmed pattern *and* real supply — SPEC-PLATFORM.md §18:
+  "Listing a domain with no providers is worse than not listing it."
+- **One shared skill reaches all 19 domains.** Measured on seeded data,
+  not asserted: `answer_writing.gs.polity`, `answer_writing.essay`,
+  `interview.personality` and five others each map to a category in
+  every one of the 19; `language.hindi.formal` reaches 10. That number
+  *is* the supply-liquidity argument from §2 — one verification, the
+  whole family — and it is why the taxonomy is family-level rather than
+  per-exam.
+- **State GS is a separate skill per state, not one "state GS" skill.**
+  A mentor verified in national GS is matchable on a state's *national*
+  GS paper but not its state-specific one, which additionally requires
+  `state_gs.<state>`. Tested. The alternative would have let one
+  verification silently claim competence in eighteen different states'
+  histories.
 - **Ranking exists, but exposes no position to anyone (hard rule #17).**
   `RankingService.rankProviders` returns provider ids *in an order* for
   one specific search; there is no rank number, percentile, streak,
@@ -345,11 +384,16 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **181 tests, all passing**,
+- Full suite: `cd apps/api && npm test` — **191 tests, all passing**,
   including a from-scratch run (`DROP DATABASE`, re-run all 24 migrations,
   full suite) to confirm migration order integrity, as of this update.
-- `npm run migrate` needs `DATABASE_URL` in the environment; it does not
-  read `.env` itself. `export $(grep -v '^#' .env | xargs)` first.
+- `npm run migrate` and `npm run seed` need `DATABASE_URL` in the
+  environment; they do not read `.env` themselves.
+  `export $(grep -v '^#' .env | xargs)` first.
+- `npm run seed` publishes the family + 19 domains and is idempotent
+  (re-running supersedes manifest versions rather than duplicating;
+  categories deactivate instead of deleting). Verified against a real
+  `sankalp_dev` database, twice.
 - Docker is unavailable in this environment; use the local cluster.
 
 ---
