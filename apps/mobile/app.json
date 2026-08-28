@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Sankalp",
+    "slug": "sankalp",
+    "scheme": "sankalp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": { "package": "in.sankalp.app", "adaptiveIcon": { "backgroundColor": "#fdfcf7" } },
+    "ios": { "supportsTablet": false, "bundleIdentifier": "in.sankalp.app" },
+    "web": { "bundler": "metro", "output": "single" },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "extra": { "apiBaseUrl": "http://localhost:3000" }
+  }
+}

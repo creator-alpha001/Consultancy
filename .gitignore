@@ -6,3 +6,4 @@ dist/
 
 # Recorded walkthrough video — large, regenerable with test/walkthrough.mjs
 docs/screens/walkthrough/video/
+.expo/

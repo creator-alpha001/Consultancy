@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after the booking UI, plus docs/RUNNING.md and a walkthrough recording
+Last updated: 2026-08-28 · after apps/mobile — a real React Native app
 
 ---
 
@@ -28,6 +28,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M9 | Hardening | **Partial — not complete** | No — reconciliation, restore drill and a DB perf baseline are real and verified; 3G, accessibility and the security review are not. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
 | — | **apps/web** (frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see below |
+| — | **apps/mobile** (React Native, unscheduled) | **Seeker journey working; the primary client** | n/a — see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt
@@ -159,6 +160,59 @@ reputation/` would have been a module cycle) for mentor discovery.
 works), the admin adjudication and moderation queues, and provider
 credential submission. See D25.
 
+### apps/mobile — the native app
+
+Added 2026-08-28 after the user said plainly that the web UI was poor and
+asked whether this was a web app or a mobile app. It was a web app; the
+users CLAUDE.md describes ("mid-range Android over patchy networks") want
+an app. So there is now a real React Native one (Expo Router), talking to
+the same API.
+
+**This is a stack addition, made on an explicit request.** CLAUDE.md's
+stack table names Next.js for web and says not to substitute without
+asking. The user asked. `apps/web` stays — it is still the right surface
+for SEO, desktop and the admin screens.
+
+**What was wrong with the web UI, specifically** — worth recording so it
+is not repeated:
+- *Engineering commentary was shipped as product copy.* Every screen
+  carried a grey `RuleNote` explaining why there is no price sort, what
+  the database refuses, which rule was being obeyed. That was written for
+  a reviewer, not a user, and it is most of why the screens read as an
+  internal tool. The constraints still hold in the mobile app; they are
+  enforced silently.
+- A desktop layout squeezed onto a phone: wrapping top nav, no bottom
+  tabs, no app chrome.
+- Mentor cards repeated "No reviews yet / 0 completed" under all fourteen
+  verified skills, burying the person under their own metadata.
+- **A real bug**: `{providerWord}s` rendered `2 मेंटरs` and `an अभ्यर्थी
+  account` — an English plural and article welded onto a Devanagari noun.
+  Fixed in `apps/mobile/src/lib/pack.ts` (`plural()` uses the count where
+  a script does not pluralise by suffix). **`apps/web` still has this
+  bug** — see D29.
+
+**Built:** five bottom tabs (Home, Find, Work, Sessions, You), mentor
+search and profile, booking with a slot picker, the engagement hub, the
+agenda (draft, add/remove goals, lock behind an explicit confirmation),
+the live session room (both-party consent, live checklist, audio-only
+fallback), sign-in and register.
+
+**One genuine architectural difference from the web app.** There, the
+browser never touches the API and the session sits in an httpOnly cookie.
+A native app has no server half, so it holds the token itself — in the
+platform keystore via `expo-secure-store`. On the web target used for
+screenshots there is no SecureStore, so it is memory-only and a reload
+signs you out; `localStorage` was deliberately refused for a token that
+can move money.
+
+**Verification is honest but limited.** There is no Android SDK, no
+emulator and no `/dev/kvm` in this container, so the native app cannot be
+run here. `test/shots.mjs` drives the *same* React Native components
+through react-native-web at a Pixel 7 viewport against the real API — it
+proves the screens compose, fetch and navigate, and it caught the
+Devanagari plural leak. It is not a substitute for a device. Run
+`npx expo start` and open it in Expo Go to actually hold it.
+
 ### Why M9 is partial — what is real, and what is not
 
 M9 is "hardening: reconciliation, 3G load test, accessibility, security
@@ -265,6 +319,8 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
+| D29 | web | `apps/web` still renders `2 मेंटरs` and `an अभ्यर्थी account` | An English plural and article concatenated onto a Devanagari noun, in `mentors/page.tsx` and elsewhere. `apps/mobile/src/lib/pack.ts` has the fix (`plural()` / `withArticle()`); the web app needs the same helper. Cosmetic in English, and quietly insulting in Hindi. |
+| D30 | web | `RuleNote` puts engineering commentary on every web screen | "There is no sort-by-price control here, at any layer…" is written for a reviewer, not a user. It should move to code comments and the docs; the rules stay enforced either way. The mobile app already does this. |
 | D25 | web | Screens still missing: dispute detail, admin queues, credential submission | The booking + mentorship loop is now built and driven in a browser (mentor search, profile, booking with slot picking, agenda draft/lock, session room, submission, rubric evaluation, accept/dispute, review, board post + propose + accept). What remains unbuilt: the dispute *detail* and appeal screens (raising one works), the admin adjudication and moderation queues, and provider credential submission. |
 | D26 | web | No frontend test suite beyond the browser journeys | `test/journey.mjs` and `test/booking-journey.mjs` (31 checks) drive the real flows and catch a lot — the latter found a 500 on `/engagements` that the happy path had walked past — but there are no component tests and nothing runs in CI. Both need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
 | D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
