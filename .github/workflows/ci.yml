@@ -1,0 +1,183 @@
+name: CI
+
+# Nothing verified this repository on push until now. A route ordered by a
+# column that does not exist shipped and threw on every call for its whole
+# life (TRACKER D40) because no test ran it and no screen called it — the
+# suite that would have caught it existed, and simply never ran here.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push makes an in-flight run irrelevant; the browser lane is
+  # slow enough that queueing them serially wastes real time.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgres://sankalp:sankalp@localhost:5432/sankalp_test
+  DEV_DATABASE_URL: postgres://sankalp:sankalp@localhost:5432/sankalp_dev
+  MONEY_PA_WEBHOOK_SECRET_RAZORPAY: ci-secret
+
+jobs:
+  # ── Fast lane ──────────────────────────────────────────────────────
+  # Seconds, no database, no browser. If the two apps have drifted apart
+  # or something does not typecheck, say so before spending ten minutes
+  # on Postgres and Chromium.
+  static:
+    name: Tokens and types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            apps/api/package-lock.json
+            apps/web/package-lock.json
+
+      - name: Design tokens are in sync
+        run: node scripts/sync-tokens.mjs --check
+
+      - name: Install (api)
+        working-directory: apps/api
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck (api)
+        working-directory: apps/api
+        run: npm run typecheck
+
+      - name: Install (web)
+        working-directory: apps/web
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck (web)
+        working-directory: apps/web
+        run: npm run typecheck
+      - name: Build (web)
+        working-directory: apps/web
+        run: npm run build
+
+  # ── The API suite ──────────────────────────────────────────────────
+  api:
+    name: API suite
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sankalp
+          POSTGRES_PASSWORD: sankalp
+          POSTGRES_DB: sankalp_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sankalp"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install
+        working-directory: apps/api
+        run: npm ci --no-audit --no-fund
+
+      - name: Migrate
+        working-directory: apps/api
+        run: npm run migrate
+
+      # Every invariant test attempts a violation in raw SQL and asserts
+      # the database refuses it, so this lane is where the money rules are
+      # actually held down.
+      - name: Test
+        working-directory: apps/api
+        run: npm test
+
+  # ── The browser journeys ───────────────────────────────────────────
+  # The whole stack, driven for real: booking, the provider side behind
+  # mandatory 2FA, and the ops queues.
+  journeys:
+    name: Browser journeys
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sankalp
+          POSTGRES_PASSWORD: sankalp
+          POSTGRES_DB: sankalp_dev
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sankalp"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            apps/api/package-lock.json
+            apps/web/package-lock.json
+
+      - name: Install (api)
+        working-directory: apps/api
+        run: npm ci --no-audit --no-fund
+      - name: Install (web)
+        working-directory: apps/web
+        run: npm ci --no-audit --no-fund
+
+      # The admin journey shells out to psql to promote an account and to
+      # read back what the UI wrote.
+      - name: Postgres client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      # One definition, not two: the same script that runs the stack
+      # locally runs it here. A CI file that reimplements the setup is a
+      # second copy that drifts, and the drift is only discovered when a
+      # green pipeline disagrees with a working machine.
+      - name: Bring the stack up
+        run: ./scripts/dev.sh up
+        env:
+          DEV_DB: sankalp_dev
+          TEST_DB: sankalp_test
+          # The mobile app is not built or driven in this job; installing
+          # its dependencies would add minutes for nothing.
+          DEV_APPS: api web
+
+      - name: Booking journey
+        working-directory: apps/web
+        run: npm run journey:booking
+
+      - name: Provider journey
+        working-directory: apps/web
+        run: npm run journey:provider
+
+      - name: Ops journey
+        working-directory: apps/web
+        run: npm run journey:admin
+
+      # Screenshots are the point of a failed journey — the assertion says
+      # what broke, the image says what it looked like.
+      - name: Screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-output
+          path: |
+            docs/screens/
+            .dev/*.log
+          retention-days: 7
+          if-no-files-found: warn

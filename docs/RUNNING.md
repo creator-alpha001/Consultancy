@@ -29,6 +29,12 @@ web     http://localhost:3001
 | `./scripts/dev.sh test` | Typechecks, the API suite, and the browser journeys |
 | `./scripts/dev.sh logs` | Tail all service logs |
 
+CI runs the same script. `.github/workflows/ci.yml` calls
+`./scripts/dev.sh up` and then the journeys, rather than restating the
+setup in YAML — a pipeline that reimplements the local steps is a second
+copy, and the drift is only discovered when a green pipeline disagrees
+with a working machine.
+
 Every command is idempotent — running `up` twice is safe.
 
 ### Two things it does deliberately

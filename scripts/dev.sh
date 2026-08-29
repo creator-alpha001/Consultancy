@@ -82,6 +82,9 @@ stop_bg() {
 # it, then confirm the port is actually free rather than assuming.
 free_port() {
   local port=$1 pids pgid
+  if ! command -v fuser >/dev/null 2>&1; then
+    die "port $port is held but \`fuser\` is not installed, so it cannot be identified — install psmisc"
+  fi
   for signal in TERM KILL; do
     pids=$(fuser "$port/tcp" 2>/dev/null || true)
     [ -z "$pids" ] && break
@@ -113,7 +116,7 @@ wait_http() { # url, seconds, label
 
 ensure_postgres() {
   if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -q 2>/dev/null; then
-    service postgresql start >/dev/null 2>&1 || true
+    sudo -n true 2>/dev/null && service postgresql start >/dev/null 2>&1 || true
     for _ in $(seq 1 40); do
       pg_isready -h "$DB_HOST" -p "$DB_PORT" -q 2>/dev/null && break
       sleep 0.5
@@ -124,6 +127,20 @@ ensure_postgres() {
 
   # A cold container has no role and no databases at all — not just an
   # empty schema. Create them if missing; never touch them if present.
+  #
+  # In CI the database comes from a service container that already has
+  # both, and there is no `postgres` superuser account to sudo to. So
+  # bootstrapping is attempted only where it can work: if the role can
+  # already connect, there is nothing to create and nothing to check.
+  if PGPASSWORD="$DB_PASS" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DEV_DB" -tAc 'SELECT 1' \
+       >/dev/null 2>&1; then
+    ok "role and databases already present"
+    return 0
+  fi
+  if ! sudo -n -u postgres psql -tAc 'SELECT 1' >/dev/null 2>&1; then
+    die "cannot reach $DEV_DB as $DB_USER, and cannot bootstrap without a postgres superuser"
+  fi
+
   local su="sudo -u postgres psql -tAc"
   if [ "$($su "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" 2>/dev/null)" != "1" ]; then
     sudo -u postgres psql -q -c \
@@ -166,7 +183,10 @@ seed() {
 # ── Services ──────────────────────────────────────────────────────────
 
 deps() {
-  for app in api web mobile; do
+  # CI installs only what its job needs, so the mobile app's dependencies
+  # (large, and irrelevant to the browser journeys) are not pulled in for
+  # a run that will never build it.
+  for app in ${DEV_APPS:-api web mobile}; do
     if [ -f "$ROOT/apps/$app/package.json" ] && [ ! -d "$ROOT/apps/$app/node_modules" ]; then
       bold "Installing $app dependencies"
       ( cd "$ROOT/apps/$app" && npm install --no-audit --no-fund >/dev/null ) \

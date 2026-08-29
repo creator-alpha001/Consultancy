@@ -18,12 +18,12 @@
  *
  * Needs a running stack and a seeded database: ./scripts/dev.sh up
  */
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { totp } from './totp.mjs';
 
 const WEB = 'http://localhost:3001';
 const PASS = 'correct-horse-battery-1';
-const b = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await launchBrowser();
 const p = await b.newPage({ viewport: { width: 1280, height: 1600 } });
 let fails = 0;
 const ok = (m) => console.log('  \x1b[32m✓\x1b[0m', m);

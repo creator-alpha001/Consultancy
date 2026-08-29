@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 
 const WEB = 'http://localhost:3001';
 const SHOTS = process.env.SHOTS ?? '../../docs/screens';
@@ -6,7 +6,7 @@ const uniq = Date.now();
 const ok = (m) => console.log('  \x1b[32m✓\x1b[0m ' + m);
 const bad = (m) => { console.log('  \x1b[31m✗\x1b[0m ' + m); process.exitCode = 1; };
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium/chrome-linux/chrome' });
+const browser = await launchBrowser();
 
 async function shot(page, name, mobile = false) {
   await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });

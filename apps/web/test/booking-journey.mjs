@@ -6,7 +6,7 @@
  * `npm run seed` plus `seed/demo-fixtures.ts` (which publishes a domain
  * and verifies three mentors) before it will find anyone to book.
  */
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { totp } from './totp.mjs';
 import { mkdirSync } from 'node:fs';
 
@@ -23,8 +23,7 @@ const bad = (m) => {
   process.exitCode = 1;
 };
 
-const browser = await chromium.launch({
-  executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+const browser = await launchBrowser({
 });
 
 let n = 0;

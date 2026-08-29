@@ -11,7 +11,7 @@
  * credential, so run that first for the credential queue to have work.
  */
 import { execFileSync } from 'node:child_process';
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { totp } from './totp.mjs';
 
 const WEB = 'http://localhost:3001';
@@ -51,8 +51,7 @@ execFileSync(
 );
 ok('an open dispute exists, raised through the real services');
 
-const browser = await chromium.launch({
-  executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+const browser = await launchBrowser({
 });
 const p = await browser.newPage({ viewport: { width: 1280, height: 1600 } });
 const email = `admin-${Date.now()}@test.local`;

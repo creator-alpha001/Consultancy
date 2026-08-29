@@ -8,7 +8,7 @@
  *
  * Needs a running API + web + seeded database (see docs/RUNNING.md).
  */
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { mkdirSync, renameSync, readdirSync } from 'node:fs';
 
 const WEB = process.env.WEB ?? 'http://localhost:3001';
@@ -22,8 +22,7 @@ mkdirSync(VIDEO, { recursive: true });
 
 const step = (m) => console.log('\x1b[36m•\x1b[0m ' + m);
 
-const browser = await chromium.launch({
-  executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+const browser = await launchBrowser({
 });
 
 const ctx = await browser.newContext({
