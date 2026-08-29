@@ -108,6 +108,42 @@ if (body.includes('Your credentials')) {
     : bad('publicFields leaked to a public endpoint');
 }
 
+// ── A finished engagement, seen by the person who paid for it ────────
+// This route was a 500 for every completed engagement, for both parties,
+// and nothing noticed: no test and no journey had ever opened a page for
+// an engagement that had actually been marked. The booking journey only
+// ever reaches its own fresh engagement, which has no evaluation yet.
+console.log('\nA marked engagement, from the seeker side');
+{
+  const sctx = await b.newContext({ viewport: { width: 1280, height: 1400 } });
+  const sp = await sctx.newPage();
+  await sp.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
+  await sp.fill('#f-email', 'priya.nair@demo.local');
+  await sp.fill('#f-password', 'demo-password-not-a-secret');
+  await sp.click('button[type=submit]');
+  await sp.waitForSelector('button:has-text("Sign out")', { timeout: 45000 });
+
+  await sp.goto(`${WEB}/engagements`, { waitUntil: 'networkidle' });
+  const link = sp.locator('a[href^="/engagements/"]').first();
+  if (await link.count()) {
+    const res = await Promise.all([
+      sp.waitForNavigation({ waitUntil: 'networkidle' }),
+      link.click(),
+    ]).then(([r]) => r);
+    const status = res?.status() ?? 200;
+    status < 400
+      ? ok(`a completed engagement page loads (${status})`)
+      : bad(`the engagement page returned ${status}`);
+    const sbody = await sp.textContent('body');
+    !/Application error|went wrong/i.test(sbody)
+      ? ok('it renders rather than erroring')
+      : bad('the engagement page rendered an error');
+  } else {
+    bad('no engagements listed for a seeker who has completed several');
+  }
+  await sctx.close();
+}
+
 // ── The right of reply ───────────────────────────────────────────────
 // A brand-new provider has no reviews, so this half needs a mentor with
 // real completed work behind them. The demo accounts carry a published
