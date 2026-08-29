@@ -59,12 +59,31 @@ interface RequestOptions {
   idempotencyKey?: string;
   /** Skip the bearer token — the catalogue is readable before signing in. */
   anonymous?: boolean;
+  /**
+   * Use the short-lived enrolment ticket instead of a session token.
+   *
+   * A provider who has never enrolled cannot log in, and enrolling
+   * requires being logged in (#32's awkward case). The API resolves it
+   * by issuing a ticket scoped to enrolment ALONE, which its guard
+   * rejects on every other route. It is held in memory and never
+   * persisted: it is worth little, lasts minutes, and writing it to the
+   * keystore would leave it lying around long after it stopped working.
+   */
+  enrolment?: boolean;
+}
+
+let enrolmentTicket: string | null = null;
+
+export function setEnrolmentTicket(token: string | null): void {
+  enrolmentTicket = token;
 }
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
 
-  if (!options.anonymous) {
+  if (options.enrolment) {
+    if (enrolmentTicket) headers.authorization = `Bearer ${enrolmentTicket}`;
+  } else if (!options.anonymous) {
     const token = await getToken();
     if (token) headers.authorization = `Bearer ${token}`;
   }

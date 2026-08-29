@@ -9,6 +9,7 @@
  * check that the screens compose, fetch and navigate.
  */
 import { chromium, devices } from 'playwright';
+import { totp } from '../../web/test/totp.mjs';
 import { mkdirSync } from 'node:fs';
 
 const APP = process.env.APP ?? 'http://localhost:8082';
@@ -121,6 +122,69 @@ if (body.includes('I am 18 or older')) {
   bad('still on the register screen after submitting: ' + body.slice(0, 300));
 } else {
   ok('account created');
+}
+
+console.log('\n5b. A mentor sets up two-factor, on the phone');
+// 2FA is mandatory for providers (#32) and this app could only ever tell
+// them to go and use the web one — so the whole supply side was
+// unreachable on the client the product is led by.
+//
+// In its own context: signing up as a mentor replaces the session, and
+// the steps after this one need the seeker's.
+{
+  const mctx = await browser.newContext({ ...devices['Pixel 7'] });
+  const mp = await mctx.newPage();
+  mp.on('console', (m) => {
+    if (m.type() === 'error') console.log('    [browser error]', m.text().slice(0, 200));
+  });
+  mp.on('requestfailed', (r) => console.log('    [request failed]', r.url().slice(0, 120)));
+  mp.on('response', async (r) => {
+    if (r.url().includes('/auth/mfa/')) console.log('    [api]', r.status(), r.url().split('/').slice(-2).join('/'));
+  });
+  const mentorEmail = `mob-mentor-${uniq}@test.local`;
+
+  await mp.goto(`${APP}/register`, { waitUntil: 'networkidle' });
+  await mp.waitForTimeout(1500);
+  await mp.getByPlaceholder('you@example.com').fill(mentorEmail);
+  await mp.getByPlaceholder('At least 12 characters').fill(PASS);
+  await mp.getByText('Give help', { exact: true }).first().click();
+  await mp.getByText('I am 18 or older.', { exact: true }).first().click();
+  await mp.getByText('Create account', { exact: true }).last().click();
+  await mp.waitForTimeout(5000);
+
+  let mbody = await mp.textContent('body');
+  mbody.includes('Set up two-factor')
+    ? ok('a new mentor is taken to enrolment, not told to use another app')
+    : bad('mentor was not routed to enrolment: ' + mbody.slice(0, 250));
+
+  if (mbody.includes('Set up two-factor')) {
+    await mp.waitForTimeout(2500);
+    await mp.screenshot({ path: `${OUT}/06-mfa-enrol.png`, fullPage: true });
+    console.log(`   → ${OUT}/06-mfa-enrol.png`);
+
+    // No \b anchors: react-native-web concatenates adjacent text nodes,
+    // so the key can sit flush against a lowercase word and there is no
+    // word boundary to match on.
+    mbody = await mp.textContent('body');
+    const secretMatch = mbody.match(/[A-Z2-7]{26,}/);
+    secretMatch ? ok('an enrolment key is shown') : bad('no enrolment key rendered');
+
+    if (secretMatch) {
+      await mp.getByPlaceholder('123456').fill(totp(secretMatch[0]));
+      // By role: `getByText` targets the inner Text node, and on
+      // react-native-web the press handler lives on the Pressable
+      // wrapping it.
+      await mp.getByRole('button', { name: 'Confirm' }).click();
+      await mp.waitForTimeout(5000);
+      mbody = await mp.textContent('body');
+      mbody.includes('Save these codes')
+        ? ok('confirmed with a real code, and recovery codes are shown once')
+        : bad('enrolment did not confirm: ' + mbody.slice(0, 250));
+      await mp.screenshot({ path: `${OUT}/07-mfa-recovery-codes.png`, fullPage: true });
+      console.log(`   → ${OUT}/07-mfa-recovery-codes.png`);
+    }
+  }
+  await mctx.close();
 }
 
 console.log('\n6. Signed-in home');

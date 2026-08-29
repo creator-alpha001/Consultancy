@@ -61,6 +61,12 @@ export default function RootLayout(): JSX.Element {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="sign-in" options={{ title: 'Sign in', presentation: 'modal' }} />
           <Stack.Screen name="register" options={{ title: 'Create account', presentation: 'modal' }} />
+          {/*
+            Not a modal, and not dismissable by swiping away: a provider
+            who backs out of this cannot sign in at all, so leaving it
+            looking optional would strand them.
+          */}
+          <Stack.Screen name="mfa-enrol" options={{ title: 'Two-factor setup', gestureEnabled: false }} />
         </Stack>
       </StoreProvider>
     </SafeAreaProvider>

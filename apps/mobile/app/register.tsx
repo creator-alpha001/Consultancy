@@ -26,10 +26,12 @@ export default function Register(): JSX.Element {
         router.replace('/');
       } else {
         // #32: a provider needs a second factor before a session exists.
-        setError({
-          code: 'MFA_ENROLMENT_REQUIRED',
-          message: 'Account created. Set up two-factor in the web app, then sign in here.',
-        });
+        // Signing in here does not produce one — it produces the
+        // enrolment ticket, which is exactly what the next screen needs.
+        // This used to stop at "set it up in the web app", which left a
+        // mentor with an account they could not use.
+        const r = await signIn(email, password);
+        router.replace(r.mfaEnrolment ? '/mfa-enrol' : '/');
       }
     } catch (err) {
       setError(err instanceof ApiError

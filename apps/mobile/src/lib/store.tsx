@@ -1,5 +1,5 @@
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ApiError, api, getToken, setToken } from './api';
+import { ApiError, api, getToken, setEnrolmentTicket, setToken } from './api';
 import { CategoryNode, ResolvedDomain } from './pack';
 
 /**
@@ -87,6 +87,10 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
 
       if (result.outcome === 'mfa_enrolment_required') {
         // A provider or admin with no confirmed second factor (#32).
+        // The ticket is kept so the app can actually complete enrolment;
+        // it used to be dropped here, which is why the only advice this
+        // app could give a mentor was to go and use the web one.
+        setEnrolmentTicket(result.enrolmentToken ?? null);
         return { mfaEnrolment: true };
       }
       await setToken(result.token ?? null);

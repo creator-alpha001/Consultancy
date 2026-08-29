@@ -21,10 +21,10 @@ export default function SignIn(): JSX.Element {
     try {
       const r = await signIn(email, password, totp);
       if (r.mfaEnrolment) {
-        setError({
-          code: 'MFA_ENROLMENT_REQUIRED',
-          message: 'This account needs two-factor set up first. Use the web app to enrol, then sign in here.',
-        });
+        // Used to be a dead end telling mentors to go and use the web
+        // app — which made the entire provider side unreachable on the
+        // client this product is led by.
+        router.replace('/mfa-enrol');
         return;
       }
       router.back();
