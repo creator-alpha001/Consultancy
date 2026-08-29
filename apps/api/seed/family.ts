@@ -30,6 +30,10 @@ export function civilServicesExamsFamily(): FamilyManifestInput {
       seeker: { en: 'Aspirant', hi: 'अभ्यर्थी' },
       provider: { en: 'Mentor', hi: 'मेंटर' },
       engagement: { en: 'Task', hi: 'कार्य' },
+      // The family's own word for a category. "Paper" is exam vocabulary
+      // and must never be written into core code (CLAUDE.md vocabulary
+      // table) — it belongs here, in pack data, and nowhere else.
+      category: { en: 'Paper', hi: 'प्रश्नपत्र' },
     },
     engagementTypes: ['document_review', 'live_session', 'written_qa', 'async_task'],
     flagshipEngagement: 'document_review',

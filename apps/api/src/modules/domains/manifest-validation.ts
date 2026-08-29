@@ -95,6 +95,9 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
   const seekerLabel = v.labelMap(labelsRaw.seeker, 'labels.seeker');
   const providerLabel = v.labelMap(labelsRaw.provider, 'labels.provider');
   const engagementLabel = v.labelMap(labelsRaw.engagement, 'labels.engagement');
+  // Optional: absent is valid, present must still be a real label map.
+  const categoryLabel =
+    labelsRaw.category === undefined ? undefined : v.labelMap(labelsRaw.category, 'labels.category');
 
   const engagementTypes = v.array(m.engagementTypes, 'engagementTypes', (item, p) => v.engagementType(item, p));
   const flagshipEngagement = v.engagementType(m.flagshipEngagement, 'flagshipEngagement');
@@ -228,7 +231,13 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
   return {
     code: code!,
     version: version!,
-    labels: { family: familyLabel!, seeker: seekerLabel!, provider: providerLabel!, engagement: engagementLabel! },
+    labels: {
+      family: familyLabel!,
+      seeker: seekerLabel!,
+      provider: providerLabel!,
+      engagement: engagementLabel!,
+      ...(categoryLabel ? { category: categoryLabel } : {}),
+    },
     engagementTypes,
     flagshipEngagement: flagshipEngagement!,
     skills,

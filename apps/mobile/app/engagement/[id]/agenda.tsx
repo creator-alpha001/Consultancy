@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Body, Button, Card, Chip, ErrorNote, Eyebrow, H1, Loading, Row, Screen, Section, Small } from '@/components/kit';
@@ -84,6 +84,7 @@ export default function AgendaScreen(): JSX.Element {
     const filled = goals.filter((g) => g.trim()).length;
     return (
       <Screen>
+      <Stack.Screen options={{ title: 'Goals' }} />
         <H1>What do you need?</H1>
         <Body muted>Write it down together. Both of you have to agree before anything starts.</Body>
         <View style={{ height: space.xl }} />
@@ -133,7 +134,7 @@ export default function AgendaScreen(): JSX.Element {
             value={outOfScope}
             onChangeText={setOutOfScope}
             multiline
-            placeholder="e.g. Rewriting the answer for me. Predicting a real exam mark."
+            placeholder="e.g. Doing the work for me. Promising a particular result."
             placeholderTextColor={C.inkFaint}
             style={{
               height: 90, borderWidth: 1, borderColor: C.correction, borderRadius: radius.md,

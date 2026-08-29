@@ -6,20 +6,67 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
-import { LIGHT as C, TOUCH, radius, shadow, space, type } from '../theme/tokens';
+import { LIGHT as C, TOUCH, fontFor, radius, scaleWeight, shadow, space, type } from '../theme/tokens';
 
 /**
  * The interface vocabulary.
  *
- * One rule shaped all of it: **nothing here explains the system to the
- * user.** The web build put engineering commentary on every screen — why
- * there is no price sort, what the database refuses — and that is most of
- * why it read as an internal tool. Those constraints still hold; they are
- * just enforced silently, the way a well-made product enforces things.
+ * Two rules shaped it.
+ *
+ * **Nothing here explains the system to the user.** The web build put
+ * engineering commentary on every screen — why there is no price sort,
+ * what the database refuses — which is most of why it read as an internal
+ * tool. Those constraints still hold; they are enforced silently.
+ *
+ * **Separation comes from fill and space, not from lines and shadows.**
+ * Cards are a flat grey panel on white with no border and no elevation.
+ * Every border removed is a border that cannot misalign, and the result
+ * reads as composed rather than boxed.
  */
+
+/* ── Text ────────────────────────────────────────────────────────────
+ * One primitive under every string, because the font family has to be
+ * chosen from the content: Inter cannot draw Devanagari, so a Hindi
+ * label must be handed to Noto instead. Doing that here means no screen
+ * has to remember to.
+ */
+
+type Scale = keyof typeof type;
+
+function Txt({
+  scale,
+  color,
+  style,
+  children,
+  ...rest
+}: {
+  scale: Scale;
+  color?: string;
+  style?: TextStyle | TextStyle[];
+  children: ReactNode;
+  numberOfLines?: number;
+}): JSX.Element {
+  const t = type[scale];
+  const flat = typeof children === 'string' || typeof children === 'number' ? String(children) : '';
+  return (
+    <Text
+      {...rest}
+      style={[
+        t,
+        { fontFamily: fontFor(flat, scaleWeight[scale]), color: color ?? C.ink },
+        style as TextStyle,
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
+/* ── Layout ──────────────────────────────────────────────────────── */
 
 export function Screen({
   children,
@@ -44,33 +91,37 @@ export function Screen({
   );
 }
 
+/* ── Type ────────────────────────────────────────────────────────── */
+
 export function H1({ children }: { children: ReactNode }): JSX.Element {
-  return <Text style={[type.display, { color: C.ink, marginBottom: space.xs }]}>{children}</Text>;
+  return <Txt scale="display" style={{ marginBottom: space.md }}>{children}</Txt>;
 }
 
 export function H2({ children }: { children: ReactNode }): JSX.Element {
-  return <Text style={[type.title, { color: C.ink }]}>{children}</Text>;
+  return <Txt scale="title">{children}</Txt>;
 }
 
 export function H3({ children }: { children: ReactNode }): JSX.Element {
-  return <Text style={[type.heading, { color: C.ink }]}>{children}</Text>;
+  return <Txt scale="heading">{children}</Txt>;
 }
 
 export function Body({ children, muted }: { children: ReactNode; muted?: boolean }): JSX.Element {
-  return <Text style={[type.body, { color: muted ? C.inkMuted : C.ink }]}>{children}</Text>;
+  return <Txt scale="body" color={muted ? C.inkMuted : C.ink}>{children}</Txt>;
 }
 
 export function Small({ children, muted = true }: { children: ReactNode; muted?: boolean }): JSX.Element {
-  return <Text style={[type.small, { color: muted ? C.inkMuted : C.ink }]}>{children}</Text>;
+  return <Txt scale="small" color={muted ? C.inkMuted : C.ink}>{children}</Txt>;
 }
 
+/**
+ * The line above a heading. Sentence case, not uppercase — small caps
+ * with wide tracking is a badge, and a badge above every title is noise.
+ */
 export function Eyebrow({ children }: { children: ReactNode }): JSX.Element {
-  return (
-    <Text style={[type.caption, { color: C.inkFaint, textTransform: 'uppercase', marginBottom: space.sm }]}>
-      {children}
-    </Text>
-  );
+  return <Txt scale="small" color={C.inkMuted} style={{ marginBottom: space.sm }}>{children}</Txt>;
 }
+
+/* ── Surfaces ────────────────────────────────────────────────────── */
 
 export function Card({
   children,
@@ -83,16 +134,12 @@ export function Card({
   style?: ViewStyle;
   tone?: 'default' | 'alert';
 }): JSX.Element {
-  const base = [
-    s.card,
-    tone === 'alert' && { borderColor: C.correction, backgroundColor: C.correctionSoft },
-    style,
-  ];
+  const base = [s.card, tone === 'alert' && { backgroundColor: C.correctionSoft }, style];
   if (!onPress) return <View style={base}>{children}</View>;
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [...base, pressed && { opacity: 0.7, transform: [{ scale: 0.995 }] }]}
+      style={({ pressed }) => [...base, pressed && { backgroundColor: '#ececee' }]}
     >
       {children}
     </Pressable>
@@ -109,7 +156,7 @@ export function Section({
   children: ReactNode;
 }): JSX.Element {
   return (
-    <View style={{ marginBottom: space.xl }}>
+    <View style={{ marginBottom: space.xxl }}>
       {(title || action) && (
         <View style={s.sectionHead}>
           {title ? <H3>{title}</H3> : <View />}
@@ -120,6 +167,8 @@ export function Section({
     </View>
   );
 }
+
+/* ── Controls ────────────────────────────────────────────────────── */
 
 export function Button({
   label,
@@ -137,9 +186,9 @@ export function Button({
   full?: boolean;
 }): JSX.Element {
   const tone = {
-    primary: { bg: C.accent, fg: C.accentInk, border: C.accent },
-    secondary: { bg: 'transparent', fg: C.ink, border: C.rule },
-    danger: { bg: 'transparent', fg: C.correction, border: C.correction },
+    primary: { bg: C.accent, fg: C.accentInk, border: 'transparent', press: '#3f3f46' },
+    secondary: { bg: C.surface, fg: C.ink, border: C.rule, press: C.surfaceSunk },
+    danger: { bg: C.surface, fg: C.correction, border: C.rule, press: C.correctionSoft },
   }[variant];
 
   return (
@@ -151,14 +200,14 @@ export function Button({
         s.button,
         full && { alignSelf: 'stretch' },
         { backgroundColor: tone.bg, borderColor: tone.border },
-        (disabled || busy) && { opacity: 0.45 },
-        pressed && { opacity: 0.75 },
+        (disabled || busy) && { opacity: 0.4 },
+        pressed && { backgroundColor: tone.press },
       ]}
     >
       {busy ? (
         <ActivityIndicator color={tone.fg} />
       ) : (
-        <Text style={[type.bodyStrong, { color: tone.fg }]}>{label}</Text>
+        <Txt scale="bodyStrong" color={tone.fg}>{label}</Txt>
       )}
     </Pressable>
   );
@@ -180,18 +229,12 @@ export function Chip({
     good: { bg: C.goodSoft, fg: C.good },
     warn: { bg: C.warnSoft, fg: C.warn },
     alert: { bg: C.correctionSoft, fg: C.correction },
-    accent: { bg: C.accentSoft, fg: C.accent },
+    accent: { bg: C.surfaceSunk, fg: C.ink },
   }[tone];
 
   const body = (
-    <View
-      style={[
-        s.chip,
-        { backgroundColor: palette.bg },
-        selected && { backgroundColor: C.ink },
-      ]}
-    >
-      <Text style={[type.smallStrong, { color: selected ? C.paper : palette.fg }]}>{label}</Text>
+    <View style={[s.chip, { backgroundColor: palette.bg }, selected && { backgroundColor: C.ink }]}>
+      <Txt scale="caption" color={selected ? C.accentInk : palette.fg}>{label}</Txt>
     </View>
   );
   if (!onPress) return body;
@@ -200,7 +243,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       onPress={onPress}
-      style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+      style={({ pressed }) => [pressed && { opacity: 0.6 }]}
     >
       {body}
     </Pressable>
@@ -235,6 +278,27 @@ export function Row({
   );
 }
 
+/**
+ * The confidence list under a hero: a filled tick, then a short fact.
+ * Three of them, never a paragraph.
+ */
+export function CheckList({ items }: { items: string[] }): JSX.Element {
+  return (
+    <View style={{ gap: space.md }}>
+      {items.map((item) => (
+        <Row key={item} gap={space.md} align="flex-start">
+          <View style={s.tick}>
+            <Txt scale="caption" color={C.accentInk} style={{ lineHeight: 15 }}>✓</Txt>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Txt scale="small" color={C.ink}>{item}</Txt>
+          </View>
+        </Row>
+      ))}
+    </View>
+  );
+}
+
 export function Avatar({ name, size = 44 }: { name: string; size?: number }): JSX.Element {
   const initials = name
     .split(/[\s.]+/)
@@ -248,12 +312,21 @@ export function Avatar({ name, size = 44 }: { name: string; size?: number }): JS
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: C.accentSoft,
+        backgroundColor: C.ink,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text style={[type.bodyStrong, { color: C.accent, fontSize: size * 0.34 }]}>{initials}</Text>
+      <Text
+        style={{
+          fontFamily: fontFor(initials, 'medium'),
+          fontSize: size * 0.36,
+          color: C.accentInk,
+          letterSpacing: -0.3,
+        }}
+      >
+        {initials}
+      </Text>
     </View>
   );
 }
@@ -279,7 +352,7 @@ export function Field({
 }): JSX.Element {
   return (
     <View style={{ marginBottom: space.lg }}>
-      <Text style={[type.smallStrong, { color: C.inkMuted, marginBottom: space.xs }]}>{text}</Text>
+      <Txt scale="smallStrong" color={C.ink} style={{ marginBottom: space.sm }}>{text}</Txt>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -291,7 +364,8 @@ export function Field({
         multiline={multiline}
         style={[
           s.input,
-          multiline && { height: 96, textAlignVertical: 'top', paddingTop: space.md },
+          { fontFamily: fontFor(value || placeholder, 'regular') },
+          multiline && { height: 112, textAlignVertical: 'top', paddingTop: space.md },
         ]}
       />
     </View>
@@ -303,7 +377,7 @@ export function ErrorNote({ error }: { error?: { code: string; message: string }
   if (!error) return null;
   return (
     <View style={s.error} accessibilityRole="alert">
-      <Text style={[type.bodyStrong, { color: C.correction }]}>{error.message}</Text>
+      <Txt scale="smallStrong" color={C.correction}>{error.message}</Txt>
     </View>
   );
 }
@@ -311,8 +385,8 @@ export function ErrorNote({ error }: { error?: { code: string; message: string }
 export function Empty({ text, action }: { text: string; action?: ReactNode }): JSX.Element {
   return (
     <View style={s.empty}>
-      <Text style={[type.body, { color: C.inkMuted, textAlign: 'center' }]}>{text}</Text>
-      {action ? <View style={{ marginTop: space.md, alignSelf: 'stretch' }}>{action}</View> : null}
+      <Txt scale="small" color={C.inkMuted} style={{ textAlign: 'center' }}>{text}</Txt>
+      {action ? <View style={{ marginTop: space.lg, alignSelf: 'stretch' }}>{action}</View> : null}
     </View>
   );
 }
@@ -320,7 +394,7 @@ export function Empty({ text, action }: { text: string; action?: ReactNode }): J
 export function Loading(): JSX.Element {
   return (
     <View style={{ paddingVertical: space.xxl, alignItems: 'center' }}>
-      <ActivityIndicator color={C.accent} />
+      <ActivityIndicator color={C.inkFaint} />
     </View>
   );
 }
@@ -333,16 +407,16 @@ export function Stepper({ status }: { status: string }): JSX.Element {
     return <Chip label={status.replace(/_/g, ' ')} tone="alert" />;
   }
   return (
-    <View style={{ gap: space.sm }}>
+    <View style={{ gap: space.md }}>
       <Row gap={space.xs}>
         {steps.map((step, n) => (
           <View
             key={step}
             style={{
               flex: 1,
-              height: 4,
+              height: 3,
               borderRadius: 2,
-              backgroundColor: n <= i ? C.accent : C.surfaceSunk,
+              backgroundColor: n <= i ? C.ink : C.rule,
             }}
           />
         ))}
@@ -356,37 +430,43 @@ export function Stepper({ status }: { status: string }): JSX.Element {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.paper },
-  scrollBody: { paddingBottom: space.xxl * 2 },
-  pad: { paddingHorizontal: space.lg, paddingTop: space.lg },
+  scrollBody: { paddingBottom: space.xxxl },
+  pad: { paddingHorizontal: space.xl, paddingTop: space.xl },
   card: {
-    backgroundColor: C.surface,
+    backgroundColor: C.surfaceSunk,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: C.rule,
-    padding: space.lg,
-    gap: space.sm,
-    ...shadow.card,
+    padding: space.xl,
+    gap: space.md,
   },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: space.md,
+    marginBottom: space.lg,
   },
   button: {
-    minHeight: TOUCH,
-    borderRadius: radius.md,
+    minHeight: 52,
+    borderRadius: radius.pill,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.xl,
   },
   chip: {
-    minHeight: 32,
+    minHeight: 30,
     paddingHorizontal: space.md,
-    paddingVertical: space.xs + 2,
+    paddingVertical: space.xs + 1,
     borderRadius: radius.pill,
     justifyContent: 'center',
+  },
+  tick: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: C.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
   },
   input: {
     minHeight: TOUCH,
@@ -394,23 +474,23 @@ const s = StyleSheet.create({
     borderColor: C.rule,
     borderRadius: radius.md,
     backgroundColor: C.surface,
-    paddingHorizontal: space.md,
+    paddingHorizontal: space.lg,
     fontSize: 16, // 16px stops iOS zooming the viewport on focus
     color: C.ink,
   },
   error: {
     backgroundColor: C.correctionSoft,
     borderRadius: radius.md,
-    padding: space.md,
+    padding: space.lg,
     marginBottom: space.lg,
   },
   empty: {
-    paddingVertical: space.xl,
-    paddingHorizontal: space.lg,
+    paddingVertical: space.xxl,
+    paddingHorizontal: space.xl,
     alignItems: 'center',
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: C.rule,
+    backgroundColor: C.surfaceSunk,
   },
 });
+
+export { TOUCH };

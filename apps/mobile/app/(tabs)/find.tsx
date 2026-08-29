@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Avatar, Body, Button, Card, Chip, Empty, Eyebrow, H1, Loading, Row, Screen, Section, Small } from '@/components/kit';
 import { api } from '@/lib/api';
-import { label, leafCategories, plural } from '@/lib/pack';
+import { label, languageName, leafCategories, plural } from '@/lib/pack';
 import { useStore, useWords } from '@/lib/store';
 import { LIGHT as C, radius, space, type } from '@/theme/tokens';
 
@@ -66,11 +66,13 @@ export default function Find(): JSX.Element {
   return (
     <Screen>
       <H1>Find a {words.provider.toLowerCase()}</H1>
-      <Body muted>Verified for the paper you need, in the language you work in.</Body>
+      <Body muted>
+        Verified for the {words.category.toLowerCase()} you need, in the language you work in.
+      </Body>
 
       <View style={{ marginTop: space.xl, marginBottom: space.lg, gap: space.md }}>
         <View>
-          <Eyebrow>Paper</Eyebrow>
+          <Eyebrow>{words.category}</Eyebrow>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
             {options.map((o) => (
               <Chip
@@ -87,7 +89,12 @@ export default function Find(): JSX.Element {
           <Eyebrow>Language</Eyebrow>
           <Row gap={space.sm} wrap>
             {(domain?.languages ?? ['en']).map((l) => (
-              <Chip key={l} label={l} selected={l === language} onPress={() => setLanguage(l)} />
+              <Chip
+                key={l}
+                label={languageName(l, lang)}
+                selected={l === language}
+                onPress={() => setLanguage(l)}
+              />
             ))}
           </Row>
         </View>
@@ -97,7 +104,7 @@ export default function Find(): JSX.Element {
         <Loading />
       ) : providers.length === 0 ? (
         <Empty
-          text={`Nobody is verified for ${selected?.label ?? 'this paper'} in ${language} yet. Post what you need and let people come to you.`}
+          text={`Nobody is verified for ${selected?.label ?? words.category.toLowerCase()} in ${languageName(language ?? 'en', lang)} yet. Post what you need and let people come to you.`}
           action={<Button label="Post a request" variant="secondary" onPress={() => router.push('/work')} />}
         />
       ) : (

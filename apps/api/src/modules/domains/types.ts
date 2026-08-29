@@ -103,6 +103,8 @@ export interface FamilyManifestInput {
     seeker: LabelMap;
     provider: LabelMap;
     engagement: LabelMap;
+    /** What this family calls a category ("Paper", "Grade", "Module"). */
+    category?: LabelMap;
   };
   engagementTypes: EngagementType[];
   flagshipEngagement: EngagementType;

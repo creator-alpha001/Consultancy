@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { Avatar, Body, Button, Card, Chip, Empty, H1, H3, Loading, Row, Screen, Section, Small, Stepper } from '@/components/kit';
+import { Body, Button, Card, CheckList, Chip, Empty, H1, Loading, Row, Screen, Section, Small, Stepper } from '@/components/kit';
 import { api, durationLabel, rupees, when } from '@/lib/api';
+import { pluralWord } from '@/lib/pack';
 import { useStore, useWords } from '@/lib/store';
 import { LIGHT as C, space, type } from '@/theme/tokens';
 import { Text } from 'react-native';
@@ -57,35 +58,42 @@ export default function Home(): JSX.Element {
   if (!me) {
     return (
       <Screen>
-        <View style={{ paddingTop: space.xl }}>
+        <View style={{ paddingTop: space.xl, marginBottom: space.xxl }}>
+          <Small>{words.family}</Small>
+          <View style={{ height: space.md }} />
           <H1>Guidance you can hold someone to.</H1>
           <Body muted>
             Agree what you need in writing. Your money waits in escrow until it is done.
           </Body>
         </View>
 
-        <View style={{ gap: space.md, marginTop: space.xl }}>
+        <View style={{ gap: space.md, marginBottom: space.xl }}>
           <Button label="Create an account" onPress={() => router.push('/register')} />
           <Button label="Sign in" variant="secondary" onPress={() => router.push('/sign-in')} />
+        </View>
+
+        <View style={{ marginBottom: space.xxl }}>
+          <CheckList
+            items={[
+              'Free to join, no card required',
+              `Verified ${pluralWord(words.provider.toLowerCase())}, matched on skill and language`,
+              'Escrow released only when you accept the work',
+            ]}
+          />
         </View>
 
         <Section title="How it works">
           <View style={{ gap: space.md }}>
             {[
-              ['Find someone verified', `Matched on the skill your paper needs, working in your language.`],
+              ['Find someone verified', 'Matched on the skill your work needs, in your language.'],
               ['Agree the goals', 'Written down, including what is out of scope. Both of you sign off.'],
               ['Pay into escrow', 'Nothing is released until you accept the work.'],
               ['Get it done', 'By video, voice, or marked-up document.'],
             ].map(([title, sub], i) => (
               <Card key={title}>
-                <Row gap={space.md} align="flex-start">
-                  <View style={{
-                    width: 26, height: 26, borderRadius: 13, backgroundColor: C.accentSoft,
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Text style={[type.smallStrong, { color: C.accent }]}>{i + 1}</Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
+                <Row gap={space.lg} align="flex-start">
+                  <Text style={[type.title, { color: C.inkFaint, width: 28 }]}>{i + 1}</Text>
+                  <View style={{ flex: 1, gap: space.xs }}>
                     <Text style={[type.bodyStrong, { color: C.ink }]}>{title}</Text>
                     <Small>{sub}</Small>
                   </View>
@@ -96,7 +104,7 @@ export default function Home(): JSX.Element {
         </Section>
 
         <Button
-          label="Browse everyone verified"
+          label={`Browse verified ${pluralWord(words.provider.toLowerCase())}`}
           variant="secondary"
           onPress={() => router.push('/find')}
         />
@@ -112,8 +120,9 @@ export default function Home(): JSX.Element {
 
   return (
     <Screen>
-      <View style={{ marginBottom: space.xl }}>
+      <View style={{ paddingTop: space.sm, marginBottom: space.xl }}>
         <Small>{domain ? words.family : ''}</Small>
+        <View style={{ height: space.sm }} />
         <H1>Namaste</H1>
       </View>
 

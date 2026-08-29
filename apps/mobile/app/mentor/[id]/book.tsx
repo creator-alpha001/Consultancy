@@ -1,9 +1,9 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Body, Button, Card, Chip, ErrorNote, Eyebrow, H1, Row, Screen, Section, Small } from '@/components/kit';
 import { ApiError, api } from '@/lib/api';
-import { leafCategories } from '@/lib/pack';
+import { engagementTypeLabel, languageName, leafCategories } from '@/lib/pack';
 import { useStore, useWords } from '@/lib/store';
 import { LIGHT as C, radius, space, type } from '@/theme/tokens';
 
@@ -117,6 +117,7 @@ export default function Book(): JSX.Element {
 
   return (
     <Screen>
+      <Stack.Screen options={{ title: 'Book' }} />
       <H1>Book</H1>
       <Body muted>Nothing is charged yet.</Body>
       <View style={{ height: space.lg }} />
@@ -127,7 +128,7 @@ export default function Book(): JSX.Element {
           {(domain?.engagementTypes ?? []).map((t) => (
             <Chip
               key={t}
-              label={t.replace(/_/g, ' ')}
+              label={engagementTypeLabel(t)}
               selected={t === engagementType}
               onPress={() => {
                 setEngagementType(t);
@@ -139,7 +140,7 @@ export default function Book(): JSX.Element {
         </Row>
       </Section>
 
-      <Section title="On which paper?">
+      <Section title={`Which ${words.category.toLowerCase()}?`}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
           {options.map((o) => (
             <Chip key={o.id} label={o.label} selected={o.id === categoryId} onPress={() => setCategoryId(o.id)} />
@@ -201,7 +202,12 @@ export default function Book(): JSX.Element {
       <Section title="Language">
         <Row gap={space.sm} wrap>
           {(domain?.languages ?? ['en']).map((l) => (
-            <Chip key={l} label={l} selected={l === language} onPress={() => setLanguage(l)} />
+            <Chip
+              key={l}
+              label={languageName(l, lang)}
+              selected={l === language}
+              onPress={() => setLanguage(l)}
+            />
           ))}
         </Row>
         <View style={{ height: space.sm }} />

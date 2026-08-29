@@ -1,17 +1,19 @@
 /**
  * The design system.
  *
- * The colours are the exam family's own pack tokens (apps/api/seed/family.ts
- * → theme.tokens) — the warm paper, the fountain-pen ink, the examiner's
- * red. Nothing here was invented for the sake of a look.
+ * Rewritten to a clean, near-white, typographic aesthetic: white ground,
+ * flat grey card fills instead of borders and shadows, one very large
+ * tightly-tracked display size, and a lot of air. The previous palette
+ * was the exam family's warm "ruled paper and red ink"; it read as dated
+ * and busy on a phone, so the base is now neutral and the family supplies
+ * only an accent (see `applyPack`). That is also the more correct shape
+ * architecturally — a neutral core with a family skin, not a core wearing
+ * one family's costume (CLAUDE.md #7).
  *
- * What IS new is everything around them: a type scale, a spacing scale,
- * elevation, and touch targets sized for a thumb rather than a mouse.
- * The web app inherited none of that, which is most of why it read as an
- * admin tool rather than a product.
- *
- * `applyPack()` swaps the palette at runtime from a resolved domain, so a
- * different family still re-skins the app with no code change (#7).
+ * Type is Inter. Because Inter has no Devanagari coverage and this app
+ * ships Hindi, Noto Sans Devanagari is loaded alongside it and selected
+ * per string by `fontFor()` — a missing-glyph fallback is not something
+ * to leave to chance on a screen a Hindi speaker reads first.
  */
 
 export interface Palette {
@@ -35,40 +37,111 @@ export interface Palette {
 }
 
 export const LIGHT: Palette = {
-  paper: '#fdfcf7',
+  paper: '#ffffff',
   surface: '#ffffff',
-  surfaceSunk: '#f4f2ea',
-  ink: '#1a1a2e',
-  inkMuted: '#5b6472',
-  inkFaint: '#8d95a1',
-  correction: '#c1121f',
-  correctionSoft: '#fbeaea',
-  rule: '#e6e2d6',
-  accent: '#2f5d8c',
-  accentSoft: '#e7eef6',
+  surfaceSunk: '#f4f4f5',
+  ink: '#09090b',
+  inkMuted: '#71717a',
+  inkFaint: '#a1a1aa',
+  correction: '#dc2626',
+  correctionSoft: '#fef2f2',
+  rule: '#e4e4e7',
+  // The primary action is black on white. High contrast, no hue to clash
+  // with a family's own colour, and it is what makes the page read as
+  // composed rather than decorated.
+  accent: '#09090b',
+  accentSoft: '#f4f4f5',
   accentInk: '#ffffff',
-  good: '#1d6b47',
-  goodSoft: '#dcefe4',
-  warn: '#8a5a00',
-  warnSoft: '#f8eed4',
+  good: '#15803d',
+  goodSoft: '#f0fdf4',
+  warn: '#a16207',
+  warnSoft: '#fefce8',
 };
 
-/** Type scale. One place, so nothing drifts. */
+/**
+ * Font families.
+ *
+ * React Native has no CSS-style font stacks: `fontFamily` takes exactly
+ * one name, and `fontWeight` is ignored for a custom family. So each
+ * weight is its own family name, and weight is chosen by picking one.
+ */
+export const font = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  // Devanagari equivalents, same weights.
+  devaRegular: 'NotoSansDevanagari_400Regular',
+  devaMedium: 'NotoSansDevanagari_500Medium',
+  devaSemibold: 'NotoSansDevanagari_600SemiBold',
+} as const;
+
+const DEVANAGARI = /[ऀ-ॿ]/;
+
+/**
+ * Picks the family that can actually draw this string.
+ *
+ * Latin-only text gets Inter. Anything containing Devanagari gets Noto,
+ * which also renders Latin acceptably — so a mixed string stays in one
+ * face rather than switching mid-sentence.
+ */
+export function fontFor(text: unknown, weight: 'regular' | 'medium' | 'semibold' = 'regular'): string {
+  const deva = typeof text === 'string' && DEVANAGARI.test(text);
+  if (weight === 'semibold') return deva ? font.devaSemibold : font.semibold;
+  if (weight === 'medium') return deva ? font.devaMedium : font.medium;
+  return deva ? font.devaRegular : font.regular;
+}
+
+/** Which weight a type style is asking for, so `fontFor` can match it. */
+export type Weight = 'regular' | 'medium' | 'semibold';
+
+const WEIGHT: Record<Weight, string> = {
+  regular: font.regular,
+  medium: font.medium,
+  semibold: font.semibold,
+};
+
+/**
+ * Type scale.
+ *
+ * `display` is deliberately large and tightly tracked — the single
+ * gesture that most separates a designed page from a form. Negative
+ * letter-spacing grows with size, which is how a grotesque is meant to
+ * be set.
+ *
+ * Each entry is a complete, valid `TextStyle` carrying the Latin family,
+ * so spreading one into a bare `<Text>` is correct on its own. Text that
+ * may contain Devanagari should go through the kit's components instead,
+ * which swap in the bundled Noto face via `fontFor`; a bare `<Text>`
+ * falls back to whatever Devanagari face the platform supplies, which
+ * renders correctly but not identically.
+ */
 export const type = {
-  display: { fontSize: 30, lineHeight: 36, fontWeight: '700' as const, letterSpacing: -0.4 },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '700' as const, letterSpacing: -0.2 },
-  heading: { fontSize: 17, lineHeight: 23, fontWeight: '600' as const },
-  body: { fontSize: 15, lineHeight: 22, fontWeight: '400' as const },
-  bodyStrong: { fontSize: 15, lineHeight: 22, fontWeight: '600' as const },
-  small: { fontSize: 13, lineHeight: 18, fontWeight: '400' as const },
-  smallStrong: { fontSize: 13, lineHeight: 18, fontWeight: '600' as const },
-  caption: { fontSize: 11, lineHeight: 15, fontWeight: '600' as const, letterSpacing: 0.5 },
+  display: { fontSize: 38, lineHeight: 43, letterSpacing: -1.3, fontFamily: WEIGHT.semibold },
+  title: { fontSize: 27, lineHeight: 33, letterSpacing: -0.7, fontFamily: WEIGHT.semibold },
+  heading: { fontSize: 19, lineHeight: 26, letterSpacing: -0.3, fontFamily: WEIGHT.semibold },
+  body: { fontSize: 16, lineHeight: 25, letterSpacing: -0.1, fontFamily: WEIGHT.regular },
+  bodyStrong: { fontSize: 16, lineHeight: 25, letterSpacing: -0.1, fontFamily: WEIGHT.medium },
+  small: { fontSize: 14, lineHeight: 21, letterSpacing: 0, fontFamily: WEIGHT.regular },
+  smallStrong: { fontSize: 14, lineHeight: 21, letterSpacing: 0, fontFamily: WEIGHT.medium },
+  caption: { fontSize: 12, lineHeight: 17, letterSpacing: 0, fontFamily: WEIGHT.medium },
+} as const;
+
+/** The weight each scale step asks for, for script-aware family selection. */
+export const scaleWeight: Record<keyof typeof type, Weight> = {
+  display: 'semibold',
+  title: 'semibold',
+  heading: 'semibold',
+  body: 'regular',
+  bodyStrong: 'medium',
+  small: 'regular',
+  smallStrong: 'medium',
+  caption: 'medium',
 };
 
-/** 4pt grid. */
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
+/** 4pt grid, with more air at the top end than before. */
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 40, xxxl: 64 };
 
-export const radius = { sm: 8, md: 12, lg: 16, pill: 999 };
+export const radius = { sm: 10, md: 14, lg: 20, xl: 28, pill: 999 };
 
 /**
  * Minimum interactive size. 48dp is Android's guidance, and this app's
@@ -76,36 +149,34 @@ export const radius = { sm: 8, md: 12, lg: 16, pill: 999 };
  */
 export const TOUCH = 48;
 
+/**
+ * Elevation is almost absent by design. Surfaces separate by fill and
+ * whitespace; a drop shadow under every card is what made the old build
+ * look like a dashboard. `raised` survives for genuinely floating things
+ * (sheets, menus) and nothing else.
+ */
 export const shadow = {
-  card: {
-    shadowColor: '#1a1a2e',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
   raised: {
-    shadowColor: '#1a1a2e',
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
+    shadowColor: '#09090b',
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
 };
 
 /**
  * Overlays a family's published tokens onto the base palette.
- * A family that supplies only some keeps the rest.
+ *
+ * Only the accent and the semantic correction colour are taken. The
+ * ground stays white whatever the family says: a family may colour its
+ * own signature, not repaint the product.
  */
 export function applyPack(tokens: Record<string, string> | undefined): Palette {
   if (!tokens) return LIGHT;
   return {
     ...LIGHT,
-    paper: tokens['--color-paper'] ?? LIGHT.paper,
-    ink: tokens['--color-ink'] ?? LIGHT.ink,
-    inkMuted: tokens['--color-ink-muted'] ?? LIGHT.inkMuted,
-    correction: tokens['--color-ink-correction'] ?? LIGHT.correction,
-    rule: tokens['--color-rule-line'] ?? LIGHT.rule,
     accent: tokens['--color-accent'] ?? LIGHT.accent,
+    correction: tokens['--color-ink-correction'] ?? LIGHT.correction,
   };
 }

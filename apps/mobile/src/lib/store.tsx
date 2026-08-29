@@ -126,7 +126,13 @@ export function useStore(): Store {
 }
 
 /** Convenience: the family's word for each party, in the current language. */
-export function useWords(): { seeker: string; provider: string; engagement: string; family: string } {
+export function useWords(): {
+  seeker: string;
+  provider: string;
+  engagement: string;
+  family: string;
+  category: string;
+} {
   const { domain, lang } = useStore();
   const pick = (m: Record<string, string> | undefined): string =>
     m ? (m[lang] ?? m.en ?? Object.values(m)[0] ?? '') : '';
@@ -135,5 +141,8 @@ export function useWords(): { seeker: string; provider: string; engagement: stri
     provider: pick(domain?.labels.provider) || 'Provider',
     engagement: pick(domain?.labels.engagement) || 'Engagement',
     family: pick(domain?.labels.family) || 'Sankalp',
+    // 'Paper' is the exam family's word and lives in its manifest. A
+    // family that names nothing gets the neutral core term.
+    category: pick(domain?.labels.category) || 'Category',
   };
 }

@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Body, Button, Card, ErrorNote, H1, Row, Screen, Section, Small } from '@/components/kit';
@@ -85,6 +85,7 @@ export default function LeaveReview(): JSX.Element {
   if (done) {
     return (
       <Screen>
+      <Stack.Screen options={{ title: 'Leave a review' }} />
         <H1>Thank you</H1>
         <Body muted>
           Recorded against the skills this {words.engagement.toLowerCase()} actually needed. It cannot be edited —

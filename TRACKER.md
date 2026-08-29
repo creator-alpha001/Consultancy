@@ -359,11 +359,15 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
+| D32 | mobile | `applyPack()` exists but is never called — family theming is unwired | `src/theme/tokens.ts` exports it and the kit imports the palette directly instead, so a family cannot actually re-skin the app (#7). Latent rather than harmful today, because there is one family; it becomes a real blocker the moment a second one needs its own accent. Found while rewriting the theme, recorded rather than half-wired. |
+| D33 | mobile | No i18n catalogue — UI chrome is English-only | Pack-supplied vocabulary is translated (the family, seeker, provider, engagement and now category words all render in Hindi), and so are language names, via `Intl.DisplayNames`. But every string the app itself owns — "Language", "Your offer", "What do you need?", "Nothing is charged yet." — is hardcoded English. On a Hindi-default domain that produces a screen half in each language, which is worse than either. `engagementTypeLabel()` is English-only for the same reason and should move into the catalogue when one exists. |
+| D34 | mobile | Devanagari falls back inconsistently outside the kit's own components | The kit picks the bundled Noto face per string via `fontFor()`, so anything rendered through `Body`/`Small`/`H1` is right. Around 40 call sites still spread `type.X` into a bare `<Text>`; those carry the Inter family and rely on the platform substituting its own Devanagari face for missing glyphs. It renders — no tofu — but at a different weight and baseline from the text beside it. The fix is to route those call sites through the kit. |
+| D35 | web | `apps/web` and `apps/mobile` are now two different design languages | The mobile app was rebuilt to a clean white, Inter-based, flat-surface aesthetic; the web app still carries the warm ruled-paper palette, its own type scale, the Devanagari plural bug (D29) and the `RuleNote` clutter (D30). Two products wearing different faces. Either the web app is ported to the same tokens or it is scoped down to what it is genuinely for (SEO, desktop, admin) — a decision, not a cleanup. |
 | D29 | web | `apps/web` still renders `2 मेंटरs` and `an अभ्यर्थी account` | An English plural and article concatenated onto a Devanagari noun, in `mentors/page.tsx` and elsewhere. `apps/mobile/src/lib/pack.ts` has the fix (`plural()` / `withArticle()`); the web app needs the same helper. Cosmetic in English, and quietly insulting in Hindi. |
 | D31 | M4 | `credential_types.public_fields` is security-relevant data with no review gate | The allow-list that keeps verification evidence off a public profile (#30) is a `text[]` column, so a single `UPDATE` publishes `rollNumber` and `claimedName` to the world with no code change, no migration and no review. Confirmed by doing it: widening the list leaked both fields into `GET /providers/:id` immediately. The booking journey now catches it, but only if someone runs the journey. The column should be writable only through the admin pack editor with an audit-logged change, and the pack validator should warn when a new credential type declares any `public_fields` at all. |
 | D30 | web | `RuleNote` puts engineering commentary on every web screen | "There is no sort-by-price control here, at any layer…" is written for a reviewer, not a user. It should move to code comments and the docs; the rules stay enforced either way. The mobile app already does this. |
 | D25 | web | Screens still missing: dispute detail, admin queues, credential submission | The booking + mentorship loop is now built and driven in a browser (mentor search, profile, booking with slot picking, agenda draft/lock, session room, submission, rubric evaluation, accept/dispute, review, board post + propose + accept). What remains unbuilt: the dispute *detail* and appeal screens (raising one works), the admin adjudication and moderation queues, and provider credential submission. |
-| D26 | web | No frontend test suite beyond the browser journeys, and nothing runs in CI | `test/journey.mjs` and `test/booking-journey.mjs` (43 checks) drive the real flows and catch a lot — the latter found a 500 on `/engagements` that the happy path had walked past, and now catches credential evidence leaking at any depth of the profile payload. But there are no component tests, and **the repository still has no CI workflow at all**: `./scripts/dev.sh test` runs everything (typechecks, 317 API tests, both browser journeys) in one command, so the remaining work is wiring that command to a GitHub Actions workflow with a Postgres service container. Both journeys need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
+| D26 | web | No frontend test suite beyond the browser journeys, and nothing runs in CI | `test/journey.mjs` and `test/booking-journey.mjs` (43 checks) drive the real flows and catch a lot — the latter found a 500 on `/engagements` that the happy path had walked past, and now catches credential evidence leaking at any depth of the profile payload. But there are no component tests, and **the repository still has no CI workflow at all**: `./scripts/dev.sh test` runs everything (typechecks, 320 API tests, both browser journeys) in one command, so the remaining work is wiring that command to a GitHub Actions workflow with a Postgres service container. Both journeys need a live API and a seeded database, so they are smoke tests of a running stack rather than a unit suite. |
 | D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
 | D24 | M9 | The restore drill is manual and local | `scripts/restore-drill.sh` is real and passes, but it dumps a local database on demand. There is no backup *storage*, no retention policy, no WAL archiving, and therefore no point-in-time recovery — so "restore verified" is verified for the mechanism, not for a production backup that does not exist yet. |
 | D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
@@ -816,6 +820,28 @@ future task is surprised by something, it should be recorded here.
 
 ---
 
+## Design direction
+
+The mobile app was rebuilt (2026-08-29) to a clean, near-white,
+typographic aesthetic on request: white ground, flat grey card fills
+with no borders and no drop shadows, one large tightly-tracked display
+size, pill-shaped black primary buttons, and a lot more whitespace.
+Reference given was the ElevenLabs marketing site.
+
+Two consequences worth knowing:
+
+- **The base palette is now neutral, and the family supplies only an
+  accent.** The old base was the exam family's warm paper and red ink,
+  which meant the core wore one family's costume — the thing CLAUDE.md #7
+  exists to prevent. `applyPack()` now takes the accent and the
+  correction colour and leaves the ground white whatever a family says.
+  (It is still not actually called — D32.)
+- **Type is Inter, with Noto Sans Devanagari bundled alongside it.**
+  Inter has no Devanagari coverage at all. Loading only Inter would have
+  left every Hindi string to whatever the platform substituted, on the
+  screens a Hindi speaker reads first. `fontFor()` picks the face from
+  the string's script.
+
 ## Environment notes
 
 - **`./scripts/dev.sh up` does all of the below.** It is the supported way
@@ -829,7 +855,7 @@ future task is surprised by something, it should be recorded here.
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **317 tests, all passing**,
+- Full suite: `cd apps/api && npm test` — **320 tests, all passing**,
   including a from-scratch run (`DROP DATABASE`, re-run all 31 migrations,
   full suite) to confirm migration order integrity, as of this update.
 - On a cold container the database is empty of *everything*, roles

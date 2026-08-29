@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Avatar, Body, Button, Card, Chip, Empty, Eyebrow, H1, Loading, Row, Screen, Section, Small } from '@/components/kit';
 import { api, when } from '@/lib/api';
-import { domainLabel, factLabel, label, plural } from '@/lib/pack';
+import { domainLabel, factLabel, label, languageName, plural } from '@/lib/pack';
 import { useStore, useWords } from '@/lib/store';
 import { LIGHT as C, radius, space, type } from '@/theme/tokens';
 
@@ -129,7 +129,7 @@ export default function MentorProfile(): JSX.Element {
         <Avatar name={p.displayName} size={64} />
         <View style={{ flex: 1, gap: space.xs }}>
           <H1>{p.displayName}</H1>
-          <Small>Works in {p.languages.join(', ') || '—'}</Small>
+          <Small>Works in {p.languages.map((l) => languageName(l, lang)).join(', ') || '—'}</Small>
           {s.reviewCount > 0 && (
             <Row gap={space.sm}>
               <Stars n={Math.round(s.avgRating ?? 0)} />

@@ -21,6 +21,35 @@ describe('validateFamilyManifest', () => {
     expect(parsed.assessmentTemplates).toHaveLength(3);
   });
 
+  /**
+   * `labels.category` is what a family calls its taxonomy — "Paper" for
+   * the exam family, "Grade" or "Module" elsewhere. It is optional
+   * because not every family names one, and the UI falls back to the
+   * neutral core word. The point of these three is that the word "Paper"
+   * can only ever come from pack data, never from core code
+   * (CLAUDE.md vocabulary table).
+   */
+  describe('labels.category', () => {
+    it('is optional — a family that names no taxonomy still validates', () => {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      const labels = raw.labels as Record<string, unknown>;
+      expect(labels.category).toBeUndefined();
+      expect(validateFamilyManifest(raw).labels.category).toBeUndefined();
+    });
+
+    it('round-trips a label map when the family supplies one', () => {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      (raw.labels as Record<string, unknown>).category = { en: 'Paper', hi: 'प्रश्नपत्र' };
+      expect(validateFamilyManifest(raw).labels.category).toEqual({ en: 'Paper', hi: 'प्रश्नपत्र' });
+    });
+
+    it('rejects a present-but-malformed category label', () => {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      (raw.labels as Record<string, unknown>).category = 'Paper';
+      expect(issuesOf(() => validateFamilyManifest(raw)).join(' ')).toMatch(/labels\.category/);
+    });
+  });
+
   it('rejects a missing code', () => {
     const raw = familyManifestV1() as Record<string, unknown>;
     delete raw.code;

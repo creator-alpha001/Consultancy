@@ -12,9 +12,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/noto-sans-devanagari": "^0.4.1",
     "@expo/metro-runtime": "^57.0.14",
     "expo": "~54.0.0",
     "expo-constants": "~18.0.0",
+    "expo-font": "^57.0.2",
     "expo-linking": "~8.0.0",
     "expo-router": "~6.0.0",
     "expo-secure-store": "~15.0.0",
