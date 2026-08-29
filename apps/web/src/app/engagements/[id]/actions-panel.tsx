@@ -7,6 +7,7 @@ import {
   agreeAction,
   completeAction,
   raiseDisputeAction,
+  replyToReviewAction,
   reviewAction,
   submitWorkAction,
 } from '@/app/actions/engagement';
@@ -281,5 +282,56 @@ export function BookSessionPanel({ engagementId }: { engagementId: string }): JS
           never a fixed offset.
       */}
     </Card>
+  );
+}
+
+/**
+ * Answering a review about you.
+ *
+ * One reply, by the subject only, append-only — all enforced by
+ * triggers, so this form does not re-check any of it and simply lets the
+ * server refuse. A review the reviewed party cannot answer is a weapon
+ * rather than a record.
+ */
+export function ReplyPanel({
+  reviewId,
+  lang,
+}: {
+  reviewId: string;
+  lang: string;
+}): JSX.Element {
+  const [state, formAction] = useFormState<ActionState, FormData>(replyToReviewAction, {});
+
+  if (state.ok) {
+    return <p className="mt-md text-small text-ink-muted">Your reply is published beside the review.</p>;
+  }
+
+  return (
+    <form action={formAction} className="mt-md">
+      <ErrorNote code={state.error?.code} message={state.error?.message} />
+      <input type="hidden" name="reviewId" value={reviewId} />
+      <input type="hidden" name="bodyLang" value={lang} />
+      <label htmlFor={`reply-${reviewId}`} className="mb-sm block text-smallStrong font-medium">
+        Reply — once, and it cannot be edited afterwards
+      </label>
+      <textarea
+        id={`reply-${reviewId}`}
+        name="bodyOriginal"
+        rows={3}
+        required
+        className="mb-md w-full rounded-md border border-rule bg-surface px-lg py-md text-base"
+        placeholder="Answer the substance. This sits beside the review permanently."
+      />
+      <SubmitButtonPlain label="Publish the reply" busy="Publishing…" />
+    </form>
+  );
+}
+
+function SubmitButtonPlain({ label, busy }: { label: string; busy: string }): JSX.Element {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" variant="secondary" disabled={pending}>
+      {pending ? busy : label}
+    </Button>
   );
 }

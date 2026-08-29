@@ -305,6 +305,48 @@ describe('profiles: achievements, track record, and reviews with substance', () 
     });
   });
 
+  /**
+   * Whether a review has been answered is part of the review.
+   *
+   * `listAboutUser` returned the review rows alone, so no caller could
+   * tell an answered review from an unanswered one — and the mentor
+   * workspace offered a reply box on every review, including ones
+   * already replied to, where posting fails with
+   * REVIEW_REPLY_ALREADY_EXISTS. The right of reply is exercised once
+   * per review, so its state travels with the review.
+   */
+  describe('reviews about a user carry their reply state', () => {
+    it('reports null before a reply and the reply afterwards', async () => {
+      const { seekerId, providerId } = await seedUsers(pool);
+      const engagementId = await completeOne(seekerId, providerId);
+      const review = await reviews.leave({
+        engagementId,
+        reviewerId: seekerId,
+        direction: 'seeker_on_provider',
+        rating: 4,
+        bodyOriginal: 'Clear and honest.',
+        bodyLang: 'en',
+      });
+
+      const before = await reviews.listAboutUser(providerId);
+      expect(before).toHaveLength(1);
+      expect(before[0].reply).toBeNull();
+
+      await reviews.reply({
+        reviewId: review.id,
+        authorId: providerId,
+        bodyOriginal: 'Fair — here is what changed.',
+        bodyLang: 'en',
+      });
+
+      const after = await reviews.listAboutUser(providerId);
+      expect(after[0].reply).toEqual({
+        bodyOriginal: 'Fair — here is what changed.',
+        bodyLang: 'en',
+      });
+    });
+  });
+
   describe('the right of reply', () => {
     it('lets the reviewed provider answer, once', async () => {
       const { seekerId, providerId } = await seedUsers(pool);

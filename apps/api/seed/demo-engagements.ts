@@ -22,6 +22,7 @@ import { AgendaService } from '../src/modules/agenda/agenda.service';
 import { EvaluationService } from '../src/modules/assessment/evaluation.service';
 import { SubmissionService } from '../src/modules/assessment/submission.service';
 import { EngagementsService } from '../src/modules/engagements/engagements.service';
+import { PasswordService } from '../src/modules/identity/password.service';
 import { DisputeService } from '../src/modules/disputes/dispute.service';
 import { EscrowService } from '../src/modules/money/escrow.service';
 import { ReviewService } from '../src/modules/reputation/review.service';
@@ -98,6 +99,7 @@ async function main(): Promise<void> {
   const evaluations = app.get(EvaluationService);
   const reviews = app.get(ReviewService);
   const disputes = app.get(DisputeService);
+  const passwords = app.get(PasswordService);
 
   // Rates come from fee_schedule_at(ts) and are never hardcoded (#8), so
   // one has to exist before any escrow can be released. A dev database
@@ -235,6 +237,93 @@ async function main(): Promise<void> {
     }
 
     console.log(`completed engagement ${i + 1}/${SCRIPT.length}: ${s.seeker} → ${s.provider}, ${s.rating}★`);
+  }
+
+  // ── One unanswered review, on demand ────────────────────────────────
+  // `--fresh-review` adds a completed engagement whose review has no
+  // reply. Replies are once-only and append-only, so once a journey has
+  // answered every review a mentor has, it can never run again — the
+  // same repeatability problem as a ruled dispute.
+  if (process.argv.includes('--fresh-review')) {
+    const providerId = await userId('asha.rathore@demo.local', 'provider');
+    const seekerId = await userId('priya.nair@demo.local', 'seeker');
+    const e = await engagements.createDraft({
+      seekerId,
+      providerId,
+      domainCode: DOMAIN,
+      categoryId,
+      engagementType: 'document_review',
+      currency: 'INR',
+      amountPaise: 70_000n,
+      language: 'en',
+    });
+    await engagements.agree(e.id);
+    const agenda = await agendas.createDraft({
+      engagementId: e.id,
+      originalLang: 'en',
+      expectedDeliverable: 'Annotated answer with a scored rubric',
+      successCriteria: 'The seeker can name their three weakest areas',
+      items: [{ labelLang: 'en', labelText: 'Review the structure' }],
+    });
+    await agendas.lock(agenda.id);
+    await escrows.hold({
+      engagementId: e.id,
+      seekerId,
+      providerId,
+      currency: 'INR',
+      amountPaise: 70_000n,
+      idempotencyKey: `demo-hold:${e.id}`,
+    });
+    const submission = await submissions.submit({
+      engagementId: e.id,
+      seekerId,
+      contentRef: 's3://private/demo/answer-unanswered.pdf',
+      note: 'Demo submission',
+    });
+    const ev = await evaluations.open({ engagementId: e.id, providerId, submissionId: submission.id });
+    const dims = await pool.query<{ code: string }>(
+      `SELECT d->>'code' AS code FROM assessment_templates t, jsonb_array_elements(t.dimensions) d WHERE t.id = $1`,
+      [ev.templateId],
+    );
+    for (const d of dims.rows) {
+      await evaluations.addScore({ evaluationId: ev.id, dimensionCode: d.code, score: 68 });
+    }
+    await evaluations.return_(ev.id, { overallNote: 'Returned.' });
+    await engagements.complete(e.id);
+    await reviews.leave({
+      engagementId: e.id,
+      reviewerId: seekerId,
+      direction: 'seeker_on_provider',
+      rating: 4,
+      bodyOriginal: 'Good detail on structure. I would have liked more on time management under exam conditions.',
+      bodyLang: 'en',
+      dimensionScores: [
+        { dimensionCode: 'clarity', score: 4 },
+        { dimensionCode: 'depth', score: 4 },
+      ],
+    });
+    console.log('added one completed engagement with an unanswered review');
+  }
+
+  // ── A password on the demo accounts ─────────────────────────────────
+  // Without one, nobody can sign in as a mentor who actually has reviews
+  // and completed work, so every provider-side screen could only ever be
+  // driven by a brand-new account with an empty profile. Hashed with the
+  // app's own argon2id service rather than a literal, so it stays valid
+  // if the parameters change.
+  //
+  // Dev fixture only — this file refuses to be anything else, and the
+  // password is published here in plain sight precisely so it can never
+  // be mistaken for a real one.
+  const DEMO_PASSWORD = 'demo-password-not-a-secret';
+  const demoHash = await passwords.hash(DEMO_PASSWORD);
+  const withPassword = await pool.query(
+    `UPDATE users SET password_hash = $1
+      WHERE email LIKE '%@demo.local' AND password_hash IS NULL`,
+    [demoHash],
+  );
+  if (withPassword.rowCount) {
+    console.log(`${withPassword.rowCount} demo account(s) can now sign in (password: ${DEMO_PASSWORD})`);
   }
 
   // ── One disputed engagement ─────────────────────────────────────────

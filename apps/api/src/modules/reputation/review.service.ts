@@ -209,13 +209,37 @@ export class ReviewService {
     return res.rows.map(mapReview);
   }
 
-  /** Reviews written about one user. Recency order — no "top reviews," no sorting by rating. */
-  async listAboutUser(subjectId: string, limit = 50): Promise<ReviewRow[]> {
-    const res = await this.pool.query<ReviewDbRow>(
-      `SELECT * FROM reviews WHERE subject_id = $1 ORDER BY created_at DESC LIMIT $2`,
+  /**
+   * Reviews written about one user. Recency order — no "top reviews," no
+   * sorting by rating.
+   *
+   * Carries whether each one has already been answered. Without that a
+   * caller cannot tell an unanswered review from an answered one, and
+   * the workspace offered a reply box on every single review — including
+   * the ones already replied to, where posting fails with
+   * REVIEW_REPLY_ALREADY_EXISTS. The right of reply is exercised once
+   * per review, so "has it been used" is part of the review.
+   */
+  async listAboutUser(
+    subjectId: string,
+    limit = 50,
+  ): Promise<Array<ReviewRow & { reply: { bodyOriginal: string; bodyLang: string } | null }>> {
+    const res = await this.pool.query<ReviewDbRow & { reply_body: string | null; reply_lang: string | null }>(
+      `SELECT r.*, rr.body_original AS reply_body, rr.body_lang AS reply_lang
+         FROM reviews r
+         LEFT JOIN review_replies rr ON rr.review_id = r.id
+        WHERE r.subject_id = $1
+        ORDER BY r.created_at DESC
+        LIMIT $2`,
       [subjectId, limit],
     );
-    return res.rows.map(mapReview);
+    return res.rows.map((row) => ({
+      ...mapReview(row),
+      reply:
+        row.reply_body === null
+          ? null
+          : { bodyOriginal: row.reply_body, bodyLang: row.reply_lang ?? 'en' },
+    }));
   }
 
   /**

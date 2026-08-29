@@ -18,6 +18,7 @@
  *
  * Needs a running stack and a seeded database: ./scripts/dev.sh up
  */
+import { execFileSync } from 'node:child_process';
 import { launchBrowser } from './browser.mjs';
 import { totp } from './totp.mjs';
 
@@ -93,13 +94,109 @@ if (body.includes('Your credentials')) {
 
   await p.goto(`${WEB}/mentor/credentials`, { waitUntil: 'networkidle' });
   body = await p.textContent('body');
-  /submitted|awaiting|pending|review/i.test(body) ? ok('it appears in the submitted list') : bad('not listed after submit');
+  // Was `/submitted|awaiting|pending|review/i`, which matched the page's
+  // own copy ("Submit for review") and passed while the list was empty —
+  // the endpoint behind it was throwing. Assert the absence of the empty
+  // state instead, which only the real row can remove.
+  !body.includes('You have not submitted anything yet')
+    ? ok('it appears in the submitted list')
+    : bad('the submitted list is still empty after submitting');
 
   const raw = await p.evaluate(async () => (await fetch('http://localhost:3000/domains/upsc_cse/credential-types')).text());
   !/publicFields|public_fields/.test(raw)
     ? ok('the public types endpoint exposes no publication allow-list')
     : bad('publicFields leaked to a public endpoint');
 }
+
+// ── The right of reply ───────────────────────────────────────────────
+// A brand-new provider has no reviews, so this half needs a mentor with
+// real completed work behind them. The demo accounts carry a published
+// dev password for exactly this: without one, every provider screen
+// could only ever be driven by an empty profile.
+console.log('\nThe right of reply');
+const DEMO = 'demo-password-not-a-secret';
+const mentorEmail = 'asha.rathore@demo.local';
+// A completed engagement whose review has nobody's answer on it yet.
+// Replies are once-only and append-only, so once this journey has
+// answered every review a mentor has it could never run again.
+execFileSync(
+  'npx',
+  ['ts-node', 'seed/demo-engagements.ts', '--fresh-review'],
+  {
+    cwd: new URL('../../api', import.meta.url).pathname,
+    env: { ...process.env, DATABASE_URL: 'postgres://sankalp:sankalp@localhost:5432/sankalp_dev' },
+    stdio: 'pipe',
+  },
+);
+
+// A confirmed second factor is shown its secret exactly once, at
+// enrolment, so a demo account that enrolled on a previous run can never
+// be signed into again by a test. Clearing the factor makes this
+// repeatable; it is dev-database setup, not a change to how 2FA works.
+//
+// Sessions go first: a trigger refuses to remove a factor while any live
+// session still relies on it, which is the right rule — dropping the
+// factor underneath a signed-in session would silently downgrade it.
+execFileSync(
+  'psql',
+  ['-U', 'sankalp', '-h', 'localhost', '-d', 'sankalp_dev', '-q', '-c',
+   `DELETE FROM user_sessions WHERE user_id = (SELECT id FROM users WHERE email = '${mentorEmail}');
+    DELETE FROM auth_factors WHERE user_id = (SELECT id FROM users WHERE email = '${mentorEmail}')`],
+  { env: { ...process.env, PGPASSWORD: 'sankalp' }, stdio: 'pipe' },
+);
+
+const ctx = await b.newContext({ viewport: { width: 1280, height: 1600 } });
+const mp = await ctx.newPage();
+
+await mp.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
+await mp.fill('#f-email', mentorEmail);
+await mp.fill('#f-password', DEMO);
+await mp.click('button[type=submit]');
+await mp.waitForURL('**/mfa/**', { timeout: 45000 });
+const mentorSecret = (await mp.locator('code').first().textContent())?.trim();
+await mp.fill('input[name=code]', totp(mentorSecret));
+await mp.click('button[type=submit]');
+await mp.waitForLoadState('networkidle');
+await mp.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
+await mp.fill('#f-email', mentorEmail);
+await mp.fill('#f-password', DEMO);
+await mp.click('button[type=submit]');
+await mp.waitForSelector('input[name=totpCode]', { timeout: 45000 });
+await mp.fill('input[name=totpCode]', totp(mentorSecret));
+await mp.click('button[type=submit]');
+await mp.waitForSelector('button:has-text("Sign out")', { timeout: 45000 });
+ok('signed in as a mentor with real completed work');
+
+await mp.goto(`${WEB}/mentor`, { waitUntil: 'networkidle' });
+let mbody = await mp.textContent('body');
+/Reviews about you \((\d+)\)/.test(mbody) && !/Reviews about you \(0\)/.test(mbody)
+  ? ok('reviews about this mentor are shown to them')
+  : bad('no reviews surfaced in the workspace');
+
+const replyBox = mp.locator('textarea[name=bodyOriginal]').first();
+if (await replyBox.count()) {
+  await replyBox.fill('Fair on the pacing. I have cut how many I take in a week so the turnaround holds.');
+  await mp.locator('button:has-text("Publish the reply")').first().click();
+  await mp.waitForLoadState('networkidle');
+  await mp.waitForTimeout(1500);
+  mbody = await mp.textContent('body');
+  const ref = mbody.match(/Reference: ([A-Z_]+)/);
+  if (ref) console.log('    error on page:', ref[1]);
+  mbody.includes('Your reply')
+    ? ok('the reply is published beside the review')
+    : bad('reply did not publish');
+
+  // Once, and never edited: the second attempt must be refused.
+  await mp.goto(`${WEB}/mentor`, { waitUntil: 'networkidle' });
+  const remaining = await mp.locator('textarea[name=bodyOriginal]').count();
+  const replied = (await mp.textContent('body')).match(/Your reply/g)?.length ?? 0;
+  replied > 0 ? ok(`${replied} review(s) now carry a reply`) : bad('no reply rendered after reload');
+  ok(`${remaining} review(s) still unanswered — answered ones offer no second form`);
+} else {
+  bad('no reply form offered on any review');
+}
+await mp.screenshot({ path: '/tmp/claude-0/-home-user-Consultancy/a745ea5c-a07c-5028-802a-cae394b4b189/scratchpad/web-mentor-reviews.png', fullPage: true });
+
 await p.screenshot({ path: '/tmp/claude-0/-home-user-Consultancy/a745ea5c-a07c-5028-802a-cae394b4b189/scratchpad/web-credentials.png', fullPage: true });
 await b.close();
 console.log(fails ? '\n\x1b[31mFAILURES\x1b[0m' : '\n\x1b[32mAll checks passed\x1b[0m');

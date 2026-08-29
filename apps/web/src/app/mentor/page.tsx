@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
 import { Card, EmptyState, PageTitle, Section, Status, TierChip } from '@/components/ui';
+import { ReplyPanel } from '@/app/engagements/[id]/actions-panel';
 import { apiAsUser } from '@/lib/api';
 import { duration, listEngagements, rupees, searchBoard, when } from '@/lib/engagements';
 import { getDomain, label } from '@/lib/pack';
@@ -16,6 +17,14 @@ interface SkillStat {
   completedEngagements: number;
   reviewCount: number;
   avgRating: number | null;
+}
+
+interface ReviewAboutMe {
+  id: string;
+  rating: number;
+  bodyOriginal: string;
+  bodyLang: string;
+  reply: { bodyOriginal: string; bodyLang: string } | null;
 }
 
 interface SessionListRow {
@@ -37,12 +46,13 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
   const actor = await currentUser();
   if (!actor) redirect('/login?next=/mentor');
 
-  const [stats, engagements, sessions, board, domain] = await Promise.all([
+  const [stats, engagements, sessions, board, domain, reviews] = await Promise.all([
     apiAsUser<SkillStat[]>('/me/skill-stats').catch(() => [] as SkillStat[]),
     listEngagements().catch(() => []),
     apiAsUser<SessionListRow[]>('/sessions').catch(() => [] as SessionListRow[]),
     searchBoard().catch(() => []),
     getDomain('upsc_cse').catch(() => null),
+    apiAsUser<ReviewAboutMe[]>(`/users/${actor.id}/reviews`).catch(() => [] as ReviewAboutMe[]),
   ]);
 
   const language = domain?.defaultLanguage ?? 'en';
@@ -166,6 +176,38 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
             one you are not verified for is refused by the database, so this
             list is not a shop window you cannot buy from.
         */}
+      </Section>
+
+      {/*
+        Reviews about this provider, with the right of reply.
+        Answering was possible in the API and in no interface: replies
+        rendered on public profiles and could only be created by a seed
+        script. Unanswered ones come first, because those are the ones
+        that need something from the person reading this page.
+      */}
+      <Section title={`Reviews about you (${reviews.length})`}>
+        {reviews.length === 0 ? (
+          <EmptyState>Nothing yet. Reviews only come from finished, paid work.</EmptyState>
+        ) : (
+          <div className="flex flex-col gap-md">
+            {[...reviews]
+              .sort((a, b) => Number(Boolean(a.reply)) - Number(Boolean(b.reply)))
+              .map((r) => (
+                <Card key={r.id}>
+                  <p className="text-bodyStrong font-medium">{r.rating} out of 5</p>
+                  <p className="mt-sm whitespace-pre-wrap text-body">{r.bodyOriginal}</p>
+                  {r.reply ? (
+                    <div className="mt-lg border-l-2 border-rule pl-lg">
+                      <p className="text-caption text-ink-muted">Your reply</p>
+                      <p className="mt-xs whitespace-pre-wrap text-small">{r.reply.bodyOriginal}</p>
+                    </div>
+                  ) : (
+                    <ReplyPanel reviewId={r.id} lang={r.bodyLang} />
+                  )}
+                </Card>
+              ))}
+          </div>
+        )}
       </Section>
 
       <Section

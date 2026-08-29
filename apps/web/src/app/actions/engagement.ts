@@ -338,3 +338,33 @@ export async function acceptProposalAction(_prev: ActionState, form: FormData): 
   revalidatePath('/engagements');
   return { ok: true };
 }
+
+/**
+ * The right of reply.
+ *
+ * Only the person a review is about may use it, once, and never edit it
+ * afterwards — all three enforced by triggers, so this does not
+ * re-check them. A review the reviewed party cannot answer is a weapon
+ * rather than a record, and until now nothing in either app could write
+ * one: replies rendered on profiles and could only be created by a seed
+ * script.
+ */
+export async function replyToReviewAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const reviewId = String(form.get('reviewId') ?? '');
+  try {
+    await apiAsUser(`/reviews/${reviewId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({
+        bodyOriginal: String(form.get('bodyOriginal') ?? ''),
+        // Kept in the language it was written in, never overwritten by a
+        // translation (SPEC-PLATFORM.md §8).
+        bodyLang: String(form.get('bodyLang') ?? 'en'),
+      }),
+    });
+    revalidatePath('/mentor');
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError) return { error: { code: err.code, message: err.message } };
+    throw err;
+  }
+}

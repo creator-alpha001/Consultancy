@@ -149,7 +149,10 @@ export class CredentialService {
   /** A provider's own credentials — the conclusion of each review, never the evidence behind it (#30). */
   async listForProvider(providerId: string): Promise<ProviderCredentialRow[]> {
     const res = await this.pool.query<CredentialDbRow>(
-      `SELECT * FROM provider_credentials WHERE provider_id = $1 ORDER BY created_at DESC`,
+      // submitted_at again — the second of two in this file. A sweep of
+      // every ORDER BY created_at against the tables that have no such
+      // column found exactly these two (D40).
+      `SELECT * FROM provider_credentials WHERE provider_id = $1 ORDER BY submitted_at DESC`,
       [providerId],
     );
     return Promise.all(res.rows.map((row) => this.hydrate(row)));

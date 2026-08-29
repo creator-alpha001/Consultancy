@@ -240,6 +240,34 @@ describe('M4 acceptance: submit -> automated check -> human review -> tier grant
     });
   });
 
+  it("a provider's own list is newest first, and does not throw", async () => {
+    // The same broken ordering as the review queue, in the same file,
+    // and equally invisible: the screen that calls it wrapped the fetch
+    // in a catch, so a 500 rendered as "nothing submitted yet".
+    const { providerId } = await seedUsers(pool);
+    const first = await credentials.submit({
+      providerId,
+      credentialTypeCode: 'exam_rank',
+      domainCode: 'uppsc',
+      skillCodes: ['answer_writing.gs.polity'],
+      verifierData: { rollNo: '111', year: 2019 },
+    });
+    await pool.query(
+      `UPDATE provider_credentials SET submitted_at = now() - interval '1 day' WHERE id = $1`,
+      [first.id],
+    );
+    const second = await credentials.submit({
+      providerId,
+      credentialTypeCode: 'mains_cleared',
+      domainCode: 'uppsc',
+      skillCodes: ['answer_writing.gs.polity'],
+      verifierData: { documentRef: 's3://private/x.pdf' },
+    });
+
+    const mine = await credentials.listForProvider(providerId);
+    expect(mine.map((c) => c.id)).toEqual([second.id, first.id]);
+  });
+
   describe('submittable credential types', () => {
     it('lists the family\'s types with the inputs their verifier requires', async () => {
       const types = await credentials.submittableTypes('uppsc');
