@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { AgendaService } from '../agenda/agenda.service';
+import { AuditService } from '../../common/audit/audit.service';
 import { recordingConsentIncomplete, sessionNotFound, sessionWrongStatus } from './errors';
 import { ROOM_PROVIDER, RoomProvider } from './room/room-provider.interface';
 import { ScheduleSessionInput, SessionMode, SessionRow, SessionStatus } from './types';
@@ -53,6 +54,7 @@ export class SessionService {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(ROOM_PROVIDER) private readonly roomProvider: RoomProvider,
     @Inject(AgendaService) private readonly agendas: AgendaService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async schedule(input: ScheduleSessionInput): Promise<SessionRow> {
@@ -98,7 +100,18 @@ export class SessionService {
     return mapSession(res.rows[0]);
   }
 
-  /** A refusal is recorded exactly like a consent — same row shape, consent_given=false. Never call this only for a yes. */
+  /**
+   * A refusal is recorded exactly like a consent — same row shape,
+   * consent_given=false. Never call this only for a yes.
+   *
+   * Also audited, and this is the one place where the audit entry
+   * carries information the row itself does not: `session_consents`
+   * upserts, so a person who consents and then withdraws leaves a
+   * single row saying "no". #21 makes a refusal shift the evidentiary
+   * burden, which means *when each decision was made* is the fact in
+   * question — and the audit log is append-only, so it keeps the
+   * sequence the consent row overwrites.
+   */
   async recordConsent(sessionId: string, userId: string, consentGiven: boolean): Promise<void> {
     await this.pool.query(
       `INSERT INTO session_consents (session_id, user_id, consent_given)
@@ -106,6 +119,13 @@ export class SessionService {
        ON CONFLICT (session_id, user_id) DO UPDATE SET consent_given = EXCLUDED.consent_given, decided_at = now()`,
       [sessionId, userId, consentGiven],
     );
+    await this.audit.record({
+      actorId: userId,
+      action: consentGiven ? 'session.recording_consented' : 'session.recording_refused',
+      subjectType: 'session',
+      subjectId: sessionId,
+      detail: { consentGiven },
+    });
   }
 
   async setRecording(sessionId: string, active: boolean): Promise<SessionRow> {
@@ -127,6 +147,13 @@ export class SessionService {
       [sessionId, active],
     );
     if (!res.rows[0]) throw sessionNotFound(sessionId);
+    await this.audit.record({
+      actorId: null,
+      action: active ? 'session.recording_started' : 'session.recording_stopped',
+      subjectType: 'session',
+      subjectId: sessionId,
+      detail: {},
+    });
     return mapSession(res.rows[0]);
   }
 

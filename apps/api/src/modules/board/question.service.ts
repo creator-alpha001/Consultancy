@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { DomainLoaderService } from '../domains/domain-loader.service';
 import { ScreeningService } from '../safety/screening.service';
+import { AuditService } from '../../common/audit/audit.service';
 import { questionNotFound, questionQuotaExceeded } from './errors';
 import { AnswerRow, AskQuestionInput, AskQuestionResult, QuestionRow } from './types';
 
@@ -15,6 +16,7 @@ interface QuestionDbRow {
   body_lang: string;
   status: QuestionRow['status'];
   distress_flagged: boolean;
+  screening_reasons: unknown;
 }
 
 interface AnswerDbRow {
@@ -50,6 +52,7 @@ export class QuestionService {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
     @Inject(ScreeningService) private readonly screening: ScreeningService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async ask(input: AskQuestionInput): Promise<AskQuestionResult> {
@@ -112,12 +115,36 @@ export class QuestionService {
     return res.rows.map(mapQuestion);
   }
 
-  async clearForReview(questionId: string): Promise<QuestionRow> {
+  /**
+   * A reviewer overriding the screening classifier and publishing held
+   * content (#25). Audited because it is the one moderation decision a
+   * person can make that the classifier disagreed with: if held content
+   * later turns out to have been harmful, the question asked is who
+   * released it and when.
+   */
+  async clearForReview(
+    questionId: string,
+    actor?: { actorId?: string | null; actorRole?: string | null },
+  ): Promise<QuestionRow> {
     const res = await this.pool.query<QuestionDbRow>(
       `UPDATE questions SET status = 'published' WHERE id = $1 AND status = 'held_for_review' RETURNING *`,
       [questionId],
     );
     if (!res.rows[0]) throw questionNotFound(questionId);
+    await this.audit.record({
+      actorId: actor?.actorId ?? null,
+      actorRole: actor?.actorRole ?? null,
+      action: 'moderation.cleared',
+      subjectType: 'question',
+      subjectId: questionId,
+      // The body itself is deliberately not copied here: the question
+      // row still holds it, and duplicating held content into a log
+      // read by more people is the opposite of what #25 asks for.
+      detail: {
+        distressFlagged: res.rows[0].distress_flagged,
+        screeningReasons: res.rows[0].screening_reasons ?? [],
+      },
+    });
     return mapQuestion(res.rows[0]);
   }
 

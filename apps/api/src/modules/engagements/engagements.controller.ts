@@ -53,13 +53,13 @@ export class EngagementsController {
   @Post(':id/complete')
   async complete(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<EngagementRow> {
     await this.access.assertSeeker(id, actor);
-    return this.engagements.complete(id);
+    return this.engagements.complete(id, { actorId: actor.userId, actorRole: actor.role });
   }
 
   @Post(':id/cancel')
   async cancel(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<EngagementRow> {
     await this.access.assertParty(id, actor);
-    return this.engagements.cancel(id);
+    return this.engagements.cancel(id, { actorId: actor.userId, actorRole: actor.role });
   }
 
   /**

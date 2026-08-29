@@ -15,8 +15,23 @@ import { FeeScheduleService } from './fee-schedule.service';
 import { OutboxService } from './outbox.service';
 import { PAYMENT_AGGREGATOR, PaymentAggregator } from './pa/payment-aggregator.interface';
 import { EscrowRow } from './types';
+import { AuditService } from '../../common/audit/audit.service';
 
-export interface HoldEscrowInput {
+/**
+ * Who asked for this movement.
+ *
+ * Optional because some paths genuinely have no human actor — a relay,
+ * a scheduled job — and a null actor is a distinguishable fact rather
+ * than a missing one (see `audit_log.actor_id`). It is not optional
+ * because callers may skip it: every caller that knows the actor is
+ * expected to pass it.
+ */
+export interface EscrowActor {
+  actorId?: string | null;
+  actorRole?: string | null;
+}
+
+export interface HoldEscrowInput extends EscrowActor {
   engagementId: string;
   seekerId: string;
   providerId: string;
@@ -25,20 +40,20 @@ export interface HoldEscrowInput {
   idempotencyKey: string;
 }
 
-export interface ReleaseEscrowInput {
+export interface ReleaseEscrowInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   bankAccountLast4?: string;
   bankIfsc?: string;
 }
 
-export interface RefundEscrowInput {
+export interface RefundEscrowInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   reason: string;
 }
 
-export interface SettleSplitInput {
+export interface SettleSplitInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   /** Strictly inside (0, escrow amount) — a full award either way is a release or a refund, and must be recorded as one. */
@@ -49,7 +64,7 @@ export interface SettleSplitInput {
   bankIfsc?: string;
 }
 
-export interface PlatformFailureInput {
+export interface PlatformFailureInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   /** What broke on our side — recorded for the evidence packet, never shown as blame to either party. */
@@ -108,6 +123,7 @@ export class EscrowService {
     @Inject(FeeScheduleService) private readonly feeSchedule: FeeScheduleService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
     @Inject(PAYMENT_AGGREGATOR) private readonly paymentAggregator: PaymentAggregator,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   /**
@@ -217,6 +233,24 @@ export class EscrowService {
             paReference: capture.paReference,
           },
         });
+        // Inside the same transaction as the transition, so there can
+        // never be an entry for a hold that rolled back — and never a
+        // hold without an entry. Both branches of the `if` above are
+        // idempotent no-ops; only this one actually moved money.
+        await this.audit.recordIn(client2, {
+          actorId: input.actorId ?? null,
+          actorRole: input.actorRole ?? null,
+          action: 'escrow.held',
+          subjectType: 'escrow',
+          subjectId: escrowId,
+          detail: {
+            engagementId: input.engagementId,
+            amountPaise: input.amountPaise,
+            platformFeePaise,
+            currency: input.currency,
+            feeScheduleId: fee.id,
+          },
+        });
       }
 
       await client2.query('COMMIT');
@@ -309,6 +343,23 @@ export class EscrowService {
         payload: { providerId: escrow.provider_id, amountPaise: netPaise, currency: escrow.currency },
       });
 
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.released',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          providerId: escrow.provider_id,
+          amountPaise,
+          platformFeePaise,
+          netPaise,
+          currency: escrow.currency,
+          fromStatus: escrow.status,
+        },
+      });
+
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -379,6 +430,22 @@ export class EscrowService {
         payload: { seekerId: escrow.seeker_id, amountPaise, currency: escrow.currency, reason: input.reason },
       });
 
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.refunded',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          seekerId: escrow.seeker_id,
+          amountPaise,
+          currency: escrow.currency,
+          reason: input.reason,
+          fromStatus: escrow.status,
+        },
+      });
+
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -437,6 +504,14 @@ export class EscrowService {
         `UPDATE escrows SET status = 'disputed_hold' WHERE id = $1 RETURNING *`,
         [escrow.id],
       );
+      await this.audit.recordIn(client, {
+        actorId: null,
+        actorRole: null,
+        action: 'escrow.frozen_for_dispute',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: { engagementId: escrow.engagement_id, amountPaise: BigInt(escrow.amount_paise), currency: escrow.currency },
+      });
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -584,6 +659,22 @@ export class EscrowService {
         },
       });
 
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.settled_split',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          seekerRefundPaise,
+          providerNetPaise,
+          feePaise,
+          currency: escrow.currency,
+          reason: input.reason,
+        },
+      });
+
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -701,6 +792,26 @@ export class EscrowService {
           amountPaise: providerDuePaise,
           currency: escrow.currency,
           fundedFrom: 'reserve',
+        },
+      });
+
+      // The one escrow outcome the platform pays for itself (#23). If
+      // any entry in this table is going to be read back in anger, it
+      // is this one: it is the record of us admitting a failure and
+      // what it cost.
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.platform_failure_resolved',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          seekerRefundPaise: amountPaise,
+          providerDuePaise,
+          fundedFrom: 'reserve',
+          currency: escrow.currency,
+          failureDetail: input.failureDetail,
         },
       });
 

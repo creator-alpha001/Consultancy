@@ -201,8 +201,18 @@ describe('M7 acceptance: dispute raised -> ruled -> appealed -> ruled again -> s
     expect((await disputes.listRulings(dispute.id)).map((r) => r.tier)).toEqual([1, 2]);
 
     // ─── Settled ───
-    const settled = await disputes.settle(dispute.id);
+    const settled = await disputes.settle(dispute.id, { actorId: adminId, actorRole: 'admin' });
     expect(settled.status).toBe('settled');
+
+    // D46: a ruling and its execution are two decisions, and the second
+    // is the one that actually moved someone's money. Both are logged,
+    // against their own subjects, with the admin named.
+    const disputeAudit = await pool.query<{ action: string; actor_id: string }>(
+      `SELECT action, actor_id FROM audit_log WHERE subject_type = 'dispute' AND subject_id = $1 ORDER BY created_at`,
+      [dispute.id],
+    );
+    expect(disputeAudit.rows.map((r) => r.action)).toEqual(['dispute.ruled', 'dispute.ruled', 'dispute.settled']);
+    expect(disputeAudit.rows.every((r) => r.actor_id === adminId)).toBe(true);
 
     const finalEscrow = await escrows.findByEngagementId(engagementId);
     expect(finalEscrow?.status).toBe('settled_split');
@@ -218,6 +228,15 @@ describe('M7 acceptance: dispute raised -> ruled -> appealed -> ruled again -> s
 
     expect(await accountBalance(pool, escrowAccountId!, 'INR')).toBe(0n);
     expect(await accountBalance(pool, providerAccountId!, 'INR')).toBe(51_000n);
+
+    // And the escrow leg carries the same admin — the money entry does
+    // not have to be joined back through the dispute to answer "who".
+    const escrowAudit = await pool.query<{ action: string; actor_id: string }>(
+      `SELECT action, actor_id FROM audit_log WHERE subject_type = 'escrow' AND subject_id = $1`,
+      [finalEscrow!.id],
+    );
+    expect(escrowAudit.rows.map((r) => r.action)).toContain('escrow.settled_split');
+    expect(escrowAudit.rows.find((r) => r.action === 'escrow.settled_split')?.actor_id).toBe(adminId);
     expect(await accountBalance(pool, feeAccountId!, 'INR')).toBe(9_000n);
     // Captured 100,000 in, 40,000 back out to the seeker.
     expect(await accountBalance(pool, paAccountId!, 'INR')).toBe(-60_000n);

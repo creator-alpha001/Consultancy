@@ -119,7 +119,7 @@ export class DisputesController {
   /** Carries the standing ruling out against the escrow, via money/. */
   @Post('admin/disputes/:id/settle')
   @Roles('admin')
-  async settle(@Param('id') id: string): Promise<DisputeRow> {
-    return this.disputes.settle(id);
+  async settle(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<DisputeRow> {
+    return this.disputes.settle(id, { actorId: actor.userId, actorRole: actor.role });
   }
 }

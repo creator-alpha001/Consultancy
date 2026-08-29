@@ -356,7 +356,7 @@ export class DisputeService {
    * Money moves via `engagements/` → `money/`; this module never posts a
    * ledger entry itself.
    */
-  async settle(disputeId: string): Promise<DisputeRow> {
+  async settle(disputeId: string, actor?: { actorId?: string | null; actorRole?: string | null }): Promise<DisputeRow> {
     const dispute = await this.get(disputeId);
     if (dispute.status !== 'ruled') {
       throw disputeWrongStatus(dispute.id, dispute.status, ['ruled']);
@@ -367,9 +367,28 @@ export class DisputeService {
     await this.engagements.settleFromDispute(dispute.engagementId, ruling.outcome, {
       seekerRefundPaise: ruling.seekerRefundPaise ?? undefined,
       reason: `dispute_ruling:${ruling.id}`,
+      actorId: actor?.actorId ?? null,
+      actorRole: actor?.actorRole ?? null,
     });
 
     await this.pool.query(`UPDATE disputes SET status = 'settled' WHERE id = $1`, [dispute.id]);
+    // The money leg logs itself against the escrow; this records that
+    // the dispute was carried out, and by whom — the two are separate
+    // subjects and a reader of either should not have to infer the other.
+    await this.audit.record({
+      actorId: actor?.actorId ?? null,
+      actorRole: actor?.actorRole ?? null,
+      action: 'dispute.settled',
+      subjectType: 'dispute',
+      subjectId: dispute.id,
+      detail: {
+        engagementId: dispute.engagementId,
+        rulingId: ruling.id,
+        tier: dispute.tier,
+        outcome: ruling.outcome,
+        seekerRefundPaise: ruling.seekerRefundPaise ?? null,
+      },
+    });
     return this.get(dispute.id);
   }
 

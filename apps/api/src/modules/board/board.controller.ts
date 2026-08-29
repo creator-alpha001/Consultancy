@@ -157,7 +157,7 @@ export class BoardController {
 
   @Post('moderation/held/:id/clear')
   @Roles('admin')
-  async clearHeld(@Param('id') id: string): Promise<QuestionRow> {
-    return this.questions.clearForReview(id);
+  async clearHeld(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<QuestionRow> {
+    return this.questions.clearForReview(id, { actorId: actor.userId, actorRole: actor.role });
   }
 }

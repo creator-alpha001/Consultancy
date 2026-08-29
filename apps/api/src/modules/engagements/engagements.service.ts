@@ -142,7 +142,10 @@ export class EngagementsService {
    * are different systems of record, and EscrowService.release is itself
    * idempotent — a retry here never double-pays.
    */
-  async complete(engagementId: string, options?: { bankAccountLast4?: string; bankIfsc?: string }): Promise<EngagementRow> {
+  async complete(
+    engagementId: string,
+    options?: { bankAccountLast4?: string; bankIfsc?: string; actorId?: string | null; actorRole?: string | null },
+  ): Promise<EngagementRow> {
     const engagement = await this.get(engagementId);
     if (engagement.status !== 'assessed') {
       throw engagementWrongStatus(engagementId, engagement.status, ['assessed']);
@@ -158,6 +161,8 @@ export class EngagementsService {
       idempotencyKey: `release:${escrow.id}`,
       bankAccountLast4: options?.bankAccountLast4,
       bankIfsc: options?.bankIfsc,
+      actorId: options?.actorId ?? null,
+      actorRole: options?.actorRole ?? null,
     });
 
     return this.get(engagementId);
@@ -194,7 +199,14 @@ export class EngagementsService {
   async settleFromDispute(
     engagementId: string,
     outcome: 'release_to_provider' | 'refund_to_seeker' | 'split',
-    options?: { seekerRefundPaise?: bigint; reason?: string; bankAccountLast4?: string; bankIfsc?: string },
+    options?: {
+      seekerRefundPaise?: bigint;
+      reason?: string;
+      bankAccountLast4?: string;
+      bankIfsc?: string;
+      actorId?: string | null;
+      actorRole?: string | null;
+    },
   ): Promise<EngagementRow> {
     const engagement = await this.get(engagementId);
     if (engagement.status !== 'disputed') {
@@ -212,6 +224,8 @@ export class EngagementsService {
         idempotencyKey: `dispute-release:${escrow.id}`,
         bankAccountLast4: options?.bankAccountLast4,
         bankIfsc: options?.bankIfsc,
+        actorId: options?.actorId ?? null,
+        actorRole: options?.actorRole ?? null,
       });
       await this.pool.query(`UPDATE engagements SET status = 'completed' WHERE id = $1`, [engagementId]);
     } else if (outcome === 'refund_to_seeker') {
@@ -219,6 +233,8 @@ export class EngagementsService {
         escrowId: escrow.id,
         idempotencyKey: `dispute-refund:${escrow.id}`,
         reason,
+        actorId: options?.actorId ?? null,
+        actorRole: options?.actorRole ?? null,
       });
       await this.pool.query(`UPDATE engagements SET status = 'refunded' WHERE id = $1`, [engagementId]);
     } else {
@@ -229,6 +245,8 @@ export class EngagementsService {
         reason,
         bankAccountLast4: options?.bankAccountLast4,
         bankIfsc: options?.bankIfsc,
+        actorId: options?.actorId ?? null,
+        actorRole: options?.actorRole ?? null,
       });
       // Work was done and partly paid for: the engagement completed, on
       // adjusted terms. Marking a split 'refunded' would misreport it in
@@ -240,7 +258,7 @@ export class EngagementsService {
   }
 
   /** Ends the engagement before any work started. Refunds escrow if one was already held (agenda not yet locked). */
-  async cancel(engagementId: string): Promise<EngagementRow> {
+  async cancel(engagementId: string, actor?: { actorId?: string | null; actorRole?: string | null }): Promise<EngagementRow> {
     const engagement = await this.get(engagementId);
     if (engagement.status !== 'draft' && engagement.status !== 'agreed') {
       throw engagementWrongStatus(engagementId, engagement.status, ['draft', 'agreed']);
@@ -252,6 +270,8 @@ export class EngagementsService {
         escrowId: escrow.id,
         idempotencyKey: `refund:${escrow.id}`,
         reason: 'mutual_cancellation',
+        actorId: actor?.actorId ?? null,
+        actorRole: actor?.actorRole ?? null,
       });
     }
 
