@@ -177,9 +177,15 @@ if (owedBefore > 0) {
     ? ok(`${owedBefore - owedAfter} transfer(s) instructed at the aggregator`)
     : bad(`still ${owedAfter} uninstructed payouts after the relay ran`);
 
-  const stillPending = Number(sql(`SELECT count(*) FROM outbox WHERE event_type = 'payout.initiated' AND dispatched_at IS NULL`));
+  // Dead-lettered rows are legitimately undispatched — the relay gave up
+  // and says so — so they are excluded here rather than counted as a
+  // failure to dispatch. Step 5b is what checks those are surfaced.
+  const stillPending = Number(sql(
+    `SELECT count(*) FROM outbox
+      WHERE event_type = 'payout.initiated' AND dispatched_at IS NULL AND dead_lettered_at IS NULL`,
+  ));
   stillPending === 0
-    ? ok('every payout event is marked dispatched')
+    ? ok('every live payout event is marked dispatched')
     : bad(`${stillPending} payout event(s) still undispatched`);
 
   // Untransported notifications must stay pending, not be marked sent.
@@ -187,6 +193,24 @@ if (owedBefore > 0) {
   heldPending > 0
     ? ok('events with no transport are left pending, not marked delivered')
     : bad('escrow.held was marked dispatched despite having nowhere to go');
+}
+
+console.log('\n5b. A payout the relay gave up on');
+// Planted deliberately: this is the shape of a provider who is owed
+// money whose transfer was never instructed and which nothing is
+// retrying. It must not read like an undelivered notification.
+const escrowForDeadLetter = sql(`SELECT escrow_id FROM payouts LIMIT 1`);
+if (escrowForDeadLetter) {
+  sql(`INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload, attempts, dead_lettered_at, last_error)
+       VALUES ('escrow','${escrowForDeadLetter}','payout.initiated','{}'::jsonb, 9, now(), 'aggregator unreachable')`);
+  await p.goto(`${WEB}/admin`, { waitUntil: 'networkidle' });
+  const opsBody = await p.textContent('body');
+  /Needs attention now \(\d+\)/.test(opsBody)
+    ? ok('a critical finding is raised above everything else on the ops page')
+    : bad('a dead-lettered payout does not surface at the top of ops');
+  opsBody.includes('never instructed')
+    ? ok('it says plainly that a transfer was never instructed')
+    : bad('the critical finding does not explain what is wrong');
 }
 
 console.log('\n6. Held content');

@@ -208,6 +208,44 @@ describe('M9: reconciliation', () => {
     expect(codes(report)).toContain('OUTBOX_UNRELAYED');
   });
 
+  it('separates a dead-lettered PAYOUT from an undelivered notification', async () => {
+    // These two must not read the same. An undispatched notification is
+    // a warning: nothing is lost and nobody is owed. A payout the relay
+    // has given up on means a provider is owed money, the transfer was
+    // never instructed, and nothing is retrying — critical, or it hides
+    // inside the noise of the first.
+    const { escrowId } = await seedHeldEscrow();
+    await pool.query(
+      `UPDATE outbox SET created_at = now() - interval '5 days' WHERE aggregate_id = $1`,
+      [escrowId],
+    );
+    await pool.query(
+      `INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload, attempts, dead_lettered_at, last_error)
+       VALUES ('escrow', $1, 'payout.initiated', '{}'::jsonb, 9, now(), 'aggregator unreachable')`,
+      [escrowId],
+    );
+
+    const report = await reconciliation.run();
+    const dead = report.findings.find((f) => f.code === 'OUTBOX_DEAD_LETTERED_MONEY');
+    expect(dead).toBeDefined();
+    expect(dead!.severity).toBe('critical');
+    expect(report.ok).toBe(false);
+
+    const unrelayed = report.findings.find((f) => f.code === 'OUTBOX_UNRELAYED');
+    expect(unrelayed?.severity).toBe('warning');
+  });
+
+  it('does not report a dead-lettered event that was later dispatched', async () => {
+    const { escrowId } = await seedHeldEscrow();
+    await pool.query(
+      `INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload, attempts, dispatched_at)
+       VALUES ('escrow', $1, 'payout.initiated', '{}'::jsonb, 3, now())`,
+      [escrowId],
+    );
+    const report = await reconciliation.run();
+    expect(report.findings.map((f) => f.code)).not.toContain('OUTBOX_DEAD_LETTERED_MONEY');
+  });
+
   it('surfaces an idempotency key stranded in flight', async () => {
     // The shape a crashed process leaves behind: claimed, never
     // completed or failed. Every retry of that request is now refused

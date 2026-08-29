@@ -61,6 +61,7 @@ export class ReconciliationService {
         this.escrowStatusVsEngagementStatus(),
         this.heldEscrowOnEndedEngagement(),
         this.unrelayedOutbox(staleHours),
+        this.deadLetteredMoneyEvents(),
         this.orphanedProviderBalances(),
         this.stuckIdempotencyKeys(staleHours),
         this.unprocessedWebhooks(staleHours),
@@ -246,6 +247,38 @@ export class ReconciliationService {
         ORDER BY created_at
         LIMIT 100`,
       [String(hours)],
+    );
+  }
+
+  /**
+   * An outbox event the relay has given up on, for something that moves
+   * money.
+   *
+   * Critical, and separate from OUTBOX_UNRELAYED on purpose. That one is
+   * a warning because its usual cause today is a notification with no
+   * transport — nothing is lost, nothing is owed. This one means a
+   * transfer or a refund was never instructed and the relay has stopped
+   * trying: somebody is owed money and nothing is arranging to send it.
+   * Reading those two at the same severity is how the second hides
+   * inside the first.
+   *
+   * It has no alert attached (D43). Reporting is not telling anyone, and
+   * nothing runs this report on a schedule (D23) — which is exactly why
+   * it should at least be impossible to miss when someone does look.
+   */
+  private async deadLetteredMoneyEvents(): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'OUTBOX_DEAD_LETTERED_MONEY',
+      'critical',
+      (n) =>
+        `${n} money event(s) the relay has given up on — a transfer or refund was never instructed and nothing is retrying it`,
+      `SELECT id, aggregate_type, aggregate_id, event_type, attempts, last_error, dead_lettered_at
+         FROM outbox
+        WHERE dead_lettered_at IS NOT NULL
+          AND dispatched_at IS NULL
+          AND event_type IN ('payout.initiated', 'refund.initiated')
+        ORDER BY dead_lettered_at
+        LIMIT 100`,
     );
   }
 

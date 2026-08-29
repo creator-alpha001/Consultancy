@@ -44,11 +44,32 @@ export default async function AdminPage(): Promise<JSX.Element> {
     apiAsUser<Report>('/admin/reconciliation').catch(() => null),
   ]);
 
+  const critical = (report?.findings ?? []).filter((f) => f.severity === 'critical');
+
   return (
     <PackShell domain={domain} actor={user}>
       <PageTitle sub="Read-only. Corrections are reversing entries made by a human, never a button here.">
         Reconciliation
       </PageTitle>
+
+      {/*
+        Critical findings first, above everything, before the reader has
+        scrolled or chosen where to look. Nothing runs this report on a
+        schedule and nothing alerts on it (D23, D43), so the only defence
+        is that someone who does open the page cannot miss it.
+      */}
+      {critical.length > 0 && (
+        <Section title={`Needs attention now (${critical.length})`}>
+          <div className="flex flex-col gap-md">
+            {critical.map((f) => (
+              <Card key={f.code} className="bg-correction-soft">
+                <p className="text-bodyStrong font-medium text-correction">{f.summary}</p>
+                <p className="mt-xs text-caption text-ink-muted">{f.code}</p>
+              </Card>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/*
         The three human-decision queues. Reconciliation below is
