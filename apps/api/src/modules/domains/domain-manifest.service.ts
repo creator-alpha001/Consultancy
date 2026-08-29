@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
+import { AuditService } from '../../common/audit/audit.service';
 import { PG_POOL } from '../../database/db.module';
 import { TaxonomyService } from '../taxonomy/taxonomy.service';
 import { AppError } from '../../common/errors/app-error';
@@ -18,6 +19,7 @@ import { ResolvedDomain } from './types';
 @Injectable()
 export class DomainManifestService {
   constructor(
+    @Inject(AuditService) private readonly audit: AuditService,
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
     @Inject(FamilyManifestService) private readonly families: FamilyManifestService,
@@ -79,6 +81,19 @@ export class DomainManifestService {
          ON CONFLICT (domain_code, version) DO NOTHING`,
         [manifest.code, manifest.version, JSON.stringify(manifest), publishedBy ?? null],
       );
+      // A published manifest changes what every client renders and what
+      // matching considers, with no deploy. "Who changed the platform's
+      // behaviour, and when" is not recoverable from the manifest
+      // versions alone once more than one person can publish.
+      await this.audit.recordIn(client, {
+        actorId: publishedBy ?? null,
+        actorRole: publishedBy ? 'admin' : null,
+        action: 'domain.published',
+        subjectType: 'domain',
+        subjectId: null,
+        detail: { code: manifest.code, version: manifest.version },
+      });
+
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');

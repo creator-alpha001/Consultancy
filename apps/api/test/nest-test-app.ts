@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { Pool } from 'pg';
 import { ErrorEnvelopeFilter } from '../src/common/errors/error-envelope.filter';
+import { AuditModule } from '../src/common/audit/audit.module';
 import { IdempotencyModule } from '../src/common/idempotency/idempotency.module';
 import { DbModule, PG_POOL } from '../src/database/db.module';
 import { AuthGuard } from '../src/modules/identity/auth.guard';
@@ -23,7 +24,7 @@ export async function createTestApp(
     // test exercises the same default-deny posture as production. A test
     // app where every route is open would prove nothing about the routes
     // that matter.
-    imports: [DbModule, IdempotencyModule, IdentityModule, ...extraModules],
+    imports: [DbModule, IdempotencyModule, AuditModule, IdentityModule, ...extraModules],
     providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
   });
   for (const override of overrides) {

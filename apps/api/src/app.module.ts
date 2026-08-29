@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditModule } from './common/audit/audit.module';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { BigIntSerializerInterceptor } from './common/serialization/bigint.interceptor';
 import { DbModule } from './database/db.module';
@@ -23,6 +24,7 @@ import { VerificationModule } from './modules/verification/verification.module';
   imports: [
     DbModule,
     IdempotencyModule,
+    AuditModule,
     MoneyModule,
     DomainsModule,
     AdminModule,

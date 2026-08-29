@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
+import { AuditService } from '../../common/audit/audit.service';
 import { PG_POOL } from '../../database/db.module';
 import { DomainLoaderService } from './domain-loader.service';
 import { validateFamilyManifest } from './manifest-validation';
@@ -15,6 +16,7 @@ import { ResolvedFamily } from './types';
 @Injectable()
 export class FamilyManifestService {
   constructor(
+    @Inject(AuditService) private readonly audit: AuditService,
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
   ) {}
@@ -105,6 +107,19 @@ export class FamilyManifestService {
         `UPDATE skills SET active = false WHERE family_code = $1 AND NOT (code = ANY($2::text[]))`,
         [manifest.code, manifest.skills.map((s) => s.code)],
       );
+
+      // A published manifest changes what every client renders and what
+      // matching considers, with no deploy. "Who changed the platform's
+      // behaviour, and when" is not recoverable from the manifest
+      // versions alone once more than one person can publish.
+      await this.audit.recordIn(client, {
+        actorId: publishedBy ?? null,
+        actorRole: publishedBy ? 'admin' : null,
+        action: 'family.published',
+        subjectType: 'domain_family',
+        subjectId: null,
+        detail: { code: manifest.code, version: manifest.version },
+      });
 
       await client.query('COMMIT');
     } catch (err) {

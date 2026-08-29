@@ -194,6 +194,63 @@ describe('M4 acceptance: submit -> automated check -> human review -> tier grant
    * no test ran it. The oldest-first order is the point of a queue, so it
    * is asserted rather than assumed.
    */
+  /**
+   * A decision nobody can be identified with is not accountable.
+   *
+   * The tier a verified credential grants is a claim the platform makes
+   * on someone's behalf; "who decided" is part of that claim, and until
+   * `audit_log` existed nothing recorded it (D46).
+   */
+  it('records who verified a credential, and who rejected one', async () => {
+    const { providerId, seekerId: reviewerId } = await seedUsers(pool);
+    const credential = await credentials.submit({
+      providerId,
+      credentialTypeCode: 'exam_rank',
+      domainCode: 'uppsc',
+      skillCodes: ['answer_writing.gs.polity'],
+      verifierData: { rollNo: '0451923', year: 2019 },
+    });
+    await credentials.runAutomatedCheck(credential.id);
+    await credentials.decide({
+      credentialId: credential.id,
+      reviewerId,
+      decision: 'verified',
+      note: 'Matched the published list.',
+    });
+
+    const entries = await pool.query<{ actor_id: string; action: string; subject_id: string; detail: Record<string, unknown> }>(
+      `SELECT actor_id, action, subject_id, detail FROM audit_log WHERE subject_type = 'provider_credential'`,
+    );
+    expect(entries.rows).toHaveLength(1);
+    expect(entries.rows[0].action).toBe('credential.verified');
+    expect(entries.rows[0].actor_id).toBe(reviewerId);
+    expect(entries.rows[0].subject_id).toBe(credential.id);
+    expect(entries.rows[0].detail.providerId).toBe(providerId);
+
+    // A rejection is just as much a decision — arguably more, since it
+    // is the one the provider will want explained.
+    const second = await credentials.submit({
+      providerId,
+      credentialTypeCode: 'mains_cleared',
+      domainCode: 'uppsc',
+      skillCodes: ['answer_writing.gs.polity'],
+      verifierData: { documentRef: 's3://private/x.pdf' },
+    });
+    await credentials.runAutomatedCheck(second.id);
+    await credentials.decide({
+      credentialId: second.id,
+      reviewerId,
+      decision: 'rejected',
+      note: 'Document did not show the claimed year.',
+    });
+    const after = await pool.query<{ action: string; detail: Record<string, unknown> }>(
+      `SELECT action, detail FROM audit_log WHERE subject_id = $1`,
+      [second.id],
+    );
+    expect(after.rows[0].action).toBe('credential.rejected');
+    expect(after.rows[0].detail.note).toMatch(/claimed year/);
+  });
+
   describe('the human review queue', () => {
     it('returns submissions oldest first, and excludes decided ones', async () => {
       const { providerId } = await seedUsers(pool);

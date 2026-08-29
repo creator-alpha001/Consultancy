@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
+import { AuditService } from '../../common/audit/audit.service';
 import { PG_POOL } from '../../database/db.module';
 import { DomainLoaderService } from '../domains/domain-loader.service';
 import { FamilyManifestService } from '../domains/family-manifest.service';
@@ -46,6 +47,7 @@ export class CredentialService {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(FamilyManifestService) private readonly families: FamilyManifestService,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
+    @Inject(AuditService) private readonly audit: AuditService,
     @Inject(PublicResultListVerifier) publicResultList: PublicResultListVerifier,
     @Inject(DocumentReviewVerifier) documentReview: DocumentReviewVerifier,
     @Inject(SanctionDocumentVerifier) sanctionDocument: SanctionDocumentVerifier,
@@ -249,6 +251,23 @@ export class CredentialService {
           }
         }
       }
+
+      // Inside the transaction: a verified credential and the record of
+      // who verified it commit together or not at all. The tier this
+      // grants is a claim the platform makes on someone's behalf, and
+      // "who decided" is part of it (rule #14).
+      await this.audit.recordIn(client, {
+        actorId: input.reviewerId,
+        actorRole: 'admin',
+        action: `credential.${input.decision}`,
+        subjectType: 'provider_credential',
+        subjectId: input.credentialId,
+        detail: {
+          providerId: credential.provider_id,
+          domainCode: credential.domain_code,
+          note: input.note ?? '',
+        },
+      });
 
       await client.query('COMMIT');
       return this.hydrate(updated.rows[0]);

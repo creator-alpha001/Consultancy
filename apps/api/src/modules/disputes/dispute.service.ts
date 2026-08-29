@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
+import { AuditService } from '../../common/audit/audit.service';
 import { PG_POOL } from '../../database/db.module';
 import { DomainLoaderService } from '../domains/domain-loader.service';
 import { DisputeTier } from '../domains/types';
@@ -122,6 +123,7 @@ export class DisputeService {
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
     @Inject(EngagementsService) private readonly engagements: EngagementsService,
     @Inject(EvidenceService) private readonly evidence: EvidenceService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   /** The family's ladder, or the generic default when it supplies none. */
@@ -235,6 +237,23 @@ export class DisputeService {
       );
 
       await client.query(`UPDATE disputes SET status = 'ruled' WHERE id = $1`, [dispute.id]);
+      // A ruling is a person deciding where someone else's money goes.
+      // The ledger will record the movement; only this records who
+      // decided it, and #18 makes "a person" the whole point.
+      await this.audit.recordIn(client, {
+        actorId: input.ruledBy,
+        actorRole: 'admin',
+        action: 'dispute.ruled',
+        subjectType: 'dispute',
+        subjectId: dispute.id,
+        detail: {
+          engagementId: dispute.engagementId,
+          tier: dispute.tier,
+          outcome: input.outcome,
+          seekerRefundPaise: input.seekerRefundPaise ?? null,
+          rationale: input.rationale,
+        },
+      });
       await client.query('COMMIT');
       return mapRuling(res.rows[0]);
     } catch (err) {
