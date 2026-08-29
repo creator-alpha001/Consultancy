@@ -10,6 +10,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A branch with an open pull request fires BOTH `push` and
+# `pull_request`, so every commit would build twice. The guard below runs
+# the pull_request event only for forks — where `push` never fires,
+# because the commit is not in this repository — and leaves same-repo
+# work to `push` alone. `on:` cannot express that, so it is a job
+# condition, repeated on each job because there is no workflow-level one.
+
 concurrency:
   # A newer push makes an in-flight run irrelevant; the browser lane is
   # slow enough that queueing them serially wastes real time.
@@ -29,6 +36,9 @@ jobs:
   static:
     name: Tokens and types
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,6 +73,9 @@ jobs:
   api:
     name: API suite
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
     services:
       postgres:
         image: postgres:16
@@ -105,6 +118,9 @@ jobs:
   journeys:
     name: Browser journeys
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
     services:
       postgres:
         image: postgres:16
