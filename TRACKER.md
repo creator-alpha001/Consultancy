@@ -28,7 +28,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M9 | Hardening | **Partial — not complete** | No — reconciliation, restore drill and a DB perf baseline are real and verified; 3G, accessibility and the security review are not. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
 | — | **apps/web** (frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see below |
-| — | **apps/mobile** (React Native, unscheduled) | **Seeker journey working; the primary client** | n/a — see below |
+| — | **apps/mobile** (React Native, unscheduled) | **Both journeys working — the primary client** | n/a — see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt

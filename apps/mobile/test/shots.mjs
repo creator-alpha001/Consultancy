@@ -258,6 +258,44 @@ body = await page.textContent('body');
 body.includes('Namaste') ? ok('signed in — personalised home') : bad('not signed in: ' + body.slice(0, 120));
 await shot('home-signed-in');
 
+console.log('\n6b. The board');
+// The half of the marketplace that does not depend on already knowing
+// who to ask. It existed only on the web, so on the phone a seeker could
+// only book someone they had already found by search.
+//
+// Navigated in-app, not by URL: on the web target the session token
+// lives in memory only, so a full page load signs the tester out and the
+// board renders its signed-out state — which is how the first version of
+// this step passed while checking an empty screen.
+await tap('Post what you need instead');
+await page.waitForTimeout(2000);
+body = await page.textContent('body');
+body.includes('Post what you need') && !body.includes('Sign in to post')
+  ? ok('the board opens signed in, from the home screen')
+  : bad('the board did not open signed in: ' + body.slice(0, 200));
+!/sort by price/i.test(body)
+  ? ok('no price sort control on the board (#15)')
+  : bad('a price sort appeared on the board');
+await shot('board');
+
+// By exact role+name: `getByText('Post what you need')` also matches the
+// home screen's "Post what you need instead", which is still in the tree
+// and no longer visible.
+await page.getByRole('button', { name: 'Post what you need', exact: true }).click();
+await page.waitForTimeout(2000);
+body = await page.textContent('body');
+body.includes('What do you need')
+  ? ok('a seeker can post a request from the phone')
+  : bad('the post form did not render: ' + body.slice(0, 200));
+await shot('board-new');
+
+// Back into the tabs: the board screens are full-screen routes outside
+// the tab group, and the steps after this one start from a tab.
+await page.goBack();
+await page.waitForTimeout(1200);
+await page.goBack();
+await page.waitForTimeout(1800);
+
 console.log('\n7. Booking');
 await tap('Find', true);
 await page.waitForTimeout(1800);

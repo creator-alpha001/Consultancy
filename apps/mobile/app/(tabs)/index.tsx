@@ -168,11 +168,22 @@ export default function Home(): JSX.Element {
         )}
       </Section>
 
-      <Button
-        label={`Find a ${words.provider.toLowerCase()}`}
-        variant="secondary"
-        onPress={() => router.push('/find')}
-      />
+      <View style={{ gap: space.md }}>
+        <Button
+          label={`Find a ${words.provider.toLowerCase()}`}
+          variant="secondary"
+          onPress={() => router.push('/find')}
+        />
+        {/*
+          The other half of the marketplace: for someone who does not
+          already know who to ask, searching is the wrong starting point.
+        */}
+        <Button
+          label="Post what you need instead"
+          variant="secondary"
+          onPress={() => router.push('/board')}
+        />
+      </View>
     </Screen>
   );
 }

@@ -67,6 +67,9 @@ export default function RootLayout(): JSX.Element {
             looking optional would strand them.
           */}
           <Stack.Screen name="mfa-enrol" options={{ title: 'Two-factor setup', gestureEnabled: false }} />
+          <Stack.Screen name="board/index" options={{ title: 'The board' }} />
+          <Stack.Screen name="board/new" options={{ title: 'Post a request' }} />
+          <Stack.Screen name="board/[id]" options={{ title: 'Request' }} />
         </Stack>
       </StoreProvider>
     </SafeAreaProvider>
