@@ -74,6 +74,31 @@ stop_bg() {
   rm -f "$RUN/$name.pid"
 }
 
+# Frees a port held by a process this script does not own.
+#
+# Killing the listener alone is not enough: `ts-node-dev --respawn` is a
+# supervisor, so its child comes straight back and the port never clears.
+# Kill each holder's whole process GROUP, which takes the supervisor with
+# it, then confirm the port is actually free rather than assuming.
+free_port() {
+  local port=$1 pids pgid
+  for signal in TERM KILL; do
+    pids=$(fuser "$port/tcp" 2>/dev/null || true)
+    [ -z "$pids" ] && break
+    for pid in $pids; do
+      pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')
+      [ -n "$pgid" ] && kill "-$signal" "-$pgid" 2>/dev/null || kill "-$signal" "$pid" 2>/dev/null || true
+    done
+    for _ in $(seq 1 20); do
+      fuser "$port/tcp" >/dev/null 2>&1 || break
+      sleep 0.25
+    done
+  done
+  if fuser "$port/tcp" >/dev/null 2>&1; then
+    die "port $port is still held after TERM and KILL — look at what owns it before continuing"
+  fi
+}
+
 # Waits for a URL rather than sleeping a guessed number of seconds.
 wait_http() { # url, seconds, label
   local url=$1 secs=$2 label=$3
@@ -152,9 +177,13 @@ deps() {
 }
 
 start_api() {
-  if curl -sf -o /dev/null "http://localhost:$API_PORT/domains/upsc_cse" 2>/dev/null && ! alive api; then
-    warn "something else is already serving :$API_PORT — not started by this script"
-    return 0
+  # A foreign process on the API port used to be accepted with a warning.
+  # That is the stale-build failure this script exists to prevent, just
+  # wearing a different hat: `up` reports Ready, the port answers, and
+  # you are talking to a build from before your change. Take the port.
+  if ! alive api && curl -sf -o /dev/null "http://localhost:$API_PORT/domains/upsc_cse" 2>/dev/null; then
+    warn "something else is serving :$API_PORT — replacing it, so this stack is the one you built"
+    free_port "$API_PORT"
   fi
   ( cd "$ROOT/apps/api" && start_bg api "$RUN/api.log" \
       env DATABASE_URL="$DEV_URL" PORT="$API_PORT" \
@@ -263,6 +292,7 @@ cmd_test() {
   if curl -sf -o /dev/null "http://localhost:$WEB_PORT/mentors" 2>/dev/null; then
     ( cd "$ROOT/apps/web" && node test/booking-journey.mjs ) || die "booking journey failed"
     ( cd "$ROOT/apps/web" && node test/provider-journey.mjs ) || die "provider journey failed"
+    ( cd "$ROOT/apps/web" && node test/admin-journey.mjs ) || die "admin journey failed"
   else
     warn "web not running — skipping the browser journeys (./scripts/dev.sh up first)"
   fi

@@ -52,12 +52,13 @@ export default async function EngagementPage({ params }: { params: { id: string 
   const engagement = await getEngagement(params.id).catch(() => null);
   if (!engagement) notFound();
 
-  const [agenda, submission, evaluation, sessions, domain] = await Promise.all([
+  const [agenda, submission, evaluation, sessions, domain, dispute] = await Promise.all([
     getAgenda(params.id).catch(() => null) as Promise<Agenda | null>,
     getLatestSubmission(params.id).catch(() => null) as Promise<Submission | null>,
     getLatestEvaluation(params.id).catch(() => null) as Promise<Evaluation | null>,
     apiAsUser<SessionListRow[]>('/sessions').catch(() => [] as SessionListRow[]),
     engagement.domainCode ? getDomain(engagement.domainCode).catch(() => null) : Promise.resolve(null),
+    apiAsUser<{ id: string } | null>(`/engagements/${params.id}/disputes`).catch(() => null),
   ]);
 
   const language = domain?.defaultLanguage ?? 'en';
@@ -236,12 +237,24 @@ export default async function EngagementPage({ params }: { params: { id: string 
         )}
 
         {engagement.status === 'disputed' && (
-          <Card className="border-correction">
-            <p className="text-sm font-medium text-correction">This engagement is disputed.</p>
-            <p className="mt-1 text-sm text-ink-muted">
-              The money is frozen — neither of you can draw it while this is open. An admin adjudicates; no
+          <Card className="bg-correction-soft">
+            <p className="text-bodyStrong font-medium text-correction">This engagement is disputed.</p>
+            <p className="mt-sm text-small text-ink-muted">
+              The money is frozen — neither of you can draw it while this is open. A person adjudicates; no
               automated process decides it.
             </p>
+            {/*
+              Until this link existed, raising a dispute was the end of
+              the visible trail: no way to read the evidence, see a
+              ruling, appeal, or withdraw.
+            */}
+            {dispute && (
+              <p className="mt-lg">
+                <Link href={`/disputes/${dispute.id}`} className="text-bodyStrong underline">
+                  Open the dispute
+                </Link>
+              </p>
+            )}
           </Card>
         )}
       </Section>

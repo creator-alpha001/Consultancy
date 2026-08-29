@@ -186,6 +186,60 @@ describe('M4 acceptance: submit -> automated check -> human review -> tier grant
    * The inputs come from the VERIFIER, not from core and not from the
    * family: only the verifier knows what it needs to check.
    */
+  /**
+   * The review queue.
+   *
+   * This endpoint threw on every call — it ordered by a column the table
+   * does not have — and nothing noticed, because no screen called it and
+   * no test ran it. The oldest-first order is the point of a queue, so it
+   * is asserted rather than assumed.
+   */
+  describe('the human review queue', () => {
+    it('returns submissions oldest first, and excludes decided ones', async () => {
+      const { providerId } = await seedUsers(pool);
+      const second = await seedUsers(pool);
+
+      const older = await credentials.submit({
+        providerId,
+        credentialTypeCode: 'exam_rank',
+        domainCode: 'uppsc',
+        skillCodes: ['answer_writing.gs.polity'],
+        verifierData: { rollNo: '111', year: 2019 },
+      });
+      // Force a gap rather than relying on clock resolution.
+      await pool.query(
+        `UPDATE provider_credentials SET submitted_at = now() - interval '1 day' WHERE id = $1`,
+        [older.id],
+      );
+      const newer = await credentials.submit({
+        providerId: second.providerId,
+        credentialTypeCode: 'exam_rank',
+        domainCode: 'uppsc',
+        skillCodes: ['answer_writing.gs.polity'],
+        verifierData: { rollNo: '222', year: 2020 },
+      });
+
+      const queue = await credentials.listAwaitingReview();
+      const ids = queue.map((c) => c.id);
+      expect(ids).toContain(older.id);
+      expect(ids).toContain(newer.id);
+      expect(ids.indexOf(older.id)).toBeLessThan(ids.indexOf(newer.id));
+
+      // The pipeline is submit -> automated check -> human review, and
+      // `decide` refuses a credential that has not been checked yet. The
+      // check is still only advice: it never grants a tier.
+      await credentials.runAutomatedCheck(older.id);
+      await credentials.decide({
+        credentialId: older.id,
+        reviewerId: second.seekerId,
+        decision: 'rejected',
+        note: 'Roll number did not match the published list.',
+      });
+      const after = await credentials.listAwaitingReview();
+      expect(after.map((c) => c.id)).not.toContain(older.id);
+    });
+  });
+
   describe('submittable credential types', () => {
     it('lists the family\'s types with the inputs their verifier requires', async () => {
       const types = await credentials.submittableTypes('uppsc');

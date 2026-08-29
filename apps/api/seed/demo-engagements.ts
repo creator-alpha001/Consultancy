@@ -22,6 +22,7 @@ import { AgendaService } from '../src/modules/agenda/agenda.service';
 import { EvaluationService } from '../src/modules/assessment/evaluation.service';
 import { SubmissionService } from '../src/modules/assessment/submission.service';
 import { EngagementsService } from '../src/modules/engagements/engagements.service';
+import { DisputeService } from '../src/modules/disputes/dispute.service';
 import { EscrowService } from '../src/modules/money/escrow.service';
 import { ReviewService } from '../src/modules/reputation/review.service';
 
@@ -96,6 +97,7 @@ async function main(): Promise<void> {
   const submissions = app.get(SubmissionService);
   const evaluations = app.get(EvaluationService);
   const reviews = app.get(ReviewService);
+  const disputes = app.get(DisputeService);
 
   // Rates come from fee_schedule_at(ts) and are never hardcoded (#8), so
   // one has to exist before any escrow can be released. A dev database
@@ -137,16 +139,18 @@ async function main(): Promise<void> {
     return res.rows[0].id;
   }
 
-  const already = await pool.query<{ n: string }>(
+  // Guarded per fixture, not once for the whole script: a single
+  // early return meant adding a new fixture did nothing on any database
+  // that already had the old ones, which is every database that matters.
+  const completedCount = await pool.query<{ n: string }>(
     `SELECT count(*)::text AS n FROM engagements WHERE status = 'completed'`,
   );
-  if (already.rows[0].n !== '0') {
-    console.log(`${already.rows[0].n} completed engagement(s) already present — nothing to do`);
-    await app.close();
-    return;
+  const needsCompleted = completedCount.rows[0].n === '0';
+  if (!needsCompleted) {
+    console.log(`${completedCount.rows[0].n} completed engagement(s) already present — skipping those`);
   }
 
-  for (const [i, s] of SCRIPT.entries()) {
+  for (const [i, s] of (needsCompleted ? SCRIPT : []).entries()) {
     const providerId = await userId(s.provider, 'provider');
     const seekerId = await userId(s.seeker, 'seeker');
 
@@ -233,8 +237,84 @@ async function main(): Promise<void> {
     console.log(`completed engagement ${i + 1}/${SCRIPT.length}: ${s.seeker} → ${s.provider}, ${s.rating}★`);
   }
 
+  // ── One disputed engagement ─────────────────────────────────────────
+  // The dispute screens and the adjudication queue are unjudgeable
+  // against an empty table, exactly as the review block was. Driven the
+  // same way — real services, real escrow, real evidence assembly — so
+  // the money is genuinely frozen rather than merely labelled disputed.
+  // `--fresh-dispute` always creates another one. Dispute rows and their
+  // evidence are append-only, so a ruled dispute cannot be reset — which
+  // means the ops journey cannot re-use one and needs a new open dispute
+  // on every run.
+  const freshDispute = process.argv.includes('--fresh-dispute');
+  const disputeCount = await pool.query<{ n: string }>(
+    `SELECT count(*)::text AS n FROM disputes WHERE status = 'open'`,
+  );
+  if (!freshDispute && disputeCount.rows[0].n !== '0') {
+    console.log(`${disputeCount.rows[0].n} open dispute(s) already present — skipping`);
+  } else {
+    const providerId = await userId('vikram.kulkarni@demo.local', 'provider');
+    const seekerId = await userId('sneha.iyer@demo.local', 'seeker');
+
+    const e = await engagements.createDraft({
+      seekerId,
+      providerId,
+      domainCode: DOMAIN,
+      categoryId,
+      engagementType: 'document_review',
+      currency: 'INR',
+      amountPaise: 90_000n,
+      language: 'en',
+    });
+    await engagements.agree(e.id);
+    const agenda = await agendas.createDraft({
+      engagementId: e.id,
+      originalLang: 'en',
+      expectedDeliverable: 'Annotated answer with a scored rubric',
+      successCriteria: 'The seeker can name their three weakest areas',
+      items: [
+        { labelLang: 'en', labelText: 'Review the structure' },
+        { labelLang: 'en', labelText: 'Mark against the rubric' },
+      ],
+    });
+    await agendas.lock(agenda.id);
+    await escrows.hold({
+      engagementId: e.id,
+      seekerId,
+      providerId,
+      currency: 'INR',
+      amountPaise: 90_000n,
+      idempotencyKey: `demo-hold:${e.id}`,
+    });
+    const submission = await submissions.submit({
+      engagementId: e.id,
+      seekerId,
+      contentRef: 's3://private/demo/answer-disputed.pdf',
+      note: 'Demo submission',
+    });
+    const ev = await evaluations.open({ engagementId: e.id, providerId, submissionId: submission.id });
+    const dims = await pool.query<{ code: string }>(
+      `SELECT d->>'code' AS code FROM assessment_templates t, jsonb_array_elements(t.dimensions) d WHERE t.id = $1`,
+      [ev.templateId],
+    );
+    for (const d of dims.rows) {
+      await evaluations.addScore({ evaluationId: ev.id, dimensionCode: d.code, score: 41 });
+    }
+    await evaluations.return_(ev.id, { overallNote: 'Returned.' });
+
+    await disputes.raise({
+      engagementId: e.id,
+      raisedBy: seekerId,
+      reasonCode: 'work_not_as_agreed',
+      bodyOriginal:
+        'The agenda said the structure would be marked against the rubric and two of the four dimensions have no comment at all. I am not disputing the score, I am disputing that half of what we agreed was not done.',
+      bodyLang: 'en',
+    });
+    console.log('raised one dispute (money frozen, evidence assembled)');
+  }
+
   await app.close();
-  console.log('\ndemo engagements and reviews ready');
+  console.log('\ndemo engagements, reviews and one open dispute ready');
 }
 
 main().catch((e) => {

@@ -158,9 +158,13 @@ export class CredentialService {
   /** The admin review queue: everything a human still has to decide. */
   async listAwaitingReview(): Promise<ProviderCredentialRow[]> {
     const res = await this.pool.query<CredentialDbRow>(
+      // submitted_at, not created_at: this table has no created_at, and
+      // ordering by it made the whole endpoint throw. It went unnoticed
+      // because nothing called it — there was no review screen — and no
+      // test exercised the ordering.
       `SELECT * FROM provider_credentials
         WHERE status IN ('submitted', 'under_review')
-        ORDER BY created_at ASC`,
+        ORDER BY submitted_at ASC`,
     );
     return Promise.all(res.rows.map((row) => this.hydrate(row)));
   }

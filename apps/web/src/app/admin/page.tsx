@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, PageTitle } from '@/components/ui';
+import Link from 'next/link';
+import { Card, PageTitle, Section } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -47,6 +48,30 @@ export default async function AdminPage(): Promise<JSX.Element> {
       <PageTitle sub="Read-only. Corrections are reversing entries made by a human, never a button here.">
         Reconciliation
       </PageTitle>
+
+      {/*
+        The three human-decision queues. Reconciliation below is
+        read-only; these are where a person actually decides something,
+        and none of them had an interface at all — so submissions,
+        disputes and held content accumulated with nobody able to act.
+      */}
+      <Section title="Queues">
+        <div className="flex flex-wrap gap-md">
+          {[
+            ['/admin/credentials', 'Credentials awaiting review'],
+            ['/admin/disputes', 'Disputes to adjudicate'],
+            ['/admin/moderation', 'Held for review'],
+          ].map(([href, label]) => (
+            <Link
+              key={href}
+              href={href}
+              className="rounded-pill border border-rule bg-surface px-xl py-md text-small font-medium hover:bg-surface-sunk"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      </Section>
 
       {!report ? (
         <Card>
