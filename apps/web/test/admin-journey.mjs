@@ -152,7 +152,44 @@ if (pending > 0) {
   ok('no credentials pending (run provider-journey.mjs first to exercise this)');
 }
 
-console.log('\n5. Held content');
+console.log('\n5. The outbox relay — money actually leaving');
+const owedBefore = Number(sql(`SELECT count(*) FROM payouts WHERE pa_reference IS NULL AND status = 'initiated'`));
+owedBefore > 0
+  ? ok(`${owedBefore} payout(s) credited to a provider and never instructed`)
+  : ok('no payouts awaiting instruction');
+
+if (owedBefore > 0) {
+  // Through the ops page as a signed-in admin. A browser fetch straight
+  // to the API cannot work — the session cookie belongs to the web app's
+  // origin, not the API's — and going through the real button is what
+  // proves the whole chain: guard, controller, module, aggregator.
+  await p.goto(`${WEB}/admin`, { waitUntil: 'networkidle' });
+  await p.locator('button:has-text("Run the relay now")').click();
+  await p.waitForLoadState('networkidle');
+  await p.waitForTimeout(2000);
+  const relayText = await p.textContent('body');
+  /instructed \d+/.test(relayText)
+    ? ok('the relay ran from the ops page and reported what it dispatched')
+    : bad('the relay reported nothing: ' + relayText.slice(0, 200));
+
+  const owedAfter = Number(sql(`SELECT count(*) FROM payouts WHERE pa_reference IS NULL AND status = 'initiated'`));
+  owedAfter < owedBefore
+    ? ok(`${owedBefore - owedAfter} transfer(s) instructed at the aggregator`)
+    : bad(`still ${owedAfter} uninstructed payouts after the relay ran`);
+
+  const stillPending = Number(sql(`SELECT count(*) FROM outbox WHERE event_type = 'payout.initiated' AND dispatched_at IS NULL`));
+  stillPending === 0
+    ? ok('every payout event is marked dispatched')
+    : bad(`${stillPending} payout event(s) still undispatched`);
+
+  // Untransported notifications must stay pending, not be marked sent.
+  const heldPending = Number(sql(`SELECT count(*) FROM outbox WHERE event_type = 'escrow.held' AND dispatched_at IS NULL`));
+  heldPending > 0
+    ? ok('events with no transport are left pending, not marked delivered')
+    : bad('escrow.held was marked dispatched despite having nowhere to go');
+}
+
+console.log('\n6. Held content');
 await p.goto(`${WEB}/admin/moderation`, { waitUntil: 'networkidle' });
 body = await p.textContent('body');
 body.includes('Held, not rejected')

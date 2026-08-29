@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
 import Link from 'next/link';
 import { Card, PageTitle, Section } from '@/components/ui';
+import { RelayPanel } from './admin-panels';
 import { apiAsUser } from '@/lib/api';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -55,6 +56,23 @@ export default async function AdminPage(): Promise<JSX.Element> {
         and none of them had an interface at all — so submissions,
         disputes and held content accumulated with nobody able to act.
       */}
+      {/*
+        Money owed but not yet instructed. `release()` credits a
+        provider's wallet and writes an outbox event; the relay is what
+        turns that into a transfer at the aggregator. This is the first
+        place anyone would notice it had stopped.
+      */}
+      <Section title="Outbox relay">
+        <Card>
+          <p className="text-small text-ink-muted">
+            Releasing an escrow credits a provider in the ledger and queues the transfer. The relay
+            instructs it. Events with no transport yet — notifications — stay queued rather than being
+            marked delivered.
+          </p>
+          <RelayPanel />
+        </Card>
+      </Section>
+
       <Section title="Queues">
         <div className="flex flex-wrap gap-md">
           {[

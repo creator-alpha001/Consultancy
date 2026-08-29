@@ -234,7 +234,12 @@ export class ReconciliationService {
     return this.check(
       'OUTBOX_UNRELAYED',
       'warning',
-      (n) => `${n} outbox event(s) older than ${hours}h have never been dispatched — no relay is running`,
+      // Was "no relay is running", which stopped being the likely
+      // explanation once one existed. Today the usual cause is an event
+      // type with no transport (notifications), which the relay leaves
+      // pending on purpose rather than marking delivered.
+      (n) =>
+        `${n} outbox event(s) older than ${hours}h have never been dispatched — either nothing is ticking the relay, or they are event types it has no handler for`,
       `SELECT id, aggregate_type, aggregate_id, event_type, created_at
          FROM outbox
         WHERE dispatched_at IS NULL AND created_at < now() - ($1 || ' hours')::interval

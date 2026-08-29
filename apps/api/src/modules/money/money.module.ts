@@ -5,6 +5,7 @@ import { LedgerAccountsService } from './ledger-accounts.service';
 import { LedgerService } from './ledger.service';
 import { MoneyController } from './money.controller';
 import { SettlementController } from './settlement.controller';
+import { PayoutDispatchService } from './payout-dispatch.service';
 import { SettlementService } from './settlement.service';
 import { OutboxService } from './outbox.service';
 import { CashfreeEasySplitSandbox } from './pa/cashfree-easy-split.sandbox';
@@ -26,6 +27,7 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
     OutboxService,
     EscrowService,
     SettlementService,
+    PayoutDispatchService,
     RazorpayRouteSandbox,
     CashfreeEasySplitSandbox,
     {
@@ -33,6 +35,6 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
       useExisting: process.env.MONEY_PA_PROVIDER === 'cashfree_easy_split' ? CashfreeEasySplitSandbox : RazorpayRouteSandbox,
     },
   ],
-  exports: [LedgerService, LedgerAccountsService, FeeScheduleService, OutboxService, EscrowService, SettlementService],
+  exports: [LedgerService, LedgerAccountsService, FeeScheduleService, OutboxService, EscrowService, SettlementService, PayoutDispatchService],
 })
 export class MoneyModule {}

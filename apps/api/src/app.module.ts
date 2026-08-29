@@ -5,6 +5,7 @@ import { BigIntSerializerInterceptor } from './common/serialization/bigint.inter
 import { DbModule } from './database/db.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthGuard } from './modules/identity/auth.guard';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { AgendaModule } from './modules/agenda/agenda.module';
 import { AssessmentModule } from './modules/assessment/assessment.module';
@@ -35,6 +36,7 @@ import { VerificationModule } from './modules/verification/verification.module';
     ReputationModule,
     DisputesModule,
     IdentityModule,
+    NotificationsModule,
   ],
   providers: [
     // Authentication is the DEFAULT, opted out of per-route with

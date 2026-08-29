@@ -4,6 +4,8 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { Button, Card, ErrorNote } from '@/components/ui';
 import {
   AdminActionState,
+  RelayState,
+  runRelayAction,
   clearHeldAction,
   decideCredentialAction,
   ruleDisputeAction,
@@ -180,5 +182,32 @@ export function ClearHeld({ questionId }: { questionId: string }): JSX.Element {
       <input type="hidden" name="questionId" value={questionId} />
       <Submit label="Publish it" busy="Publishing…" variant="secondary" />
     </form>
+  );
+}
+
+/**
+ * Pushing the outbox through.
+ *
+ * The counts come back from the relay itself rather than being guessed
+ * from a page reload: `claimed` is what it took, `dispatched` what
+ * actually reached the aggregator, and `failed` / `deadLettered` are the
+ * two ways it did not — reported separately because a transient failure
+ * and one that has given up need different responses.
+ */
+export function RelayPanel(): JSX.Element {
+  const [state, action] = useFormState<RelayState, FormData>(runRelayAction, {});
+  return (
+    <div className="flex flex-col gap-md">
+      <ErrorNote code={state.error?.code} message={state.error?.message} />
+      {state.result && (
+        <p className="text-small">
+          Claimed {state.result.claimed} · instructed {state.result.dispatched} · failed{' '}
+          {state.result.failed} · gave up on {state.result.deadLettered}
+        </p>
+      )}
+      <form action={action}>
+        <Submit label="Run the relay now" busy="Dispatching…" variant="secondary" />
+      </form>
+    </div>
   );
 }

@@ -125,3 +125,36 @@ export async function clearHeldAction(
     return fail(err);
   }
 }
+
+export interface RelayState {
+  error?: { code: string; message: string };
+  result?: { claimed: number; dispatched: number; failed: number; deadLettered: number };
+}
+
+/**
+ * Running the outbox relay on demand.
+ *
+ * `release()` credits a provider's wallet and writes `payout.initiated`;
+ * the relay is what turns that into an actual transfer instruction at
+ * the aggregator. Until it existed, money was owed correctly and never
+ * sent.
+ *
+ * A button rather than only a background tick because ops needs to push
+ * a batch through after fixing whatever was making dispatch fail,
+ * without waiting for the next interval. Safe to press twice: dispatch
+ * is idempotent per event, and a concurrent tick claims different rows.
+ */
+export async function runRelayAction(_prev: RelayState, _form: FormData): Promise<RelayState> {
+  try {
+    const result = await apiAsUser<{
+      claimed: number;
+      dispatched: number;
+      failed: number;
+      deadLettered: number;
+    }>('/admin/outbox/relay', { method: 'POST' });
+    revalidatePath('/admin');
+    return { result };
+  } catch (err) {
+    return fail(err) as RelayState;
+  }
+}
