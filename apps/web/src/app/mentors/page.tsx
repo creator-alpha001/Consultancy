@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { PackShell } from '@/components/pack-shell';
-import { Avatar, Card, EmptyState, PageTitle, Rating, RuleNote, Section, TierChip } from '@/components/ui';
+import { Avatar, Card, EmptyState, PageTitle, Rating, Section, TierChip } from '@/components/ui';
 import { ProviderCard, searchProviders } from '@/lib/engagements';
 import { CategoryNode, getCategories, getDomain, label } from '@/lib/pack';
+import { languageName, plural, pluralWord, withArticle } from '@/lib/words';
 import { currentUser } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -51,10 +52,14 @@ export default async function MentorsPage({
 
   const seekerWord = label(domain?.labels.seeker, language) || 'seeker';
   const providerWord = label(domain?.labels.provider, language) || 'provider';
+  // "Paper" is the exam family's word for a category and must never be
+  // written into core code (CLAUDE.md vocabulary table) — it comes from
+  // the family manifest, and a family that names none gets the neutral term.
+  const categoryWord = label(domain?.labels.category, language) || 'Category';
 
   return (
     <PackShell domain={domain} lang={language} actor={actor}>
-      <PageTitle sub={`Verified against the skills this paper actually needs, working in your language.`}>
+      <PageTitle sub={`Verified against the skills this ${categoryWord.toLowerCase()} actually needs, working in your language.`}>
         Find a {providerWord.toLowerCase()}
       </PageTitle>
 
@@ -63,7 +68,7 @@ export default async function MentorsPage({
           <input type="hidden" name="domain" value={domainCode} />
           <div>
             <label htmlFor="category" className="mb-1 block text-sm font-medium">
-              Paper or topic
+              {categoryWord}
             </label>
             <select
               id="category"
@@ -90,7 +95,7 @@ export default async function MentorsPage({
             >
               {(domain?.languages ?? ['en']).map((l) => (
                 <option key={l} value={l}>
-                  {l}
+                  {languageName(l, language)}
                 </option>
               ))}
             </select>
@@ -104,14 +109,16 @@ export default async function MentorsPage({
             </button>
           </div>
         </form>
-        <RuleNote>
-          There is no sort-by-price control here, at any layer. Ordering considers verified tier, rating,
-          experience and recency — never what someone charges.
-        </RuleNote>
+        {/*
+          There is deliberately no sort-by-price control here, at any layer
+          (CLAUDE.md #15). Ordering considers verified tier, rating,
+          experience and recency, never what someone charges. The absence
+          is the feature; announcing it to the user is not.
+        */}
       </Card>
 
       <Section
-        title={`${providers.length} ${providers.length === 1 ? providerWord.toLowerCase() : `${providerWord.toLowerCase()}s`} available`}
+        title={`${plural(providers.length, providerWord.toLowerCase())} available`}
       >
         {searchFailed && (
           <EmptyState>Could not reach the matching service. Try again in a moment.</EmptyState>
@@ -124,7 +131,8 @@ export default async function MentorsPage({
               </Link>
             }
           >
-            Nobody is verified for this paper in {language} yet. Listing a domain with no {providerWord.toLowerCase()}s
+            Nobody is verified for this {categoryWord.toLowerCase()} in {languageName(language, language)} yet. Listing a domain with no{' '}
+            {pluralWord(providerWord.toLowerCase())}
             would be worse than not listing it — so rather than show you a thin list, post what you need and let
             people come to you.
           </EmptyState>
@@ -140,12 +148,12 @@ export default async function MentorsPage({
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       <Link
                         href={`/mentors/${p.providerId}?domain=${domainCode}&category=${categoryId}&language=${language}`}
-                        className="font-answer text-base font-semibold hover:underline"
+                        className="text-base font-semibold hover:underline"
                       >
                         {p.displayName}
                       </Link>
                       <span className="text-xs text-ink-muted">
-                        Works in {p.languages.join(', ') || '—'}
+                        Works in {p.languages.map((l: string) => languageName(l, language)).join(', ') || '—'}
                       </span>
                     </div>
 
@@ -181,19 +189,25 @@ export default async function MentorsPage({
           ))}
         </ul>
 
-        <RuleNote>
-          Tier is per skill, never a global score — someone verified at the top tier for essays may hold none for
-          ethics. There is no rank number or percentile anywhere: this is an order for <em>this</em> search, not a
-          league table.
-        </RuleNote>
+        {/*
+          Tier is per skill, never a global score, and there is no rank
+          number or percentile anywhere (#17) — this is an order for this
+          search, not a league table.
+        */}
       </Section>
 
       {!actor && (
         <Card>
           <p className="text-sm">
             You are browsing as a guest.{' '}
-            <Link href="/register" className="text-accent underline">
-              Create an {seekerWord.toLowerCase()} account
+            {/*
+              The article has to be part of the phrase, not glued in front
+              of the noun: "an अभ्यर्थी account" is English grammar wrapped
+              around a Devanagari word. `withArticle` returns the bare noun
+              for scripts that take no article.
+            */}
+            <Link href="/register" className="underline">
+              Create {withArticle(seekerWord.toLowerCase())} account
             </Link>{' '}
             to book.
           </p>

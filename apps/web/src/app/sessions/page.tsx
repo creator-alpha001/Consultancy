@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, EmptyState, PageTitle, RuleNote, Section, Status } from '@/components/ui';
+import { Card, EmptyState, PageTitle, Section, Status } from '@/components/ui';
 import { duration, listSessions, when } from '@/lib/engagements';
 import { currentUser } from '@/lib/session';
 
@@ -82,10 +82,12 @@ export default async function SessionsPage(): Promise<JSX.Element> {
         </Section>
       )}
 
-      <RuleNote>
-        Booking takes a fixed window both parties agreed. Recurring availability with exceptions, buffers and
-        notice periods is specified but not built — so nothing here implies a mentor published these times.
-      </RuleNote>
+      {/*
+          Booking takes a fixed window both parties agreed. Recurring
+          availability with exceptions, buffers and notice periods is
+          specified but not built — so nothing here implies a mentor published
+          these times.
+      */}
     </PackShell>
   );
 }

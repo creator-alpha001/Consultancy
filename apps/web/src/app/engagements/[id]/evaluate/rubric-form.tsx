@@ -8,7 +8,7 @@ import {
   returnEvaluationAction,
   scoreEvaluationAction,
 } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote, RuleNote } from '@/components/ui';
+import { Button, Card, ErrorNote } from '@/components/ui';
 import { Evaluation } from '@/lib/engagements';
 
 const MAX = 20;
@@ -32,11 +32,12 @@ export function OpenEvaluation({ engagementId }: { engagementId: string }): JSX.
         <input type="hidden" name="engagementId" value={engagementId} />
         <Pending>Open the evaluation</Pending>
       </form>
-      <RuleNote>
-        The rubric is resolved from the skills this engagement froze when both of you agreed — not from whatever
-        the category maps to today. A later change to the taxonomy cannot retroactively change what this work was
-        marked against.
-      </RuleNote>
+      {/*
+        The rubric is resolved from the skills this engagement froze when
+        both parties agreed, not from whatever the category maps to today,
+        so a later taxonomy change cannot retroactively alter what this
+        work was marked against.
+      */}
     </Card>
   );
 }
@@ -92,7 +93,7 @@ export function RubricForm({
       <Card>
         <p className="text-sm font-medium">This category has no rubric.</p>
         <p className="mt-1 text-sm text-ink-muted">
-          Nothing here is scored numerically — an objective paper has nothing to annotate against dimensions. Write
+          Nothing here is scored numerically — this category has no rubric to annotate against. Write
           your note and return it.
         </p>
         <form action={returnForm} className="mt-4">
@@ -171,11 +172,15 @@ export function RubricForm({
           </div>
         </form>
 
-        <RuleNote>
-          These dimensions come from the platform&rsquo;s template for this category. You cannot add, rename or
-          remove one — if two mentors could use different scales, no two marks would mean the same thing, and the
-          comparison a seeker is paying for would be worthless.
-        </RuleNote>
+        {/*
+          Providers must not define their own dimensions (#16): if two
+          could use different scales, no two marks would mean the same
+          thing and the comparison a seeker pays for would be worthless.
+          The provider only needs to know the set is fixed.
+        */}
+        <p className="mt-md text-small text-ink-muted">
+          These dimensions are fixed for this category, so marks stay comparable.
+        </p>
       </Card>
 
       <Card>
@@ -204,10 +209,11 @@ export function RubricForm({
             )}
           </div>
         </form>
-        <RuleNote>
-          Returning is refused unless every dimension is scored. A partly-marked evaluation would let a mentor skip
-          the dimension they found hardest, which is exactly the one the seeker needs.
-        </RuleNote>
+        {/*
+            Returning is refused unless every dimension is scored. A
+            partly-marked evaluation would let a mentor skip the dimension they
+            found hardest, which is exactly the one the seeker needs.
+        */}
       </Card>
     </>
   );

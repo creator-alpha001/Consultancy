@@ -43,7 +43,7 @@ export default async function DomainsPage(): Promise<JSX.Element> {
             <li key={d.domainCode}>
               <Card className="flex h-full flex-col">
                 <div className="flex items-start justify-between gap-2">
-                  <h2 className="font-answer text-lg font-medium">
+                  <h2 className="text-lg font-medium">
                     <Link href={`/domains/${d.domainCode}`} className="hover:underline">
                       {label(d.labels.domain, 'en')}
                     </Link>

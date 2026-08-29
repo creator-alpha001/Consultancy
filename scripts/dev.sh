@@ -237,6 +237,12 @@ cmd_status() {
 }
 
 cmd_test() {
+  # Before anything else: the two apps must still agree about the design.
+  # A token edited in one and not the other is how they drifted apart the
+  # first time, and it is invisible until someone looks at both.
+  bold "Design tokens"
+  node "$ROOT/scripts/sync-tokens.mjs" --check || die "design tokens out of sync"
+
   bold "Typechecks"
   ( cd "$ROOT/apps/api" && npm run --silent typecheck ) || die "api typecheck failed"
   ok "api"

@@ -3,7 +3,7 @@
 import { useFormState, useFormStatus } from 'react-dom';
 import { useMemo, useState } from 'react';
 import { ActionState, bookMentorAction } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote, RuleNote } from '@/components/ui';
+import { Button, Card, ErrorNote } from '@/components/ui';
 
 interface Slot {
   startIso: string;
@@ -140,10 +140,6 @@ export function BookingForm({
             ))}
           </div>
         </fieldset>
-        <RuleNote>
-          All four types carry the same agenda, escrow, dispute and review machinery. Document review is the exam
-          family&rsquo;s most common need — a property of this pack, not of the platform.
-        </RuleNote>
       </Card>
 
       {/* ── 2. When (live sessions only) ───────────────────────── */}
@@ -183,7 +179,7 @@ export function BookingForm({
                         onClick={() => setSelected(isOn ? null : s)}
                         aria-pressed={isOn}
                         className={`rounded-card border px-3 py-1.5 text-sm tabular-nums ${
-                          isOn ? 'border-accent bg-accent text-white' : 'border-rule bg-paper hover:bg-paper-raised'
+                          isOn ? 'border-accent bg-accent text-white' : 'border-rule bg-paper hover:bg-surface-sunk'
                         }`}
                       >
                         {s.label}
@@ -198,11 +194,16 @@ export function BookingForm({
           <p className="mt-2 text-xs text-ink-muted">
             Times shown in <span className="tabular-nums">{timezone}</span>.
           </p>
-          <RuleNote>
-            These are times you are <em>proposing</em>, not slots {providerName} has published as free. The
-            recurring-availability engine (with exceptions, buffers and notice periods) is specified but not built
-            — so this screen does not pretend a calendar has been consulted.
-          </RuleNote>
+          {/*
+            The recurring-availability engine (exceptions, buffers, notice
+            periods) is specified but not built, so no calendar has been
+            consulted here. The user-facing line says only what the user
+            needs to act on — that these are proposals — rather than
+            explaining our build state to them.
+          */}
+          <p className="mt-md text-small text-ink-muted">
+            Times you are proposing. {providerName} still has to accept.
+          </p>
         </Card>
       )}
 
@@ -273,10 +274,12 @@ export function BookingForm({
           <li>3. Your money goes into escrow. Only then does work start.</li>
           <li>4. You accept the work, or ask for a change. Money moves when you accept.</li>
         </ol>
-        <RuleNote>
-          Nothing is charged now. Work cannot begin until the agenda is locked <em>and</em> escrow is held — the
-          database refuses the transition otherwise, so there is no &ldquo;start now, pay later&rdquo; path.
-        </RuleNote>
+        {/*
+          The database refuses the transition to a working state without
+          both a locked agenda and held escrow, so there is no "start now,
+          pay later" path. The user is told the one fact that affects them.
+        */}
+        <p className="mt-md text-small text-ink-muted">Nothing is charged yet.</p>
       </Card>
 
       <SubmitButton disabled={needsSlot && !selected} needsSlot={needsSlot} />

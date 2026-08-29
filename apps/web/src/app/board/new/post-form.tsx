@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { ActionState, createBoardPostAction } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote, RuleNote } from '@/components/ui';
+import { Button, Card, ErrorNote } from '@/components/ui';
 
 export function PostForm({
   domainCode,
@@ -107,9 +107,10 @@ export function PostForm({
             </option>
           ))}
         </select>
-        <RuleNote>
-          Only mentors who work in this language can propose. It is a matching requirement, not a preference.
-        </RuleNote>
+        {/*
+            Only mentors who work in this language can propose. It is a matching
+            requirement, not a preference.
+        */}
       </Card>
 
       <Card className="mb-4">
@@ -142,10 +143,11 @@ export function PostForm({
         <p className="mt-2 text-xs tabular-nums text-ink-muted">
           Stored as {Math.round(min * 100)}–{Math.round(max * 100)} paise
         </p>
-        <RuleNote>
-          Proposals come back in recency order. You will not be able to sort them by price — that decision is what
-          keeps this a market for quality rather than a race to the bottom.
-        </RuleNote>
+        {/*
+            Proposals come back in recency order. You will not be able to sort
+            them by price — that decision is what keeps this a market for
+            quality rather than a race to the bottom.
+        */}
       </Card>
 
       <Submit />

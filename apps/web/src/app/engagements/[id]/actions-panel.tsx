@@ -11,7 +11,7 @@ import {
   submitWorkAction,
 } from '@/app/actions/engagement';
 import { bookSessionAction } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote, RuleNote } from '@/components/ui';
+import { Button, Card, ErrorNote } from '@/components/ui';
 
 function Pending({ children, variant }: { children: string; variant?: 'secondary' | 'danger' }): JSX.Element {
   const { pending } = useFormStatus();
@@ -69,11 +69,12 @@ export function SubmitWorkPanel({ engagementId }: { engagementId: string }): JSX
           <Pending>Send it</Pending>
         </div>
       </form>
-      <RuleNote>
-        A text reference, not an upload. Private storage with signed URLs and viewer watermarking is required
-        before any real document can move through here — so this screen does not offer a file picker it could not
-        honour.
-      </RuleNote>
+      {/*
+          A text reference, not an upload. Private storage with signed URLs
+          and viewer watermarking is required before any real document can
+          move through here — so this screen does not offer a file picker it
+          could not honour.
+      */}
     </Card>
   );
 }
@@ -120,10 +121,11 @@ export function DecisionPanel({
         </Button>
       </div>
 
-      <RuleNote>
-        &ldquo;Ask for a revision&rdquo; is deliberately visible but disabled: it is designed and not built, so
-        today the only paths are accepting or disputing. Hiding it would make the gap invisible instead of known.
-      </RuleNote>
+      {/*
+          "Ask for a revision" is deliberately visible but disabled: it is
+          designed and not built, so today the only paths are accepting or
+          disputing. Hiding it would make the gap invisible instead of known.
+      */}
 
       {showDispute && (
         <form action={disputeForm} className="mt-4 border-t border-rule pt-4">
@@ -154,11 +156,12 @@ export function DecisionPanel({
           <div className="mt-3">
             <Pending variant="danger">Raise the dispute</Pending>
           </div>
-          <RuleNote>
-            Raising this freezes the money first, before anything else happens — nobody can draw it while you
-            disagree. Your words are kept in the language you wrote them in, and that original is what an
-            adjudicator reads.
-          </RuleNote>
+          {/*
+              Raising this freezes the money first, before anything else happens —
+              nobody can draw it while you disagree. Your words are kept in the
+              language you wrote them in, and that original is what an adjudicator
+              reads.
+          */}
         </form>
       )}
     </Card>
@@ -222,10 +225,11 @@ export function ReviewPanel({
           <Pending>Leave the review</Pending>
         </div>
       </form>
-      <RuleNote>
-        Recorded against this engagement&rsquo;s skills, not as a general score for the person — and append-only,
-        so it cannot be quietly rewritten later.
-      </RuleNote>
+      {/*
+          Recorded against this engagement's skills, not as a general score
+          for the person — and append-only, so it cannot be quietly rewritten
+          later.
+      */}
     </Card>
   );
 }
@@ -272,7 +276,10 @@ export function BookSessionPanel({ engagementId }: { engagementId: string }): JS
           <Pending>Book this time</Pending>
         </div>
       </form>
-      <RuleNote>Times are stored in UTC with your timezone ({timezone}) alongside — never a fixed offset.</RuleNote>
+      {/*
+          Times are stored in UTC with your timezone ({timezone}) alongside —
+          never a fixed offset.
+      */}
     </Card>
   );
 }

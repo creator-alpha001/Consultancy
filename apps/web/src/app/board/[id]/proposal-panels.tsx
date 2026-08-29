@@ -2,7 +2,7 @@
 
 import { useFormState, useFormStatus } from 'react-dom';
 import { ActionState, acceptProposalAction, submitProposalAction } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote, RuleNote } from '@/components/ui';
+import { Button, Card, ErrorNote } from '@/components/ui';
 
 function Pending({ children }: { children: string }): JSX.Element {
   const { pending } = useFormStatus();
@@ -69,10 +69,11 @@ export function ProposeForm({
           <Pending>Send the proposal</Pending>
         </div>
       </form>
-      <RuleNote>
-        If you are not verified for the skills this category requires, in this language and at the required tier,
-        this will be refused — by the database, not just by a check that could be bypassed.
-      </RuleNote>
+      {/*
+          If you are not verified for the skills this category requires, in
+          this language and at the required tier, this will be refused — by
+          the database, not just by a check that could be bypassed.
+      */}
     </Card>
   );
 }

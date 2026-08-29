@@ -28,7 +28,7 @@ export function EnrolForm({
   if (state.ok && state.recoveryCodes) {
     return (
       <div>
-        <div role="status" className="mb-4 rounded-card border border-accent bg-paper-raised p-3 text-sm">
+        <div role="status" className="mb-4 rounded-card border border-accent bg-surface-sunk p-3 text-sm">
           <p className="font-medium">Two-factor authentication is on.</p>
         </div>
         <h2 className="mb-2 font-medium">Save your recovery codes</h2>

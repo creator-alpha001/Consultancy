@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, EmptyState, PageTitle, RuleNote, Section, Status, TierChip } from '@/components/ui';
+import { Card, EmptyState, PageTitle, Section, Status, TierChip } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import { duration, listEngagements, rupees, searchBoard, when } from '@/lib/engagements';
 import { getDomain, label } from '@/lib/pack';
+import { pluralWord } from '@/lib/words';
 import { currentUser } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
         <PageTitle>Not a {providerWord.toLowerCase()} account</PageTitle>
         <Card>
           <p className="text-sm text-ink-muted">
-            This area is for verified {providerWord.toLowerCase()}s.{' '}
+            This area is for verified {pluralWord(providerWord.toLowerCase())}.{' '}
             <Link href="/dashboard" className="text-accent underline">
               Your dashboard
             </Link>
@@ -160,10 +161,11 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
             ))}
           </ul>
         )}
-        <RuleNote>
-          You only see requests you are actually eligible for. Proposing on one you are not verified for is refused
-          by the database, so this list is not a shop window you cannot buy from.
-        </RuleNote>
+        {/*
+            You only see requests you are actually eligible for. Proposing on
+            one you are not verified for is refused by the database, so this
+            list is not a shop window you cannot buy from.
+        */}
       </Section>
 
       <Section title="Your verified skills">
@@ -190,10 +192,11 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
             ))}
           </ul>
         )}
-        <RuleNote>
-          These are your own numbers only. There is no comparison with other {providerWord.toLowerCase()}s
-          anywhere, and no position in any list is shown to you.
-        </RuleNote>
+        {/*
+            These are your own numbers only. There is no comparison with other
+            {pluralWord(providerWord.toLowerCase())} anywhere, and no position in any list
+            is shown to you.
+        */}
       </Section>
 
       <Section title={`Active engagements (${active.length})`}>

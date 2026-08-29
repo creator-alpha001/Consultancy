@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, EmptyState, Lifecycle, PageTitle, RuleNote, Section, Status } from '@/components/ui';
+import { Card, EmptyState, Lifecycle, PageTitle, Section, Status } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import {
   Agenda,
@@ -16,6 +16,7 @@ import {
   when,
 } from '@/lib/engagements';
 import { getDomain, label } from '@/lib/pack';
+import { pluralWord } from '@/lib/words';
 import { currentUser } from '@/lib/session';
 import {
   AgreePanel,
@@ -175,10 +176,11 @@ export default async function EngagementPage({ params }: { params: { id: string 
             <p className="text-sm">
               Terms agreed. Work starts once the agenda is locked <strong>and</strong> escrow is held.
             </p>
-            <RuleNote>
-              Both preconditions are checked by the database, and the transition is refused if either is missing —
-              so there is no path where work begins on an unlocked agreement or unfunded escrow.
-            </RuleNote>
+            {/*
+                Both preconditions are checked by the database, and the transition
+                is refused if either is missing — so there is no path where work
+                begins on an unlocked agreement or unfunded escrow.
+            */}
           </Card>
         )}
 
@@ -271,10 +273,11 @@ export default async function EngagementPage({ params }: { params: { id: string 
             {evaluation.overallNote && (
               <p className="mt-4 border-t border-rule pt-3 text-sm">{evaluation.overallNote}</p>
             )}
-            <RuleNote>
-              Compared only with your own earlier work — never with other {seekerWord.toLowerCase()}s. There is no
-              percentile, cohort or rank anywhere in this product.
-            </RuleNote>
+            {/*
+                Compared only with your own earlier work — never with other
+                {pluralWord(seekerWord.toLowerCase())}. There is no percentile, cohort or rank
+                anywhere in this product.
+            */}
           </Card>
         </Section>
       )}

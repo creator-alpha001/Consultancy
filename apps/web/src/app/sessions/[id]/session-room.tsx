@@ -10,7 +10,7 @@ import {
   tickAgendaItemAction,
 } from '@/app/actions/session';
 import { ActionState } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote, RuleNote } from '@/components/ui';
+import { Button, Card, ErrorNote } from '@/components/ui';
 import { Agenda, SessionDetail } from '@/lib/engagements';
 
 function Pending({ children, variant }: { children: string; variant?: 'secondary' | 'danger' }): JSX.Element {
@@ -92,11 +92,12 @@ function ConsentGate({
         </form>
       )}
 
-      <RuleNote>
-        A refusal is recorded as its own decision, not as silence — and it shifts where the burden of proof sits if
-        this engagement is ever disputed. The database refuses to turn recording on unless every participant has
-        said yes.
-      </RuleNote>
+      {/*
+          A refusal is recorded as its own decision, not as silence — and it
+          shifts where the burden of proof sits if this engagement is ever
+          disputed. The database refuses to turn recording on unless every
+          participant has said yes.
+      */}
     </Card>
   );
 }
@@ -161,10 +162,10 @@ function Checklist({ sessionId, agenda, live }: { sessionId: string; agenda: Age
           worth raising before you accept the work.
         </p>
       )}
-      <RuleNote>
-        Ticking is the one thing a locked agenda still allows. The wording cannot change without a change order
-        that both of you accept.
-      </RuleNote>
+      {/*
+          Ticking is the one thing a locked agenda still allows. The wording
+          cannot change without a change order that both of you accept.
+      */}
     </Card>
   );
 }
@@ -239,10 +240,11 @@ export function SessionRoom({
           )}
         </div>
 
-        <RuleNote>
-          Audio-only is a required fallback, not a downgrade — either of you can switch without the other&rsquo;s
-          permission, because nobody should have to negotiate while their connection is failing.
-        </RuleNote>
+        {/*
+            Audio-only is a required fallback, not a downgrade — either of you
+            can switch without the other's permission, because nobody should
+            have to negotiate while their connection is failing.
+        */}
       </Card>
 
       {session.status !== 'completed' && session.status !== 'cancelled' && (

@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from 'react-dom';
 import { Button, ErrorNote, Field } from '@/components/ui';
 import { FormState, registerAction } from '@/app/actions/auth';
+import { pluralWord } from '@/lib/words';
 
 function Submit(): JSX.Element {
   const { pending } = useFormStatus();
@@ -54,7 +55,7 @@ export function RegisterForm({
           </label>
         </div>
         <p className="mt-2 text-xs text-ink-muted">
-          {providerWord}s must set up two-factor authentication before signing in, and must be
+          {pluralWord(providerWord)} must set up two-factor authentication before signing in, and must be
           verified before taking paid work.
         </p>
       </fieldset>

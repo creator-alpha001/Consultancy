@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, PageTitle, RuleNote, Section, Status } from '@/components/ui';
+import { Card, PageTitle, Section, Status } from '@/components/ui';
 import { getEngagement, getLatestEvaluation, getLatestSubmission } from '@/lib/engagements';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -42,10 +42,11 @@ export default async function EvaluatePage({ params }: { params: { id: string } 
           <Card>
             <p className="font-mono text-xs text-ink-muted">{submission.contentRef}</p>
             {submission.note && <p className="mt-2 text-sm">{submission.note}</p>}
-            <RuleNote>
-              A pointer, not a file. Private object storage with signed URLs and viewer watermarking is required
-              but not built yet, so nothing here opens a document.
-            </RuleNote>
+            {/*
+                A pointer, not a file. Private object storage with signed URLs and
+                viewer watermarking is required but not built yet, so nothing here
+                opens a document.
+            */}
           </Card>
         ) : (
           <Card>
@@ -77,11 +78,12 @@ export default async function EvaluatePage({ params }: { params: { id: string } 
         </Section>
       )}
 
-      <RuleNote>
-        An AI can surface patterns and draft a suggestion, but it never writes this assessment — a human mentor
-        accepts or rejects every line, and the database will not record a ruling or a mark authored by anything
-        else.
-      </RuleNote>
+      {/*
+          An AI can surface patterns and draft a suggestion, but it never
+          writes this assessment — a human mentor accepts or rejects every
+          line, and the database will not record a ruling or a mark authored
+          by anything else.
+      */}
     </PackShell>
   );
 }

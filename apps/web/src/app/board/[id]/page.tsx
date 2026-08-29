@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Avatar, Card, EmptyState, PageTitle, RuleNote, Section, Status } from '@/components/ui';
+import { Avatar, Card, EmptyState, PageTitle, Section, Status } from '@/components/ui';
 import { getBoardPost, listProposals, rupees, when } from '@/lib/engagements';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -68,10 +68,11 @@ export default async function BoardPostPage({ params }: { params: { id: string }
             ))}
           </ul>
         )}
-        <RuleNote>
-          There is no sort control here at all. Accepting one automatically rejects the siblings, and the award is
-          re-checked under a fresh lock so two simultaneous accepts cannot both win.
-        </RuleNote>
+        {/*
+            There is no sort control here at all. Accepting one automatically
+            rejects the siblings, and the award is re-checked under a fresh lock
+            so two simultaneous accepts cannot both win.
+        */}
       </Section>
 
       {isProvider && !isOwner && post.status === 'open' && (

@@ -21,7 +21,7 @@ export default async function LoginPage({
         <PageTitle>Sign in</PageTitle>
 
         {justRegistered && (
-          <div role="status" className="mb-4 rounded-card border border-rule bg-paper-raised p-3 text-sm">
+          <div role="status" className="mb-4 rounded-card border border-rule bg-surface-sunk p-3 text-sm">
             <p className="font-medium">Account created.</p>
             {asProvider && (
               <p className="mt-1 text-ink-muted">

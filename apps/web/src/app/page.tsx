@@ -27,7 +27,7 @@ export default async function HomePage(): Promise<JSX.Element> {
   return (
     <PackShell domain={domain} lang={lang} actor={user}>
       <section className="mb-10">
-        <h1 className="font-answer text-3xl font-semibold leading-tight sm:text-4xl">
+        <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
           A verified {providerWord.toLowerCase()}, a written agenda,
           <br className="hidden sm:block" /> and your money held until the goals are met.
         </h1>
@@ -49,7 +49,7 @@ export default async function HomePage(): Promise<JSX.Element> {
       </section>
 
       <section aria-labelledby="how" className="mb-10">
-        <h2 id="how" className="mb-4 font-answer text-xl font-semibold">
+        <h2 id="how" className="mb-4 text-xl font-semibold">
           How it works
         </h2>
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -72,7 +72,7 @@ export default async function HomePage(): Promise<JSX.Element> {
 
       {domain && (
         <section aria-labelledby="pack" className="signature-surface signature-margin rounded-card border border-rule p-5">
-          <h2 id="pack" className="mb-2 font-answer text-lg font-semibold">
+          <h2 id="pack" className="mb-2 text-lg font-semibold">
             This page is rendered from a domain pack
           </h2>
           <p className="mb-3 text-sm text-ink-muted">

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, Lifecycle, PageTitle, RuleNote, Section, Status } from '@/components/ui';
+import { Card, Lifecycle, PageTitle, Section, Status } from '@/components/ui';
 import { getAgenda, getEngagement } from '@/lib/engagements';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -97,10 +97,11 @@ export default async function AgendaPage({ params }: { params: { id: string } })
               </Card>
             )}
 
-            <RuleNote>
-              Written in <strong>{agenda.originalLang}</strong>, and stored in it. In a dispute this original text
-              is what is read — translations are convenience and never replace it.
-            </RuleNote>
+            {/*
+                Written in {agenda.originalLang}, and stored in it. In a dispute
+                this original text is what is read — translations are convenience
+                and never replace it.
+            */}
           </Section>
 
           <Section title={agenda.lockedAt ? 'Locked' : 'Lock it'}>

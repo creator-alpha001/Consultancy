@@ -16,6 +16,10 @@
  * to leave to chance on a screen a Hindi speaker reads first.
  */
 
+import { TOUCH, color, radius, space, typeScale } from './generated-tokens';
+
+export { TOUCH, radius, space };
+
 export interface Palette {
   paper: string;
   surface: string;
@@ -36,27 +40,7 @@ export interface Palette {
   warnSoft: string;
 }
 
-export const LIGHT: Palette = {
-  paper: '#ffffff',
-  surface: '#ffffff',
-  surfaceSunk: '#f4f4f5',
-  ink: '#09090b',
-  inkMuted: '#71717a',
-  inkFaint: '#a1a1aa',
-  correction: '#dc2626',
-  correctionSoft: '#fef2f2',
-  rule: '#e4e4e7',
-  // The primary action is black on white. High contrast, no hue to clash
-  // with a family's own colour, and it is what makes the page read as
-  // composed rather than decorated.
-  accent: '#09090b',
-  accentSoft: '#f4f4f5',
-  accentInk: '#ffffff',
-  good: '#15803d',
-  goodSoft: '#f0fdf4',
-  warn: '#a16207',
-  warnSoft: '#fefce8',
-};
+export const LIGHT: Palette = color;
 
 /**
  * Font families.
@@ -116,38 +100,31 @@ const WEIGHT: Record<Weight, string> = {
  * renders correctly but not identically.
  */
 export const type = {
-  display: { fontSize: 38, lineHeight: 43, letterSpacing: -1.3, fontFamily: WEIGHT.semibold },
-  title: { fontSize: 27, lineHeight: 33, letterSpacing: -0.7, fontFamily: WEIGHT.semibold },
-  heading: { fontSize: 19, lineHeight: 26, letterSpacing: -0.3, fontFamily: WEIGHT.semibold },
-  body: { fontSize: 16, lineHeight: 25, letterSpacing: -0.1, fontFamily: WEIGHT.regular },
-  bodyStrong: { fontSize: 16, lineHeight: 25, letterSpacing: -0.1, fontFamily: WEIGHT.medium },
-  small: { fontSize: 14, lineHeight: 21, letterSpacing: 0, fontFamily: WEIGHT.regular },
-  smallStrong: { fontSize: 14, lineHeight: 21, letterSpacing: 0, fontFamily: WEIGHT.medium },
-  caption: { fontSize: 12, lineHeight: 17, letterSpacing: 0, fontFamily: WEIGHT.medium },
+  display: { ...typeScale.display, fontFamily: WEIGHT[typeScale.display.weight] },
+  title: { ...typeScale.title, fontFamily: WEIGHT[typeScale.title.weight] },
+  heading: { ...typeScale.heading, fontFamily: WEIGHT[typeScale.heading.weight] },
+  body: { ...typeScale.body, fontFamily: WEIGHT[typeScale.body.weight] },
+  bodyStrong: { ...typeScale.bodyStrong, fontFamily: WEIGHT[typeScale.bodyStrong.weight] },
+  small: { ...typeScale.small, fontFamily: WEIGHT[typeScale.small.weight] },
+  smallStrong: { ...typeScale.smallStrong, fontFamily: WEIGHT[typeScale.smallStrong.weight] },
+  caption: { ...typeScale.caption, fontFamily: WEIGHT[typeScale.caption.weight] },
 } as const;
 
 /** The weight each scale step asks for, for script-aware family selection. */
-export const scaleWeight: Record<keyof typeof type, Weight> = {
-  display: 'semibold',
-  title: 'semibold',
-  heading: 'semibold',
-  body: 'regular',
-  bodyStrong: 'medium',
-  small: 'regular',
-  smallStrong: 'medium',
-  caption: 'medium',
-};
+export const scaleWeight = Object.fromEntries(
+  Object.entries(typeScale).map(([k, v]) => [k, v.weight]),
+) as Record<keyof typeof type, Weight>;
 
 /** 4pt grid, with more air at the top end than before. */
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 40, xxxl: 64 };
 
-export const radius = { sm: 10, md: 14, lg: 20, xl: 28, pill: 999 };
+
+
 
 /**
  * Minimum interactive size. 48dp is Android's guidance, and this app's
  * users are on mid-range Android — often one-handed, often outdoors.
  */
-export const TOUCH = 48;
+
 
 /**
  * Elevation is almost absent by design. Surfaces separate by fill and

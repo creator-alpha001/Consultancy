@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { ActionState, draftAgendaAction, lockAgendaAction } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote, RuleNote } from '@/components/ui';
+import { Button, Card, ErrorNote } from '@/components/ui';
 import { Agenda } from '@/lib/engagements';
 
 const MAX_GOALS = 5;
@@ -105,13 +105,13 @@ export function AgendaEditor({
           name="outOfScope"
           rows={2}
           defaultValue=""
-          placeholder="e.g. Rewriting the answer for me. Predicting a mark for the real exam."
+          placeholder="e.g. Doing the work for me. Promising a particular result."
           className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
         />
-        <RuleNote>
-          This protects the mentor, and it protects you from a disappointing surprise. An assistant can draft it;
-          you decide what it says.
-        </RuleNote>
+        {/*
+            This protects the mentor, and it protects you from a disappointing
+            surprise. An assistant can draft it; you decide what it says.
+        */}
       </Card>
 
       <Card className="mb-4">
@@ -164,10 +164,11 @@ export function AgendaEditor({
             </option>
           ))}
         </select>
-        <RuleNote>
-          Your original words are stored as written and are what counts in a dispute. Translations sit beside them
-          as convenience and never replace them.
-        </RuleNote>
+        {/*
+            Your original words are stored as written and are what counts in a
+            dispute. Translations sit beside them as convenience and never
+            replace them.
+        */}
       </Card>
 
       <DraftButton disabled={filled === 0} />
@@ -201,11 +202,12 @@ export function LockPanel({ agenda, engagementId }: { agenda: Agenda; engagement
       <Card>
         <p className="text-sm font-medium">Locked {new Date(agenda.lockedAt).toLocaleString('en-IN')}</p>
         <p className="mt-1 break-all font-mono text-xs text-ink-muted">{agenda.contentHash}</p>
-        <RuleNote>
-          Both of you hold this same hash. Changing anything now needs a change order that creates version{' '}
-          {agenda.version + 1} — there is no edit button, because an in-place edit of a locked agreement is not a
-          thing this system permits.
-        </RuleNote>
+        {/*
+            Both of you hold this same hash. Changing anything now needs a
+            change order that creates version{' '} {agenda.version + 1} — there
+            is no edit button, because an in-place edit of a locked agreement is
+            not a thing this system permits.
+        */}
       </Card>
     );
   }
@@ -234,10 +236,11 @@ export function LockPanel({ agenda, engagementId }: { agenda: Agenda; engagement
           </Button>
         </div>
       </form>
-      <RuleNote>
-        Locking freezes and hashes the agreement. Work still cannot start until escrow is also held — the database
-        checks both, and refuses the transition if either is missing.
-      </RuleNote>
+      {/*
+          Locking freezes and hashes the agreement. Work still cannot start
+          until escrow is also held — the database checks both, and refuses
+          the transition if either is missing.
+      */}
     </Card>
   );
 }

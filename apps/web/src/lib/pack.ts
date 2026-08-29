@@ -5,7 +5,14 @@ export type LabelMap = Record<string, string>;
 export interface ResolvedFamily {
   code: string;
   version: string;
-  labels: { family: LabelMap; seeker: LabelMap; provider: LabelMap; engagement: LabelMap };
+  labels: {
+    family: LabelMap;
+    seeker: LabelMap;
+    provider: LabelMap;
+    engagement: LabelMap;
+    /** What this family calls a category. Absent for a family that names none. */
+    category?: LabelMap;
+  };
   engagementTypes: string[];
   flagshipEngagement: string;
   policy: {

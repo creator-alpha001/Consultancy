@@ -77,9 +77,21 @@ let body = await page.textContent('body');
 body.match(/Rathore|Kulkarni|Banerjee/)
   ? ok('verified mentors returned from real matching')
   : bad('no mentors in the result list');
-body.includes('no sort-by-price')
-  ? ok('the no-price-sorting rule is stated where the user meets it')
-  : bad('price-sorting note missing');
+// The page used to *announce* that it has no price sorting. That line was
+// reviewer commentary, so it is gone — but the rule it described is the
+// one thing here that must never regress (CLAUDE.md #15). Assert the rule
+// instead of the prose: no control on the page, and the API itself
+// refuses the parameter, so removing the control could not quietly leave
+// a working sort behind it.
+const priceSort = await page.evaluate(
+  async () =>
+    (await fetch(
+      `${location.origin.replace('3001', '3000')}/providers?domain=upsc_cse&sort=price`,
+    )).status,
+);
+priceSort >= 400
+  ? ok(`the API refuses sort=price (${priceSort}), not just the UI`)
+  : bad(`sort=price was accepted by the API (${priceSort})`);
 (await page.locator('text=/sort by price/i').count()) === 0
   ? ok('no price sort control exists anywhere on the page')
   : bad('a price sort control appeared');
@@ -194,9 +206,13 @@ await page.click('label:has-text("live session")');
 await page.waitForTimeout(300);
 body = await page.textContent('body');
 body.includes('Propose a time') ? ok('slot picker appears for live sessions only') : bad('slot picker missing');
-body.includes('not slots')
-  ? ok('the UI is honest that no availability engine exists')
-  : bad('availability caveat missing');
+// Same shift: the long explanation of the missing availability engine was
+// written for a reviewer. What a user must not be misled about is that
+// these times are proposals rather than published free slots, so assert
+// the promise the screen now actually makes.
+body.includes('proposing')
+  ? ok('the screen says these times are proposals, not confirmed slots')
+  : bad('slot-proposal wording missing');
 const slots = await page.locator('button[aria-pressed]').count();
 slots > 0 ? ok(`${slots} candidate slots rendered`) : bad('no slots rendered');
 console.log('   → ' + (await shot(page, 'booking-slot-picker')));
