@@ -168,6 +168,13 @@ export interface ResolvedFamily {
   labels: FamilyManifestInput['labels'];
   engagementTypes: EngagementType[];
   flagshipEngagement: EngagementType;
+  /**
+   * What a seeker rates a provider on. Family data — core names none of
+   * them, and a family that declares none gets a single overall rating.
+   * Resolved here because a client cannot label a dimension it has never
+   * been told the name of.
+   */
+  reviewDimensions: ReviewDimensionInput[];
   policy: FamilyPolicy;
   supportResources: SupportResource[];
   theme: ThemeTokens;
@@ -180,6 +187,8 @@ export interface ResolvedDomain {
   labels: FamilyManifestInput['labels'] & { domain: LabelMap };
   engagementTypes: EngagementType[];
   flagshipEngagement: EngagementType;
+  /** Inherited from the family — a domain never redefines what a review measures. */
+  reviewDimensions: ReviewDimensionInput[];
   languages: string[];
   defaultLanguage: string;
   resultSource: ResultSourceConfig | null;

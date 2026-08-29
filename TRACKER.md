@@ -360,7 +360,7 @@ currently tells.
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
 | D36 | both | The design system is shared by generation, not by import | `packages/design/tokens.json` is the single source; `scripts/sync-tokens.mjs` writes a generated copy into each app and `--check` (wired into `dev.sh test`) fails when either is stale. It works and it is verified, but it is a workaround for there being no workspace: with a root `package.json` and workspaces, both apps could import one package and the generator would be unnecessary. Worth doing when something else needs the monorepo tooling anyway. |
-| D37 | web | The shared tokens cover colour, type, spacing and radii — not components | Both apps now agree on what a card colour and a heading size are, so they cannot drift on those. They do **not** share the components built from them: `apps/web/src/components/ui.tsx` and `apps/mobile/src/components/kit.tsx` are separate implementations that were made to match by hand. A new component added to one will not appear in the other, and a padding changed in one will not follow. Real convergence needs either a shared cross-platform component layer or an accepted, documented split. |
+| D38 | M2 | `reviewDimensions` was validated and stored but never resolved | Fixed: the family manifest carried proper labels ("Told me the hard truth" / "स्पष्टवादिता") and `getDomain` never surfaced them, so every client fell back to the raw code and the profile showed "candour". Recorded because of the shape of the bug, not its size: a manifest field can pass validation, be persisted, and still be invisible to every client, and nothing in the test suite noticed for as long as no screen rendered it. Worth a resolver test that asserts each declared manifest field survives to `getDomain`. |
 | D32 | mobile | `applyPack()` exists but is never called — family theming is unwired | `src/theme/tokens.ts` exports it and the kit imports the palette directly instead, so a family cannot actually re-skin the app (#7). Latent rather than harmful today, because there is one family; it becomes a real blocker the moment a second one needs its own accent. Found while rewriting the theme, recorded rather than half-wired. |
 | D33 | mobile | No i18n catalogue — UI chrome is English-only | Pack-supplied vocabulary is translated (the family, seeker, provider, engagement and now category words all render in Hindi), and so are language names, via `Intl.DisplayNames`. But every string the app itself owns — "Language", "Your offer", "What do you need?", "Nothing is charged yet." — is hardcoded English. On a Hindi-default domain that produces a screen half in each language, which is worse than either. `engagementTypeLabel()` is English-only for the same reason and should move into the catalogue when one exists. |
 | D34 | mobile | Devanagari falls back inconsistently outside the kit's own components | The kit picks the bundled Noto face per string via `fontFor()`, so anything rendered through `Body`/`Small`/`H1` is right. Around 40 call sites still spread `type.X` into a bare `<Text>`; those carry the Inter family and rely on the platform substituting its own Devanagari face for missing glyphs. It renders — no tofu — but at a different weight and baseline from the text beside it. The fix is to route those call sites through the kit. |
@@ -416,10 +416,46 @@ trusting any of them.**
 
 ---
 
+### Demo data is real, not fabricated
+
+`seed/demo-engagements.ts` drives the actual services — draft → agree →
+agenda lock → escrow hold → submit → evaluate → complete → review — so
+the five completed engagements behind the demo profiles have real ledger
+postings, real escrow releases and a real frozen skill snapshot. Nothing
+is inserted straight into a table and no trigger is disabled.
+
+Verified after seeding: every ledger transaction sums to zero, escrow
+drains to 0, ₹5,550 in became ₹832.50 platform fee and ₹4,717.50 in
+provider wallets at the 15% schedule.
+
+This matters beyond tidiness. Writing those rows directly would have
+produced engagements that look right on a profile and are wrong in
+reconciliation — the exact class of fake this file exists to prevent.
+It also surfaced a real gap: **the dev database had no `fee_schedule`
+row at all**, so completing an engagement would have failed at release.
+The seeder now creates one, and it was only found by running the whole
+loop rather than the parts.
+
 ## Decisions and deviations from spec
 
 Where the build knowingly differs from a spec document, and why. If a
 future task is surprised by something, it should be recorded here.
+
+- **`apps/web` and `apps/mobile` keep separate component layers, deliberately.**
+  Confirmed with the user (2026-08-29) after the web app was brought onto
+  the mobile design. They share *design tokens* — palette, type scale,
+  spacing, radii — from `packages/design/tokens.json`, and
+  `./scripts/dev.sh test` fails if the generated copies drift. They do
+  **not** share components: `apps/web/src/components/ui.tsx` and
+  `apps/mobile/src/components/kit.tsx` are two implementations that were
+  matched by hand and will be maintained that way. The consequence is
+  accepted, not overlooked: a component added to one does not appear in
+  the other, and a padding changed in one does not follow. In exchange
+  each app can use its own platform idioms — server components, CSS font
+  stacks and hover states on web; bottom tabs, the platform keystore and
+  per-string font selection on mobile — without a lowest-common-denominator
+  abstraction between them. **Anything that must not diverge belongs in
+  the token file, not in a shared component.**
 
 - **Schema is built forward from M1, not from `schema-v4-family.sql`.** The
   supplied schema files (v1–v3) were never provided; only the v4 patch,

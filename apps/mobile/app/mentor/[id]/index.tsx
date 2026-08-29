@@ -76,8 +76,13 @@ function DistributionBar({ star, count, total }: { star: number; count: number; 
     <Row gap={space.sm}>
       <Text style={[type.small, { color: C.inkMuted, width: 12 }]}>{star}</Text>
       <Text style={{ color: C.warn, fontSize: 11 }}>★</Text>
+      {/*
+        The stars stay gold — that convention is worth keeping — but the
+        bars are ink, the same as the per-dimension bars below them. Two
+        bar colours in one card read as two different measurements.
+      */}
       <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: C.surfaceSunk, overflow: 'hidden' }}>
-        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: C.warn, borderRadius: 3 }} />
+        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: C.ink, borderRadius: 3 }} />
       </View>
       <Text style={[type.small, { color: C.inkMuted, width: 22, textAlign: 'right' }]}>{count}</Text>
     </Row>
@@ -214,21 +219,6 @@ export default function MentorProfile(): JSX.Element {
         </Card>
       </Section>
 
-      {/* ── Verified skills ──────────────────────────────────────── */}
-      <Section title="Verified to teach">
-        <View style={{ gap: space.md }}>
-          {p.skills.map((sk) => (
-            <Card key={sk.skillId}>
-              <Row between align="flex-start">
-                <Text style={[type.bodyStrong, { color: C.ink, flex: 1 }]}>{label(sk.labels, lang)}</Text>
-                <Chip label={sk.tier.toUpperCase()} tone="accent" />
-              </Row>
-              <Small>{sk.completedEngagements} completed in this</Small>
-            </Card>
-          ))}
-        </View>
-      </Section>
-
       {/* ── Reviews ──────────────────────────────────────────────── */}
       <Section title={s.reviewCount === 0 ? 'Reviews' : plural(s.reviewCount, 'Review')}>
         {s.reviewCount === 0 ? (
@@ -352,6 +342,42 @@ export default function MentorProfile(): JSX.Element {
           </>
         )}
       </Section>
+
+      {/* ── Verified skills ──────────────────────────────────────────
+        One card, one row per skill. A verified mentor here holds fourteen
+        of them; as fourteen full cards this section was longer than the
+        rest of the profile put together and pushed the reviews off the
+        end. Skills with work behind them sort first, because "verified,
+        and has done it" is a different claim from "verified".
+      */}
+      <Section title="Verified to teach">
+        <Card>
+          {[...p.skills]
+            .sort((a, b) => b.completedEngagements - a.completedEngagements)
+            .map((sk, i) => (
+              <View
+                key={sk.skillId}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  paddingVertical: space.md,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: C.rule,
+                }}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[type.bodyStrong, { color: C.ink }]}>{label(sk.labels, lang)}</Text>
+                  {sk.completedEngagements > 0 && (
+                    <Small>{plural(sk.completedEngagements, words.engagement.toLowerCase())} completed</Small>
+                  )}
+                </View>
+                <Chip label={sk.tier.toUpperCase()} tone="accent" />
+              </View>
+            ))}
+        </Card>
+      </Section>
+
 
       {!p.paidWorkBlocked && (
         <Button label="Book" onPress={() => router.push(`/mentor/${p.providerId}/book`)} />

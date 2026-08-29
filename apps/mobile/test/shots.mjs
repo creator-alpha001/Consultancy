@@ -89,9 +89,18 @@ if ((await card.count()) > 0) {
     : ok('achievements published; the evidence that proved them withheld (#30)');
   await shot('mentor-profile');
 
-  // Scroll to the review block so the screenshot shows it.
-  await page.mouse.wheel(0, 900);
-  await page.waitForTimeout(900);
+  // Scroll to the review block by finding it, not by guessing a pixel
+  // offset: the section moves whenever the profile above it changes, and
+  // a fixed wheel distance silently screenshots the wrong thing.
+  const reviews = page.locator('text=/Reviews?$/').first();
+  if (await reviews.count()) {
+    await reviews.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(600);
+  }
+  const body2 = await page.textContent('body');
+  /\d\.\d/.test(body2) && !body2.includes('No reviews yet')
+    ? ok('reviews render with a real average and distribution')
+    : bad('the review block is empty — seed completed engagements');
   await shot('mentor-profile-reviews');
 }
 

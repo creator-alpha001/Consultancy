@@ -132,9 +132,10 @@ seed() {
   bold "Seeding $DEV_DB"
   ( cd "$ROOT/apps/api" \
     && DATABASE_URL="$DEV_URL" npm run --silent seed \
-    && DATABASE_URL="$DEV_URL" npx ts-node seed/demo-fixtures.ts ) \
+    && DATABASE_URL="$DEV_URL" npx ts-node seed/demo-fixtures.ts \
+    && DATABASE_URL="$DEV_URL" npx ts-node seed/demo-engagements.ts ) \
     || die "seeding failed"
-  ok "family, 19 domains, and demo mentors with verified achievements"
+  ok "family, 19 domains, verified mentors, and completed engagements with reviews"
 }
 
 # ── Services ──────────────────────────────────────────────────────────
