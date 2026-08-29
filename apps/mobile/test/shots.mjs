@@ -10,6 +10,7 @@
  */
 import { chromium, devices } from 'playwright';
 import { totp } from '../../web/test/totp.mjs';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
 const APP = process.env.APP ?? 'http://localhost:8082';
@@ -185,6 +186,65 @@ console.log('\n5b. A mentor sets up two-factor, on the phone');
     }
   }
   await mctx.close();
+}
+
+console.log('\n5c. A mentor marks work, on the phone');
+// The two steps that did not exist on mobile: a seeker handing work over
+// and a mentor marking it. Without them the core loop dead-ended on the
+// phone and both sides had to open a laptop midway through.
+{
+  const ectx = await browser.newContext({ ...devices['Pixel 7'] });
+  const ep = await ectx.newPage();
+  const DEMO = 'demo-password-not-a-secret';
+
+  // A mentor with real engagements behind them. Their second factor is
+  // reset first: it is shown once at enrolment, so a demo account that
+  // enrolled on an earlier run can never be signed into again.
+  execFileSync('psql', ['-U', 'sankalp', '-h', 'localhost', '-d', 'sankalp_dev', '-q', '-c',
+    `DELETE FROM user_sessions WHERE user_id = (SELECT id FROM users WHERE email = 'asha.rathore@demo.local');
+     DELETE FROM auth_factors WHERE user_id = (SELECT id FROM users WHERE email = 'asha.rathore@demo.local')`],
+    { env: { ...process.env, PGPASSWORD: 'sankalp' }, stdio: 'pipe' });
+
+  await ep.goto(`${APP}/sign-in`, { waitUntil: 'networkidle' });
+  await ep.waitForTimeout(1500);
+  await ep.getByPlaceholder('you@example.com').fill('asha.rathore@demo.local');
+  await ep.getByPlaceholder('Your password').fill(DEMO);
+  await ep.getByRole('button', { name: 'Sign in' }).click();
+  await ep.waitForTimeout(4000);
+
+  let ebody = await ep.textContent('body');
+  if (ebody.includes('Set up two-factor')) {
+    const m = ebody.match(/[A-Z2-7]{26,}/);
+    if (m) {
+      await ep.getByPlaceholder('123456').fill(totp(m[0]));
+      await ep.getByRole('button', { name: 'Confirm' }).click();
+      await ep.waitForTimeout(3500);
+      await ep.getByRole('button', { name: 'Done — sign in' }).click();
+      await ep.waitForTimeout(2500);
+      await ep.getByPlaceholder('you@example.com').fill('asha.rathore@demo.local');
+      await ep.getByPlaceholder('Your password').fill(DEMO);
+      const codeField = ep.getByPlaceholder('123456');
+      if (await codeField.count()) await codeField.fill(totp(m[0]));
+      await ep.getByRole('button', { name: 'Sign in' }).click();
+      await ep.waitForTimeout(4000);
+    }
+  }
+
+  ebody = await ep.textContent('body');
+  !ebody.includes('Set up two-factor')
+    ? ok('a mentor with real work signs in on the phone')
+    : bad('mentor could not get past 2FA on mobile');
+
+  await ep.goto(`${APP}/work`, { waitUntil: 'networkidle' });
+  await ep.waitForTimeout(2500);
+  await ep.screenshot({ path: `${OUT}/09-mentor-work.png`, fullPage: true });
+  console.log(`   → ${OUT}/09-mentor-work.png`);
+  ebody = await ep.textContent('body');
+  !/Application error|went wrong/i.test(ebody)
+    ? ok('the mentor workspace renders on mobile')
+    : bad('the mentor workspace errored');
+
+  await ectx.close();
 }
 
 console.log('\n6. Signed-in home');

@@ -42,10 +42,10 @@ export default function EngagementDetail(): JSX.Element {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function act(path: string, idempotencyKey?: string): Promise<void> {
+  async function act(path: string, idempotencyKey?: string, body?: unknown): Promise<void> {
     setBusy(true); setError(null);
     try {
-      await api(path, { method: 'POST', idempotencyKey });
+      await api(path, { method: 'POST', idempotencyKey, body });
       await load();
     } catch (err) {
       setError(err instanceof ApiError
@@ -57,6 +57,7 @@ export default function EngagementDetail(): JSX.Element {
   if (!e) return <Screen><Loading /></Screen>;
 
   const isSeeker = e.seekerId === me?.id;
+  const isProvider = e.providerId === me?.id;
   const unticked = agenda ? agenda.items.filter((i) => !i.checkedAt).length : 0;
 
   return (
@@ -144,6 +145,54 @@ export default function EngagementDetail(): JSX.Element {
             <Body>Terms agreed. Lock the agenda and fund escrow to start.</Body>
             <View style={{ height: space.sm }} />
             <Button label="Open the agenda" variant="secondary" onPress={() => router.push(`/engagement/${id}/agenda`)} />
+          </Card>
+        )}
+
+        {/*
+          The two steps that were missing entirely on mobile: a seeker
+          could not hand work over and a mentor could not mark it, so the
+          core loop dead-ended on the phone and both sides had to open a
+          laptop midway through something they had started here.
+        */}
+        {e.status === 'working' && isSeeker && (
+          <Card>
+            <Body>Escrow is held and the goals are locked. Send your work when it is ready.</Body>
+            <View style={{ height: space.sm }} />
+            <Button
+              label="Send my work"
+              busy={busy}
+              onPress={() =>
+                void act(`/engagements/${id}/submissions`, undefined, {
+                  note: 'Sent from the app',
+                })
+              }
+            />
+          </Card>
+        )}
+
+        {e.status === 'working' && isProvider && (
+          <Card>
+            <Body>Waiting for their work. You will be able to mark it as soon as it arrives.</Body>
+          </Card>
+        )}
+
+        {e.status === 'delivered' && isProvider && (
+          <Card>
+            <Body>Their work is in. Mark it against the rubric this engagement froze when you agreed.</Body>
+            <View style={{ height: space.sm }} />
+            <Button label="Mark the work" onPress={() => router.push(`/engagement/${id}/evaluate`)} />
+          </Card>
+        )}
+
+        {e.status === 'delivered' && isSeeker && (
+          <Card>
+            <Body>Sent. Your {words.provider.toLowerCase()} is marking it now.</Body>
+          </Card>
+        )}
+
+        {e.status === 'assessed' && isProvider && (
+          <Card>
+            <Body>Marks returned. Waiting for them to accept, which releases the money.</Body>
           </Card>
         )}
 
