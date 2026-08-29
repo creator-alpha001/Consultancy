@@ -7,6 +7,7 @@
  * and verifies three mentors) before it will find anyone to book.
  */
 import { chromium } from 'playwright';
+import { totp } from './totp.mjs';
 import { mkdirSync } from 'node:fs';
 
 const WEB = process.env.WEB ?? 'http://localhost:3001';
@@ -38,8 +39,13 @@ async function register(page, email, role) {
   await page.goto(`${WEB}/register`, { waitUntil: 'networkidle' });
   await page.fill('#f-email', email);
   await page.fill('#f-password', PASS);
-  const roleSelect = page.locator('select[name="role"]');
-  if ((await roleSelect.count()) > 0) await roleSelect.selectOption(role);
+  // Radio buttons, not a select. This looked for `select[name="role"]`,
+  // found nothing, and skipped silently — so every "provider" this
+  // helper made was a seeker, and the mentor step below had been
+  // exercising the wrong account type without ever failing.
+  const radio = page.locator(`input[type=radio][name="role"][value="${role}"]`);
+  if ((await radio.count()) === 0) throw new Error(`no role control for "${role}" on /register`);
+  await radio.check();
   await page.check('input[name="confirmsAdult"]');
   await page.click('button[type=submit]');
   await page.waitForURL('**/login**', { timeout: 20000 });
@@ -348,11 +354,39 @@ console.log('\n12. The mentor workspace');
 const mentorPage = await (await browser.newContext({ viewport: { width: 1280, height: 1000 } })).newPage();
 const mentor = `book-mentor-${uniq}@test.local`;
 await register(mentorPage, mentor, 'provider');
-await signIn(mentorPage, mentor);
-const landedOnMfa = mentorPage.url().includes('/mfa');
-landedOnMfa
-  ? ok('a new mentor is routed to 2FA enrolment, not locked out (#32)')
-  : ok('mentor signed in');
+
+// Password alone lands a provider on enrolment, never on the product.
+// Strict: #32 makes 2FA mandatory, so anywhere else is a failure, not an
+// alternative. The old version reported ok on both branches, which is
+// how a helper that never actually selected the provider role went
+// unnoticed for as long as it did.
+await mentorPage.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
+await mentorPage.fill('#f-email', mentor);
+await mentorPage.fill('#f-password', PASS);
+await mentorPage.click('button[type=submit]');
+await mentorPage.waitForURL('**/mfa/**', { timeout: 45000 });
+ok('a new mentor is routed to 2FA enrolment, not locked out (#32)');
+
+const mentorSecret = (await mentorPage.locator('code').first().textContent())?.trim();
+await mentorPage.fill('input[name=code]', totp(mentorSecret));
+await mentorPage.click('button[type=submit]');
+await mentorPage.waitForLoadState('networkidle');
+
+await mentorPage.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
+await mentorPage.fill('#f-email', mentor);
+await mentorPage.fill('#f-password', PASS);
+await mentorPage.click('button[type=submit]');
+await mentorPage.waitForSelector('input[name=totpCode]', { timeout: 45000 });
+await mentorPage.fill('input[name=totpCode]', totp(mentorSecret));
+await mentorPage.click('button[type=submit]');
+await mentorPage.waitForSelector('button:has-text("Sign out")', { timeout: 45000 });
+ok('mentor signed in with 2FA satisfied');
+
+await mentorPage.goto(`${WEB}/mentor`, { waitUntil: 'networkidle' });
+const mentorBody = await mentorPage.textContent('body');
+/workspace|verified skills|attention/i.test(mentorBody)
+  ? ok('the mentor workspace renders for a real provider')
+  : bad('mentor workspace did not render');
 console.log('   → ' + (await shot(mentorPage, 'mentor-2fa-bootstrap')));
 
 // ── 7. Mobile ────────────────────────────────────────────────────────

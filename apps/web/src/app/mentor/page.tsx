@@ -168,7 +168,14 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
         */}
       </Section>
 
-      <Section title="Your verified skills">
+      <Section
+        title="Your verified skills"
+        action={
+          <Link href="/mentor/credentials" className="text-small underline">
+            Credentials
+          </Link>
+        }
+      >
         {stats.length === 0 ? (
           <EmptyState>
             Nothing verified yet. Until a skill is verified you cannot be matched or propose on it.

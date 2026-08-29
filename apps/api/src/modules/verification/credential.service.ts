@@ -11,7 +11,7 @@ import {
   unknownVerifier,
 } from './errors';
 import { AutomatedCheckResult, ProviderCredentialRow, ProviderCredentialStatus, SubmitCredentialInput } from './types';
-import { CredentialVerifier } from './verifiers/verifier.interface';
+import { CredentialVerifier, VerifierInputField } from './verifiers/verifier.interface';
 import { DocumentReviewVerifier, SanctionDocumentVerifier } from './verifiers/manual-review.verifiers';
 import { PublicResultListVerifier } from './verifiers/public-result-list.verifier';
 
@@ -55,6 +55,40 @@ export class CredentialService {
       [documentReview.code, documentReview],
       [sanctionDocument.code, sanctionDocument],
     ]);
+  }
+
+  /**
+   * What a provider can submit in this domain, and what each kind needs.
+   *
+   * Joins the family's declared credential types to the verifier that
+   * will actually check them, so a form can be rendered without any
+   * client knowing that a result-list credential needs a roll number.
+   * Nothing about the verifier's internals is exposed and nothing about
+   * what gets PUBLISHED is decided here — that is `publicFields`, and it
+   * defaults to empty (CLAUDE.md #30).
+   */
+  async submittableTypes(domainCode: string): Promise<
+    Array<{
+      code: string;
+      labels: Record<string, string>;
+      verifier: string;
+      inputs: VerifierInputField[];
+      requiresPaidWorkSanction: boolean;
+      grantsPaidWorkSanction: boolean;
+    }>
+  > {
+    const domain = await this.loader.getDomain(domainCode);
+    return domain.family.credentialTypes.map((c) => ({
+      code: c.code,
+      labels: c.labels,
+      verifier: c.verifier,
+      // A type naming a verifier nobody registered asks for nothing
+      // rather than throwing: an unknown verifier is an ops problem, not
+      // a reason a provider cannot see the rest of the list.
+      inputs: this.verifiers.get(c.verifier)?.inputs ?? [],
+      requiresPaidWorkSanction: c.requiresPaidWorkSanction ?? false,
+      grantsPaidWorkSanction: c.grantsPaidWorkSanction ?? false,
+    }));
   }
 
   async submit(input: SubmitCredentialInput): Promise<ProviderCredentialRow> {

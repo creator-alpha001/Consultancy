@@ -175,6 +175,14 @@ export interface ResolvedFamily {
    * been told the name of.
    */
   reviewDimensions: ReviewDimensionInput[];
+  /**
+   * The skills a provider can be verified against, and the credential
+   * types they can submit. Both were stored in the manifest and resolved
+   * nowhere, which meant no client could offer a provider the choice —
+   * the same shape of gap as reviewDimensions (D38).
+   */
+  skills: SkillInput[];
+  credentialTypes: CredentialTypeInput[];
   policy: FamilyPolicy;
   supportResources: SupportResource[];
   theme: ThemeTokens;

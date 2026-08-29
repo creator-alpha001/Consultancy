@@ -262,6 +262,7 @@ cmd_test() {
   bold "Browser journeys"
   if curl -sf -o /dev/null "http://localhost:$WEB_PORT/mentors" 2>/dev/null; then
     ( cd "$ROOT/apps/web" && node test/booking-journey.mjs ) || die "booking journey failed"
+    ( cd "$ROOT/apps/web" && node test/provider-journey.mjs ) || die "provider journey failed"
   else
     warn "web not running — skipping the browser journeys (./scripts/dev.sh up first)"
   fi

@@ -15,6 +15,11 @@ export interface ResolvedFamily {
   };
   engagementTypes: string[];
   flagshipEngagement: string;
+  /** What a provider can be verified against. Family data — core names none. */
+  skills: Array<{ code: string; labels: LabelMap; template?: string; isDomainBound?: boolean }>;
+  /** What a provider can submit. The verifier decides what each one needs. */
+  credentialTypes: Array<{ code: string; labels: LabelMap; verifier: string }>;
+  reviewDimensions: Array<{ code: string; labels: LabelMap }>;
   policy: {
     minTierForPaidWork: string;
     freeQuestionsPerDay: number;

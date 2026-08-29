@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
-import { CurrentActor, Roles } from '../identity/auth.guard';
+import { CurrentActor, Public, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
 import { CredentialService } from './credential.service';
 import { ProviderCredentialRow } from './types';
@@ -39,6 +39,17 @@ export class VerificationController {
       skillCodes: body.skillCodes,
       verifierData: body.verifierData ?? {},
     });
+  }
+
+  /**
+   * The submission form's options. Public: it says what this platform
+   * verifies, which is marketing-visible, and carries no evidence and no
+   * provider's data.
+   */
+  @Get('domains/:code/credential-types')
+  @Public()
+  async submittableTypes(@Param('code') code: string) {
+    return this.credentials.submittableTypes(code);
   }
 
   @Get('me/credentials')

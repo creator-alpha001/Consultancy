@@ -62,6 +62,8 @@ export class DomainLoaderService {
       engagementTypes: m.engagementTypes,
       flagshipEngagement: m.flagshipEngagement,
       reviewDimensions: m.reviewDimensions ?? [],
+      skills: m.skills ?? [],
+      credentialTypes: (m.credentialTypes ?? []).filter((c) => c.active !== false),
       policy: m.policy,
       supportResources: m.supportResources,
       theme: m.theme,
