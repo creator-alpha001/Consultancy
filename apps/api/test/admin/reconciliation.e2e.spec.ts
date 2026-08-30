@@ -163,7 +163,7 @@ describe('M9: reconciliation', () => {
     expect(report.ok).toBe(false);
   });
 
-  it('surfaces payouts stuck at initiated — TRACKER.md D4, made visible', async () => {
+  it('surfaces payouts stuck at initiated — no settlement webhook ever arrived', async () => {
     const { engagementId, escrowId, providerId } = await seedHeldEscrow();
     await pool.query(`UPDATE engagements SET status = 'agreed' WHERE id = $1`, [engagementId]);
     await seedPayout(escrowId, providerId, { ageDays: 3 });
@@ -206,6 +206,99 @@ describe('M9: reconciliation', () => {
 
     const report = await reconciliation.run();
     expect(codes(report)).toContain('OUTBOX_UNRELAYED');
+  });
+
+  it('separates a dead-lettered PAYOUT from an undelivered notification', async () => {
+    // These two must not read the same. An undispatched notification is
+    // a warning: nothing is lost and nobody is owed. A payout the relay
+    // has given up on means a provider is owed money, the transfer was
+    // never instructed, and nothing is retrying — critical, or it hides
+    // inside the noise of the first.
+    const { escrowId } = await seedHeldEscrow();
+    await pool.query(
+      `UPDATE outbox SET created_at = now() - interval '5 days' WHERE aggregate_id = $1`,
+      [escrowId],
+    );
+    await pool.query(
+      `INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload, attempts, dead_lettered_at, last_error)
+       VALUES ('escrow', $1, 'payout.initiated', '{}'::jsonb, 9, now(), 'aggregator unreachable')`,
+      [escrowId],
+    );
+
+    const report = await reconciliation.run();
+    const dead = report.findings.find((f) => f.code === 'OUTBOX_DEAD_LETTERED_MONEY');
+    expect(dead).toBeDefined();
+    expect(dead!.severity).toBe('critical');
+    expect(report.ok).toBe(false);
+
+    const unrelayed = report.findings.find((f) => f.code === 'OUTBOX_UNRELAYED');
+    expect(unrelayed?.severity).toBe('warning');
+  });
+
+  it('does not report a dead-lettered event that was later dispatched', async () => {
+    const { escrowId } = await seedHeldEscrow();
+    await pool.query(
+      `INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload, attempts, dispatched_at)
+       VALUES ('escrow', $1, 'payout.initiated', '{}'::jsonb, 3, now())`,
+      [escrowId],
+    );
+    const report = await reconciliation.run();
+    expect(report.findings.map((f) => f.code)).not.toContain('OUTBOX_DEAD_LETTERED_MONEY');
+  });
+
+  it('surfaces an idempotency key stranded in flight', async () => {
+    // The shape a crashed process leaves behind: claimed, never
+    // completed or failed. Every retry of that request is now refused
+    // forever, which on a money endpoint pushes the caller toward
+    // retrying under a fresh key — the double-charge. See D27.
+    const { seekerId } = await seedUsers(pool);
+    await pool.query(
+      `INSERT INTO idempotency_keys (key, actor_id, endpoint, request_hash, claimed_at)
+       VALUES ('stranded', $1, 'POST /internal/escrows/x/hold', 'hash', now() - interval '3 days')`,
+      [seekerId],
+    );
+
+    const finding = (await reconciliation.run()).findings.find(
+      (f) => f.code === 'IDEMPOTENCY_KEY_STUCK_IN_FLIGHT',
+    );
+    expect(finding).toBeDefined();
+    expect(finding!.count).toBe(1);
+
+    // A key that completed normally is not a finding.
+    await pool.query(
+      `UPDATE idempotency_keys
+          SET state = 'completed', response_status = 201, response_body = '{}'::jsonb, completed_at = now()
+        WHERE key = 'stranded'`,
+    );
+    expect(codes(await reconciliation.run())).not.toContain('IDEMPOTENCY_KEY_STUCK_IN_FLIGHT');
+  });
+
+  it('surfaces a webhook recorded but never applied', async () => {
+    // What a crash mid-apply leaves: the aggregator believes it told us,
+    // and the payout row does not know.
+    await pool.query(
+      `INSERT INTO pa_webhook_events (pa_provider, pa_event_id, event_type, payload, received_at)
+       VALUES ('razorpay_route', 'evt-stuck', 'payout.settled', '{}'::jsonb, now() - interval '3 days')`,
+    );
+    const report = await reconciliation.run();
+    expect(codes(report)).toContain('PA_WEBHOOK_UNPROCESSED');
+    expect(report.criticalCount).toBeGreaterThan(0);
+
+    await pool.query(`UPDATE pa_webhook_events SET processed_at = now(), outcome = 'applied'`);
+    expect(codes(await reconciliation.run())).not.toContain('PA_WEBHOOK_UNPROCESSED');
+  });
+
+  it('surfaces a failed payout as money still owed', async () => {
+    const { escrowId, providerId } = await seedHeldEscrow();
+    await seedPayout(escrowId, providerId, {});
+    await pool.query(
+      `UPDATE payouts SET status = 'failed', failed_at = now(), failure_reason = 'bank rejected'`,
+    );
+
+    const finding = (await reconciliation.run()).findings.find((f) => f.code === 'SETTLEMENT_FAILED_UNRESOLVED');
+    expect(finding).toBeDefined();
+    expect(finding!.count).toBe(1);
+    expect(finding!.samples[0]).toMatchObject({ kind: 'payout', failure_reason: 'bank rejected' });
   });
 
   it('respects the staleness window rather than flagging everything', async () => {

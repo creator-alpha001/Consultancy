@@ -38,6 +38,7 @@ describe('Idempotency-Key on mutating money endpoints', () => {
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 10_000 });
 
     expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
   });
 
   it('same request twice, same Idempotency-Key -> one effect (definition-of-done idempotency test)', async () => {
@@ -88,6 +89,10 @@ describe('Idempotency-Key on mutating money endpoints', () => {
       .send({ seekerId, providerId, currency: 'INR', amountPaise: 99_999 });
 
     expect(res.status).toBe(409);
+    // Distinct from IDEMPOTENCY_REQUEST_IN_FLIGHT, which is also a 409:
+    // that one says "retry this shortly", this one says "never retry".
+    expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_REUSED');
+    expect(res.body.error.detail).not.toHaveProperty('retryable');
   });
 
   it('release is idempotent through the HTTP layer too', async () => {

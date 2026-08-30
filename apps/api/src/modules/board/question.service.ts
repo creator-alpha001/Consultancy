@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { DomainLoaderService } from '../domains/domain-loader.service';
 import { ScreeningService } from '../safety/screening.service';
+import { AuditService } from '../../common/audit/audit.service';
 import { questionNotFound, questionQuotaExceeded } from './errors';
 import { AnswerRow, AskQuestionInput, AskQuestionResult, QuestionRow } from './types';
 
@@ -15,6 +16,7 @@ interface QuestionDbRow {
   body_lang: string;
   status: QuestionRow['status'];
   distress_flagged: boolean;
+  screening_reasons: unknown;
 }
 
 interface AnswerDbRow {
@@ -50,6 +52,7 @@ export class QuestionService {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
     @Inject(ScreeningService) private readonly screening: ScreeningService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async ask(input: AskQuestionInput): Promise<AskQuestionResult> {
@@ -112,13 +115,65 @@ export class QuestionService {
     return res.rows.map(mapQuestion);
   }
 
-  async clearForReview(questionId: string): Promise<QuestionRow> {
+  /**
+   * A reviewer overriding the screening classifier and publishing held
+   * content (#25). Audited because it is the one moderation decision a
+   * person can make that the classifier disagreed with: if held content
+   * later turns out to have been harmful, the question asked is who
+   * released it and when.
+   */
+  async clearForReview(
+    questionId: string,
+    actor?: { actorId?: string | null; actorRole?: string | null },
+  ): Promise<QuestionRow> {
     const res = await this.pool.query<QuestionDbRow>(
       `UPDATE questions SET status = 'published' WHERE id = $1 AND status = 'held_for_review' RETURNING *`,
       [questionId],
     );
     if (!res.rows[0]) throw questionNotFound(questionId);
+    await this.audit.record({
+      actorId: actor?.actorId ?? null,
+      actorRole: actor?.actorRole ?? null,
+      action: 'moderation.cleared',
+      subjectType: 'question',
+      subjectId: questionId,
+      // The body itself is deliberately not copied here: the question
+      // row still holds it, and duplicating held content into a log
+      // read by more people is the opposite of what #25 asks for.
+      detail: {
+        distressFlagged: res.rows[0].distress_flagged,
+        screeningReasons: res.rows[0].screening_reasons ?? [],
+      },
+    });
     return mapQuestion(res.rows[0]);
+  }
+
+  /**
+   * One question and the answers to it.
+   *
+   * Held answers are filtered out here rather than at the client: a
+   * reported answer is out of public view the moment it is reported
+   * (D45), and a read path that decided that for itself would leak the
+   * held one the first time somebody wrote a second client.
+   */
+  async getWithAnswers(id: string): Promise<{ question: QuestionRow; answers: AnswerRow[] }> {
+    const question = await this.get(id);
+    const res = await this.pool.query<AnswerDbRow>(
+      `SELECT a.* FROM answers a
+        WHERE a.question_id = $1
+          AND NOT EXISTS (SELECT 1 FROM content_holds h WHERE h.subject_type = 'answer' AND h.subject_id = a.id)
+        ORDER BY a.created_at ASC`,
+      [id],
+    );
+    return {
+      question,
+      answers: res.rows.map((row) => ({
+        id: row.id,
+        questionId: row.question_id,
+        providerId: row.provider_id,
+        body: row.body,
+      })),
+    };
   }
 
   async answer(questionId: string, providerId: string, body: string): Promise<AnswerRow> {

@@ -1,33 +1,30 @@
+import { cssVariables } from './generated-tokens';
 import { ResolvedDomain } from './pack';
 
 /**
  * Turns a pack's theme tokens into inline CSS custom properties.
  *
- * CLAUDE.md #7 and SPEC-PLATFORM.md §15's Wave 4 hook: "The ruled-paper,
- * red-ink aesthetic is the *exam family's* theme. If it is baked into
- * components, this wave requires a UI rewrite." So nothing in
- * `src/components` names a colour — they use `bg-paper`, `text-ink`,
- * `border-rule`, and those resolve to whatever the family published.
+ * CLAUDE.md #7: theme tokens are scoped to the family, and the exam
+ * family's ruled-paper aesthetic is not the platform's identity. So
+ * nothing in `src/components` names a colour — they use `bg-paper`,
+ * `text-ink`, `border-rule`, which resolve to whatever is set here.
  *
- * The defaults below are the PLATFORM's neutral base, deliberately not
- * the exam family's: a family that supplies no tokens gets a plain,
- * unbranded surface rather than someone else's identity.
+ * The base is the PLATFORM's neutral palette, imported from the same
+ * generated tokens apps/mobile uses so the two products cannot drift.
+ *
+ * A family may override only its ACCENT and its CORRECTION colour. It
+ * may not repaint the ground: a white page is the product's, and a
+ * family that could set `--color-paper` could quietly undo the whole
+ * design on one of nineteen domains. That restriction is the web half of
+ * the rule `applyPack()` enforces on mobile.
  */
-const PLATFORM_BASE_TOKENS: Record<string, string> = {
-  '--color-ink': '#1f2933',
-  '--color-ink-muted': '#5c6b7a',
-  '--color-ink-correction': '#b42318',
-  '--color-paper': '#ffffff',
-  '--color-paper-raised': '#f7f8fa',
-  '--color-rule-line': '#dfe3e8',
-  '--color-accent': '#2f5d8c',
-  '--font-answer': 'ui-serif, Georgia, serif',
-  '--radius-card': '10px',
-};
+const FAMILY_OVERRIDABLE = new Set(['--color-accent', '--color-correction']);
 
 export function themeStyle(domain?: ResolvedDomain | null): React.CSSProperties {
-  const tokens = { ...PLATFORM_BASE_TOKENS, ...(domain?.theme.tokens ?? {}) };
-  // A family may supply only some tokens; the rest stay platform-neutral.
+  const tokens: Record<string, string> = { ...cssVariables };
+  for (const [k, v] of Object.entries(domain?.theme.tokens ?? {})) {
+    if (FAMILY_OVERRIDABLE.has(k)) tokens[k] = v;
+  }
   return tokens as unknown as React.CSSProperties;
 }
 

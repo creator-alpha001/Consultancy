@@ -34,7 +34,7 @@ const SAMPLE_LIMIT = 20;
  * make each individual transaction balance; nothing until now looked
  * across transactions for the shapes that mean something has gone wrong
  * anyway — a released escrow whose engagement never completed, a payout
- * that has sat at `initiated` for a week (TRACKER.md D4), a reserve
+ * that has sat at `initiated` for a week, a reserve
  * account quietly going deeper into the red (D7).
  *
  * Deliberately READ-ONLY. It reports; it never "fixes." An automated
@@ -61,7 +61,11 @@ export class ReconciliationService {
         this.escrowStatusVsEngagementStatus(),
         this.heldEscrowOnEndedEngagement(),
         this.unrelayedOutbox(staleHours),
+        this.deadLetteredMoneyEvents(),
         this.orphanedProviderBalances(),
+        this.stuckIdempotencyKeys(staleHours),
+        this.unprocessedWebhooks(staleHours),
+        this.failedSettlements(),
       ])
     ).filter((f): f is ReconciliationFinding => f !== null);
 
@@ -144,16 +148,17 @@ export class ReconciliationService {
   }
 
   /**
-   * TRACKER.md D4 made visible: nothing transitions a payout off
-   * `initiated`, so in our DB money looks paid when it has not moved.
-   * Until the PA webhook handler exists, this is the check that stops
-   * that being invisible.
+   * A payout the aggregator has never confirmed. Since D4 closed there
+   * IS a settle path, so a row still `initiated` after the window means
+   * the settlement webhook never arrived — or was never triggered,
+   * because nothing dispatches the payout instruction yet (the outbox
+   * relay, still unbuilt). Either way the provider has not been paid.
    */
   private stalePayouts(hours: number): Promise<ReconciliationFinding | null> {
     return this.check(
       'PAYOUT_STUCK_INITIATED',
       'warning',
-      (n) => `${n} payout(s) still 'initiated' after ${hours}h — no settlement confirmation has ever arrived (D4)`,
+      (n) => `${n} payout(s) still 'initiated' after ${hours}h — no settlement confirmation has ever arrived`,
       `SELECT id, escrow_id, provider_id, amount_paise::text, created_at
          FROM payouts
         WHERE status = 'initiated' AND created_at < now() - ($1 || ' hours')::interval
@@ -166,7 +171,7 @@ export class ReconciliationService {
     return this.check(
       'REFUND_STUCK_INITIATED',
       'warning',
-      (n) => `${n} refund(s) still 'initiated' after ${hours}h — the seeker may not have their money (D4)`,
+      (n) => `${n} refund(s) still 'initiated' after ${hours}h — the seeker may not have their money`,
       `SELECT id, escrow_id, seeker_id, amount_paise::text, created_at
          FROM refunds
         WHERE status = 'initiated' AND created_at < now() - ($1 || ' hours')::interval
@@ -230,13 +235,50 @@ export class ReconciliationService {
     return this.check(
       'OUTBOX_UNRELAYED',
       'warning',
-      (n) => `${n} outbox event(s) older than ${hours}h have never been dispatched — no relay is running`,
+      // Was "no relay is running", which stopped being the likely
+      // explanation once one existed. Today the usual cause is an event
+      // type with no transport (notifications), which the relay leaves
+      // pending on purpose rather than marking delivered.
+      (n) =>
+        `${n} outbox event(s) older than ${hours}h have never been dispatched — either nothing is ticking the relay, or they are event types it has no handler for`,
       `SELECT id, aggregate_type, aggregate_id, event_type, created_at
          FROM outbox
         WHERE dispatched_at IS NULL AND created_at < now() - ($1 || ' hours')::interval
         ORDER BY created_at
         LIMIT 100`,
       [String(hours)],
+    );
+  }
+
+  /**
+   * An outbox event the relay has given up on, for something that moves
+   * money.
+   *
+   * Critical, and separate from OUTBOX_UNRELAYED on purpose. That one is
+   * a warning because its usual cause today is a notification with no
+   * transport — nothing is lost, nothing is owed. This one means a
+   * transfer or a refund was never instructed and the relay has stopped
+   * trying: somebody is owed money and nothing is arranging to send it.
+   * Reading those two at the same severity is how the second hides
+   * inside the first.
+   *
+   * It has no alert attached (D43). Reporting is not telling anyone, and
+   * nothing runs this report on a schedule (D23) — which is exactly why
+   * it should at least be impossible to miss when someone does look.
+   */
+  private async deadLetteredMoneyEvents(): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'OUTBOX_DEAD_LETTERED_MONEY',
+      'critical',
+      (n) =>
+        `${n} money event(s) the relay has given up on — a transfer or refund was never instructed and nothing is retrying it`,
+      `SELECT id, aggregate_type, aggregate_id, event_type, attempts, last_error, dead_lettered_at
+         FROM outbox
+        WHERE dead_lettered_at IS NOT NULL
+          AND dispatched_at IS NULL
+          AND event_type IN ('payout.initiated', 'refund.initiated')
+        ORDER BY dead_lettered_at
+        LIMIT 100`,
     );
   }
 
@@ -257,6 +299,76 @@ export class ReconciliationService {
           AND NOT EXISTS (
             SELECT 1 FROM payouts p WHERE p.provider_id = la.owner_user_id AND p.currency = la.currency
           )`,
+    );
+  }
+
+  /**
+   * A webhook we recorded but never finished applying. The row exists
+   * because it is written before it is acted on, so this is the shape a
+   * crash mid-apply leaves behind: the aggregator believes it told us,
+   * and our payout or refund row does not know.
+   */
+  private unprocessedWebhooks(hours: number): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'PA_WEBHOOK_UNPROCESSED',
+      'critical',
+      (n) => `${n} payment-aggregator webhook(s) received over ${hours}h ago and never applied`,
+      `SELECT id, pa_provider, pa_event_id, event_type, received_at
+         FROM pa_webhook_events
+        WHERE processed_at IS NULL AND received_at < now() - ($1 || ' hours')::interval
+        ORDER BY received_at
+        LIMIT 100`,
+      [String(hours)],
+    );
+  }
+
+  /**
+   * A failed payout is money we still owe a provider: `release()`
+   * credited their wallet and the transfer did not happen, so nothing
+   * has discharged it. A failed refund is the same debt owed to a
+   * seeker. Neither retries itself — both need someone to act.
+   */
+  private failedSettlements(): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'SETTLEMENT_FAILED_UNRESOLVED',
+      'warning',
+      (n) => `${n} failed payout(s)/refund(s) — money is still owed and nothing is retrying`,
+      `SELECT 'payout' AS kind, id, provider_id AS counterparty_id, amount_paise::text, failure_reason, failed_at
+         FROM payouts WHERE status = 'failed'
+        UNION ALL
+       SELECT 'refund' AS kind, id, seeker_id AS counterparty_id, amount_paise::text, failure_reason, failed_at
+         FROM refunds WHERE status = 'failed'
+        ORDER BY failed_at`,
+    );
+  }
+
+  /**
+   * An idempotency key stranded `in_flight`: the process died between
+   * claiming it and recording an outcome, so nothing will ever complete
+   * or fail it. Every retry of that request now gets
+   * IDEMPOTENCY_REQUEST_IN_FLIGHT forever, which on a money endpoint
+   * leaves the caller choosing between abandoning the request and
+   * retrying under a NEW key — the thing that double-charges.
+   *
+   * Reported, never auto-released. Whether the original handler moved
+   * money before it died is exactly what a human has to establish; a
+   * timeout that flipped the row back to `failed` on its own would hand
+   * a second caller permission to run the handler again on the strength
+   * of a guess. See TRACKER.md D27.
+   */
+  private stuckIdempotencyKeys(hours: number): Promise<ReconciliationFinding | null> {
+    return this.check(
+      'IDEMPOTENCY_KEY_STUCK_IN_FLIGHT',
+      'warning',
+      (n) =>
+        `${n} idempotency key(s) claimed over ${hours}h ago and never completed or failed — ` +
+        `every retry of those requests is being refused (D27)`,
+      `SELECT actor_id, key, endpoint, attempts, claimed_at
+         FROM idempotency_keys
+        WHERE state = 'in_flight' AND claimed_at < now() - ($1 || ' hours')::interval
+        ORDER BY claimed_at
+        LIMIT 100`,
+      [String(hours)],
     );
   }
 }

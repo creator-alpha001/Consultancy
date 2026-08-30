@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, PageTitle } from '@/components/ui';
+import Link from 'next/link';
+import { Card, PageTitle, Section } from '@/components/ui';
+import { RelayPanel } from './admin-panels';
 import { apiAsUser } from '@/lib/api';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -42,11 +44,74 @@ export default async function AdminPage(): Promise<JSX.Element> {
     apiAsUser<Report>('/admin/reconciliation').catch(() => null),
   ]);
 
+  const critical = (report?.findings ?? []).filter((f) => f.severity === 'critical');
+
   return (
     <PackShell domain={domain} actor={user}>
       <PageTitle sub="Read-only. Corrections are reversing entries made by a human, never a button here.">
         Reconciliation
       </PageTitle>
+
+      {/*
+        Critical findings first, above everything, before the reader has
+        scrolled or chosen where to look. Nothing runs this report on a
+        schedule and nothing alerts on it (D23, D43), so the only defence
+        is that someone who does open the page cannot miss it.
+      */}
+      {critical.length > 0 && (
+        <Section title={`Needs attention now (${critical.length})`}>
+          <div className="flex flex-col gap-md">
+            {critical.map((f) => (
+              <Card key={f.code} className="bg-correction-soft">
+                <p className="text-bodyStrong font-medium text-correction">{f.summary}</p>
+                <p className="mt-xs text-caption text-ink-muted">{f.code}</p>
+              </Card>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/*
+        The three human-decision queues. Reconciliation below is
+        read-only; these are where a person actually decides something,
+        and none of them had an interface at all — so submissions,
+        disputes and held content accumulated with nobody able to act.
+      */}
+      {/*
+        Money owed but not yet instructed. `release()` credits a
+        provider's wallet and writes an outbox event; the relay is what
+        turns that into a transfer at the aggregator. This is the first
+        place anyone would notice it had stopped.
+      */}
+      <Section title="Outbox relay">
+        <Card>
+          <p className="text-small text-ink-muted">
+            Releasing an escrow credits a provider in the ledger and queues the transfer. The relay
+            instructs it. Events with no transport yet — notifications — stay queued rather than being
+            marked delivered.
+          </p>
+          <RelayPanel />
+        </Card>
+      </Section>
+
+      <Section title="Queues">
+        <div className="flex flex-wrap gap-md">
+          {[
+            ['/admin/credentials', 'Credentials awaiting review'],
+            ['/admin/disputes', 'Disputes to adjudicate'],
+            ['/admin/moderation', 'Held for review'],
+            ['/admin/reports', 'Reports from people'],
+          ].map(([href, label]) => (
+            <Link
+              key={href}
+              href={href}
+              className="rounded-pill border border-rule bg-surface px-xl py-md text-small font-medium hover:bg-surface-sunk"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      </Section>
 
       {!report ? (
         <Card>

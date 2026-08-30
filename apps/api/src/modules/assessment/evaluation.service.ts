@@ -117,7 +117,14 @@ export class EvaluationService {
     return evaluation;
   }
 
-  private async templateDimensions(templateId: string): Promise<TemplateDimension[]> {
+  /**
+   * Null is a real answer, not a missing one: an objective category has
+   * no template and therefore nothing to annotate against (hard rule
+   * #3). Callers get an empty list and must handle it — never assume a
+   * template exists.
+   */
+  private async templateDimensions(templateId: string | null): Promise<TemplateDimension[]> {
+    if (templateId === null) return [];
     const res = await this.pool.query<{ dimensions: TemplateDimension[] }>(
       `SELECT dimensions FROM assessment_templates WHERE id = $1`,
       [templateId],
@@ -126,16 +133,20 @@ export class EvaluationService {
   }
 
   private async hydrate(row: EvaluationDbRow): Promise<EvaluationRow> {
-    const scoresRes = await this.pool.query<ScoreDbRow>(
-      `SELECT dimension_code, score, comment FROM assessment_scores WHERE evaluation_id = $1`,
-      [row.id],
-    );
+    const [scoresRes, dimensions] = await Promise.all([
+      this.pool.query<ScoreDbRow>(
+        `SELECT dimension_code, score, comment FROM assessment_scores WHERE evaluation_id = $1`,
+        [row.id],
+      ),
+      this.templateDimensions(row.template_id),
+    ]);
     return {
       id: row.id,
       engagementId: row.engagement_id,
       submissionId: row.submission_id,
       providerId: row.provider_id,
       templateId: row.template_id,
+      dimensions,
       annotatedRef: row.annotated_ref,
       overallNote: row.overall_note,
       returnedAt: row.returned_at,

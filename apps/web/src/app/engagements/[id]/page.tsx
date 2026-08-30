@@ -1,202 +1,299 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, Money, PageTitle, Status } from '@/components/ui';
-import { ApiError, apiAsUser } from '@/lib/api';
-import { getDomain } from '@/lib/pack';
+import { Card, EmptyState, Lifecycle, PageTitle, Section, Status } from '@/components/ui';
+import { apiAsUser } from '@/lib/api';
+import {
+  Agenda,
+  Evaluation,
+  Submission,
+  duration,
+  getAgenda,
+  getEngagement,
+  getLatestEvaluation,
+  getLatestSubmission,
+  rupees,
+  when,
+} from '@/lib/engagements';
+import { getDomain, label } from '@/lib/pack';
+import { pluralWord } from '@/lib/words';
 import { currentUser } from '@/lib/session';
+import {
+  AgreePanel,
+  BookSessionPanel,
+  DecisionPanel,
+  ReviewPanel,
+  SubmitWorkPanel,
+} from './actions-panel';
 
 export const dynamic = 'force-dynamic';
 
-interface Engagement {
+interface SessionListRow {
   id: string;
-  seekerId: string;
-  providerId: string;
-  domainCode: string | null;
-  engagementType: string;
+  engagement_id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  timezone: string;
   status: string;
-  amountPaise: string | null;
-  currency: string;
-  language: string | null;
+  mode: string;
 }
 
-interface Agenda {
-  id: string;
-  engagementId: string;
-  originalLang: string;
-  expectedDeliverable: string;
-  successCriteria: string;
-  lockedAt: string | null;
-  lockedHash: string | null;
-  items: Array<{ id: string; ordinal: number; labelLang: string; labelText: string; checkedAt: string | null }>;
-}
-
-/** The lifecycle, in the order it actually happens. */
-const STAGES = ['draft', 'agreed', 'working', 'delivered', 'assessed', 'completed'];
-
-function Progress({ status }: { status: string }): JSX.Element {
-  const current = STAGES.indexOf(status);
-  const derailed = ['disputed', 'cancelled', 'refunded'].includes(status);
-
-  return (
-    <ol className="flex flex-wrap gap-1.5" aria-label="Engagement progress">
-      {STAGES.map((stage, i) => {
-        const done = current >= 0 && i <= current;
-        return (
-          <li
-            key={stage}
-            aria-current={stage === status ? 'step' : undefined}
-            className={`rounded-full border px-2.5 py-0.5 text-xs ${
-              done ? 'border-accent bg-accent text-white' : 'border-rule text-ink-muted'
-            }`}
-          >
-            {stage}
-          </li>
-        );
-      })}
-      {derailed && (
-        <li className="rounded-full border border-correction px-2.5 py-0.5 text-xs text-correction">
-          {status}
-        </li>
-      )}
-    </ol>
-  );
-}
-
+/**
+ * One engagement, and everything either party can do to it right now.
+ *
+ * The action shown is derived from the real lifecycle status, not from a
+ * client-side guess — and where an action is refused by the database,
+ * this page says so rather than offering a button that will fail.
+ */
 export default async function EngagementPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const user = await currentUser();
-  if (!user) redirect('/login');
+  const actor = await currentUser();
+  if (!actor) redirect(`/login?next=/engagements/${params.id}`);
 
-  let engagement: Engagement;
-  try {
-    engagement = await apiAsUser<Engagement>(`/engagements/${params.id}`);
-  } catch (err) {
-    // The API returns the same error for "no such engagement" and "not
-    // yours", so this page cannot be used to probe which ids exist.
-    if (err instanceof ApiError && err.status === 404) notFound();
-    throw err;
-  }
+  const engagement = await getEngagement(params.id).catch(() => null);
+  if (!engagement) notFound();
 
-  const [domain, agenda] = await Promise.all([
+  const [agenda, submission, evaluation, sessions, domain, dispute] = await Promise.all([
+    getAgenda(params.id).catch(() => null) as Promise<Agenda | null>,
+    getLatestSubmission(params.id).catch(() => null) as Promise<Submission | null>,
+    getLatestEvaluation(params.id).catch(() => null) as Promise<Evaluation | null>,
+    apiAsUser<SessionListRow[]>('/sessions').catch(() => [] as SessionListRow[]),
     engagement.domainCode ? getDomain(engagement.domainCode).catch(() => null) : Promise.resolve(null),
-    apiAsUser<Agenda | null>(`/engagements/${params.id}/agenda`).catch(() => null),
+    apiAsUser<{ id: string } | null>(`/engagements/${params.id}/disputes`).catch(() => null),
   ]);
 
-  const isSeeker = user.id === engagement.seekerId;
+  const language = domain?.defaultLanguage ?? 'en';
+  const isSeeker = engagement.seekerId === actor.id;
+  const isProvider = engagement.providerId === actor.id;
+  const mySessions = sessions.filter((s) => s.engagement_id === params.id);
+  const unticked = agenda ? agenda.items.filter((i) => !i.checkedAt).length : 0;
+  const isLive = engagement.engagementType === 'live_session';
+
+  const providerWord = label(domain?.labels.provider, language) || 'provider';
+  const seekerWord = label(domain?.labels.seeker, language) || 'seeker';
 
   return (
-    <PackShell domain={domain} actor={user}>
+    <PackShell domain={domain} lang={language} actor={actor}>
       <PageTitle
-        sub={`${engagement.engagementType.replace(/_/g, ' ')} · ${engagement.domainCode ?? ''} · you are the ${
-          isSeeker ? 'seeker' : 'provider'
-        }`}
+        sub={
+          <>
+            {engagement.engagementType?.replace(/_/g, ' ')} · you are the{' '}
+            {isSeeker ? seekerWord.toLowerCase() : providerWord.toLowerCase()}
+          </>
+        }
       >
         Engagement
       </PageTitle>
 
-      <div className="mb-6">
-        <Progress status={engagement.status} />
-      </div>
+      <Card className="mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Status value={engagement.status} />
+          <span className="text-sm tabular-nums">
+            {rupees(engagement.amountPaise, engagement.currency)}
+            {engagement.amountPaise && (
+              <span className="ml-2 text-xs text-ink-muted">{engagement.amountPaise} paise</span>
+            )}
+          </span>
+        </div>
+        <div className="mt-3">
+          <Lifecycle status={engagement.status} />
+        </div>
+      </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <Card className="signature-surface signature-margin">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-answer text-lg font-semibold">The agenda</h2>
-              {agenda?.lockedAt ? (
+      {/* ── The agreement ───────────────────────────────────────── */}
+      <Section
+        title="Agenda"
+        action={
+          <Link href={`/engagements/${params.id}/agenda`} className="text-sm text-accent underline">
+            {agenda ? 'Open it' : 'Write it'}
+          </Link>
+        }
+      >
+        {agenda ? (
+          <Card>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Version {agenda.version}</span>
+              {agenda.lockedAt ? (
                 <span className="rounded-full border border-accent px-2.5 py-0.5 text-xs text-accent">
-                  locked
+                  Locked
                 </span>
               ) : (
                 <span className="rounded-full border border-rule px-2.5 py-0.5 text-xs text-ink-muted">
-                  draft
+                  Draft — still editable
                 </span>
               )}
+              <span className="text-xs text-ink-muted">
+                {agenda.items.filter((i) => i.checkedAt).length} of {agenda.items.length} goals ticked
+              </span>
             </div>
+            {agenda.contentHash && (
+              <p className="mt-2 break-all font-mono text-xs text-ink-muted">{agenda.contentHash}</p>
+            )}
+          </Card>
+        ) : (
+          <EmptyState>
+            Nothing agreed yet. Work cannot start until this is written and locked.
+          </EmptyState>
+        )}
+      </Section>
 
-            {agenda ? (
-              <>
-                <dl className="mb-4 space-y-2 text-sm">
-                  <div>
-                    <dt className="text-ink-muted">Expected deliverable</dt>
-                    {/* Rendered in the language it was written in (#20). */}
-                    <dd lang={agenda.originalLang} className="font-medium">
-                      {agenda.expectedDeliverable}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-ink-muted">I will know this worked if…</dt>
-                    <dd lang={agenda.originalLang} className="font-medium">
-                      {agenda.successCriteria}
-                    </dd>
-                  </div>
-                </dl>
+      {/* ── Sessions ────────────────────────────────────────────── */}
+      {(isLive || mySessions.length > 0) && (
+        <Section title="Sessions">
+          {mySessions.length > 0 ? (
+            <ul className="grid gap-3">
+              {mySessions.map((s) => (
+                <li key={s.id}>
+                  <Card>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">{when(s.scheduled_start, s.timezone)}</p>
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                          {duration(s.scheduled_start, s.scheduled_end)} · {s.mode.replace(/_/g, ' ')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Status value={s.status} />
+                        <Link href={`/sessions/${s.id}`} className="text-sm text-accent underline">
+                          Join
+                        </Link>
+                      </div>
+                    </div>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <BookSessionPanel engagementId={params.id} />
+          )}
+        </Section>
+      )}
 
-                <h3 className="mb-2 text-sm font-medium">Goals</h3>
-                <ul className="space-y-1.5">
-                  {agenda.items.map((item) => (
-                    <li key={item.id} className="flex items-start gap-2 text-sm">
-                      <span aria-hidden="true" className={item.checkedAt ? 'text-accent' : 'text-ink-muted'}>
-                        {item.checkedAt ? '☑' : '☐'}
-                      </span>
-                      <span lang={item.labelLang} className={item.checkedAt ? 'line-through opacity-70' : ''}>
-                        {item.labelText}
-                      </span>
-                      <span className="sr-only">{item.checkedAt ? '(done)' : '(not done)'}</span>
-                    </li>
-                  ))}
-                </ul>
+      {/* ── What happens next ───────────────────────────────────── */}
+      <Section title="What happens next">
+        {engagement.status === 'draft' && <AgreePanel engagementId={params.id} />}
 
-                {agenda.lockedHash && (
-                  <p className="mt-4 break-all text-xs text-ink-muted">
-                    Both parties hold this exact agenda. Hash: <code>{agenda.lockedHash.slice(0, 32)}…</code>
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-ink-muted">
-                No agenda yet. Nothing can start working until one is agreed and locked.
+        {engagement.status === 'agreed' && (
+          <Card>
+            <p className="text-sm">
+              Terms agreed. Work starts once the agenda is locked <strong>and</strong> escrow is held.
+            </p>
+            {/*
+                Both preconditions are checked by the database, and the transition
+                is refused if either is missing — so there is no path where work
+                begins on an unlocked agreement or unfunded escrow.
+            */}
+          </Card>
+        )}
+
+        {engagement.status === 'working' && isSeeker && !submission && !isLive && (
+          <SubmitWorkPanel engagementId={params.id} />
+        )}
+
+        {engagement.status === 'working' && isProvider && (
+          <Card>
+            <p className="text-sm">
+              {submission
+                ? 'The work is in. Mark it against the rubric.'
+                : `Waiting for the ${seekerWord.toLowerCase()} to send their work.`}
+            </p>
+            {submission && (
+              <p className="mt-3">
+                <Link href={`/engagements/${params.id}/evaluate`} className="text-sm text-accent underline">
+                  Open the evaluation
+                </Link>
               </p>
             )}
           </Card>
-        </div>
+        )}
 
-        <aside className="space-y-4">
+        {engagement.status === 'delivered' && isProvider && (
           <Card>
-            <h2 className="mb-2 font-answer text-base font-semibold">Money</h2>
-            <dl className="space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-ink-muted">Agreed</dt>
-                <dd>
-                  <Money paise={engagement.amountPaise} currency={engagement.currency} />
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-ink-muted">Status</dt>
-                <dd>
-                  <Status value={engagement.status} />
-                </dd>
-              </div>
-            </dl>
-            <p className="mt-3 text-xs text-ink-muted">
-              Money is held in escrow and released only when the agenda is met. No engagement can
-              start work without both a locked agenda and held escrow.
+            <p className="text-sm">Delivered. Now mark it.</p>
+            <p className="mt-3">
+              <Link href={`/engagements/${params.id}/evaluate`} className="text-sm text-accent underline">
+                Open the evaluation
+              </Link>
             </p>
           </Card>
+        )}
 
-          {['working', 'delivered', 'assessed'].includes(engagement.status) && (
-            <Card>
-              <h2 className="mb-2 font-answer text-base font-semibold">Something wrong?</h2>
-              <p className="mb-2 text-sm text-ink-muted">
-                You can raise a dispute. The locked agenda and the record of what was delivered are
-                the evidence — in the language they were written in.
+        {engagement.status === 'assessed' && isSeeker && (
+          <DecisionPanel engagementId={params.id} untickedGoals={unticked} />
+        )}
+
+        {engagement.status === 'assessed' && isProvider && (
+          <Card>
+            <p className="text-sm text-ink-muted">
+              Returned. The {seekerWord.toLowerCase()} decides whether to accept.
+            </p>
+          </Card>
+        )}
+
+        {engagement.status === 'completed' && (
+          <ReviewPanel
+            engagementId={params.id}
+            direction={isSeeker ? 'seeker_on_provider' : 'provider_on_seeker'}
+          />
+        )}
+
+        {engagement.status === 'disputed' && (
+          <Card className="bg-correction-soft">
+            <p className="text-bodyStrong font-medium text-correction">This engagement is disputed.</p>
+            <p className="mt-sm text-small text-ink-muted">
+              The money is frozen — neither of you can draw it while this is open. A person adjudicates; no
+              automated process decides it.
+            </p>
+            {/*
+              Until this link existed, raising a dispute was the end of
+              the visible trail: no way to read the evidence, see a
+              ruling, appeal, or withdraw.
+            */}
+            {dispute && (
+              <p className="mt-lg">
+                <Link href={`/disputes/${dispute.id}`} className="text-bodyStrong underline">
+                  Open the dispute
+                </Link>
               </p>
-              <p className="text-xs text-ink-muted">
-                A human reviews every dispute. Decisions are never automated.
-              </p>
-            </Card>
-          )}
-        </aside>
-      </div>
+            )}
+          </Card>
+        )}
+      </Section>
+
+      {/* ── Marks, once returned ────────────────────────────────── */}
+      {evaluation?.returnedAt && (
+        <Section title="Marks">
+          <Card>
+            <ul className="grid gap-2">
+              {evaluation.dimensions.map((d) => {
+                const score = evaluation.scores.find((s) => s.dimensionCode === d.code);
+                return (
+                  <li key={d.code}>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span>{d.labels[language] ?? d.labels.en ?? d.code}</span>
+                      <span className="tabular-nums">{score ? `${score.score} / 20` : '—'}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 rounded-full bg-paper">
+                      <div
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: `${((score?.score ?? 0) / 20) * 100}%` }}
+                      />
+                    </div>
+                    {score?.comment && <p className="mt-1 text-xs text-ink-muted">{score.comment}</p>}
+                  </li>
+                );
+              })}
+            </ul>
+            {evaluation.overallNote && (
+              <p className="mt-4 border-t border-rule pt-3 text-sm">{evaluation.overallNote}</p>
+            )}
+            {/*
+                Compared only with your own earlier work — never with other
+                {pluralWord(seekerWord.toLowerCase())}. There is no percentile, cohort or rank
+                anywhere in this product.
+            */}
+          </Card>
+        </Section>
+      )}
     </PackShell>
   );
 }

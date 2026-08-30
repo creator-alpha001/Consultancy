@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Inject, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { AllowsEnrolmentScope, CurrentActor, Public } from './auth.guard';
+import { DomainLoaderService } from '../domains/domain-loader.service';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 import { Actor, EnrolFactorResult, LoginResult, RecoveryCodesResult, SessionRow, UserRow } from './types';
@@ -19,6 +20,7 @@ export class AuthController {
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
   ) {}
 
   /** Coarse client provenance for the auth audit — never a full IP kept for analytics. */
@@ -33,13 +35,33 @@ export class AuthController {
   @Post('register')
   @Public()
   async register(
-    @Body() body: { email: string; password: string; role: UserRow['role']; confirmsAdult: boolean },
+    @Body()
+    body: {
+      email: string;
+      password: string;
+      role: UserRow['role'];
+      confirmsAdult: boolean;
+      /** Which pack's wording was on the screen, so the acceptance records it. */
+      domainCode?: string;
+      lang?: string;
+    },
   ): Promise<UserRow> {
+    // The domain resolves the family whose agreement wording was shown.
+    // Optional rather than required, because refusing a registration
+    // over a missing display hint would be the wrong trade — but without
+    // it only the bare timestamp is kept, which is the weaker record
+    // this exists to move away from.
+    const familyCode = body.domainCode
+      ? (await this.loader.getDomain(body.domainCode).catch(() => null))?.familyCode
+      : undefined;
+
     return this.auth.register({
       email: body.email,
       password: body.password,
       role: body.role,
       confirmsAdult: body.confirmsAdult === true,
+      familyCode,
+      lang: body.lang,
     });
   }
 

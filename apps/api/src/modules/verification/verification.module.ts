@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DomainsModule } from '../domains/domains.module';
 import { CredentialService } from './credential.service';
+import { ProviderLanguageService } from './provider-language.service';
 import { VerificationController } from './verification.controller';
 import { MatchingService } from './matching.service';
 import { DocumentReviewVerifier, SanctionDocumentVerifier } from './verifiers/manual-review.verifiers';
@@ -12,11 +13,13 @@ import { PublicResultListVerifier } from './verifiers/public-result-list.verifie
   controllers: [VerificationController],
   providers: [
     CredentialService,
+    ProviderLanguageService,
     MatchingService,
     PublicResultListVerifier,
     DocumentReviewVerifier,
     SanctionDocumentVerifier,
   ],
-  exports: [CredentialService, MatchingService],
+  exports: [CredentialService,
+    ProviderLanguageService, MatchingService],
 })
 export class VerificationModule {}

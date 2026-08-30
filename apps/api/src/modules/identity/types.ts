@@ -15,6 +15,15 @@ export interface RegisterInput {
   role: UserRole;
   /** CLAUDE.md #27 — the platform is 18+. Registration is refused without this. */
   confirmsAdult: boolean;
+  /**
+   * Which family's agreement wording was shown. Optional so a caller
+   * that has no domain context still registers — but when it is absent,
+   * nothing is recorded beyond the timestamp, which is the weaker state
+   * this exists to move away from.
+   */
+  familyCode?: string;
+  lang?: string;
+  ipPrefix?: string;
 }
 
 export interface UserRow {

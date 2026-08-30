@@ -32,6 +32,30 @@ export interface CredentialTypeInput {
   requiresPaidWorkSanction?: boolean;
   /** Verified, this credential lifts a requiresPaidWorkSanction block (departmental sanction, in the exam family). */
   grantsPaidWorkSanction?: boolean;
+  /**
+   * Which `verifier_data` keys a public profile may show (CLAUDE.md #30:
+   * the conclusion, never the evidence).
+   *
+   * Defaults to none — a credential type that says nothing publishes only
+   * its own label. NEVER put anything identifying here: a roll number or
+   * a claimed name is how the achievement was PROVED, not what it is.
+   * Core names no field, so a family verifying music grades publishes
+   * different facts with no code change.
+   */
+  publicFields?: string[];
+}
+
+/**
+ * A dimension a seeker rates a provider on after working with them.
+ *
+ * Deliberately NOT an assessment template. Those grade the WORK against a
+ * rubric bound to a category and providers may not touch them (#16);
+ * these describe what the person was like to work with, and they are
+ * family-level because that is the scope on which they are comparable.
+ */
+export interface ReviewDimensionInput {
+  code: string;
+  labels: LabelMap;
 }
 
 /**
@@ -61,6 +85,48 @@ export interface FamilyPolicy {
   disputeTiers?: DisputeTier[];
 }
 
+/**
+ * A reason a person can give for reporting something.
+ *
+ * Declared by the FAMILY, not by core: CLAUDE.md gives the family
+ * ownership of safety policy, and a music-instruction family's list of
+ * things worth reporting is not an exam family's. Making these an enum
+ * in core would mean a migration to open a family — exactly what hard
+ * rule #4 forbids.
+ */
+export interface ReportReasonInput {
+  code: string;
+  labels: LabelMap;
+  /**
+   * This reason means "I am worried about this person", not "this person
+   * did something wrong". A report carrying it is answered with the
+   * family's support resources and routed ahead of the queue (#25), and
+   * it never holds content — holding someone's post because a stranger
+   * was worried about them is a punishment for being unwell.
+   */
+  isWelfareConcern?: boolean;
+}
+
+/**
+ * Something a person is asked to agree to, in their own language.
+ *
+ * Family data, not core code, for two reasons. The obvious one is
+ * CLAUDE.md #2: no hardcoded user-facing strings. The important one is
+ * that the WORDING of an agreement is a legal decision — it will be
+ * revised by lawyers, and revising it must not require a deploy.
+ *
+ * `version` is what a stored acceptance points at. Bump it whenever the
+ * text changes: an acceptance of v1 must never be read as acceptance of
+ * v2, and the stored record keeps the full text precisely so a later
+ * edit cannot rewrite what someone agreed to.
+ */
+export interface AgreementDocumentInput {
+  code: string;
+  version: string;
+  /** The full text, per language. What the person actually reads. */
+  text: LabelMap;
+}
+
 export interface SupportResource {
   label: string;
   value: string;
@@ -79,13 +145,21 @@ export interface FamilyManifestInput {
     seeker: LabelMap;
     provider: LabelMap;
     engagement: LabelMap;
+    /** What this family calls a category ("Paper", "Grade", "Module"). */
+    category?: LabelMap;
   };
   engagementTypes: EngagementType[];
   flagshipEngagement: EngagementType;
   skills: SkillInput[];
   assessmentTemplates: AssessmentTemplateInput[];
   credentialTypes: CredentialTypeInput[];
+  /** Optional: a family with none gets a single overall rating and nothing more. */
+  reviewDimensions?: ReviewDimensionInput[];
   policy: FamilyPolicy;
+  /** Optional: a family with none has no reporting reasons, and the report endpoint refuses everything. */
+  reportReasons?: ReportReasonInput[];
+  /** What people are asked to agree to. A family with none cannot run a flow that requires one. */
+  agreementDocuments?: AgreementDocumentInput[];
   supportResources: SupportResource[];
   theme: ThemeTokens;
 }
@@ -140,7 +214,26 @@ export interface ResolvedFamily {
   labels: FamilyManifestInput['labels'];
   engagementTypes: EngagementType[];
   flagshipEngagement: EngagementType;
+  /**
+   * What a seeker rates a provider on. Family data — core names none of
+   * them, and a family that declares none gets a single overall rating.
+   * Resolved here because a client cannot label a dimension it has never
+   * been told the name of.
+   */
+  reviewDimensions: ReviewDimensionInput[];
+  /**
+   * The skills a provider can be verified against, and the credential
+   * types they can submit. Both were stored in the manifest and resolved
+   * nowhere, which meant no client could offer a provider the choice —
+   * the same shape of gap as reviewDimensions (D38).
+   */
+  skills: SkillInput[];
+  credentialTypes: CredentialTypeInput[];
   policy: FamilyPolicy;
+  /** What a person may report something for. Family data — core names none of them. */
+  reportReasons: ReportReasonInput[];
+  /** The agreement texts, by code. Core never contains the wording. */
+  agreementDocuments: AgreementDocumentInput[];
   supportResources: SupportResource[];
   theme: ThemeTokens;
 }
@@ -152,6 +245,8 @@ export interface ResolvedDomain {
   labels: FamilyManifestInput['labels'] & { domain: LabelMap };
   engagementTypes: EngagementType[];
   flagshipEngagement: EngagementType;
+  /** Inherited from the family — a domain never redefines what a review measures. */
+  reviewDimensions: ReviewDimensionInput[];
   languages: string[];
   defaultLanguage: string;
   resultSource: ResultSourceConfig | null;

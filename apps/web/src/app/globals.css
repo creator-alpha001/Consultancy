@@ -1,28 +1,59 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/noto-sans-devanagari/400.css';
+@import '@fontsource/noto-sans-devanagari/500.css';
+@import '@fontsource/noto-sans-devanagari/600.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /*
- * Platform-neutral defaults. A family's pack overrides these at runtime
- * via inline custom properties (src/lib/theme.ts) — nothing here assumes
- * the exam family.
+ * The custom properties themselves are written by PackShell from
+ * src/lib/generated-tokens.ts, which is generated from
+ * packages/design/tokens.json — the same file apps/mobile reads. Nothing
+ * here restates a colour, because a second copy of a palette is a second
+ * palette, and the two apps drift the moment one is edited alone.
+ *
+ * The values below are only a fallback for a page rendered before the
+ * shell has applied anything (an error boundary, a 404).
  */
 :root {
-  --color-ink: #1f2933;
-  --color-ink-muted: #5c6b7a;
-  --color-ink-correction: #b42318;
   --color-paper: #ffffff;
-  --color-paper-raised: #f7f8fa;
-  --color-rule-line: #dfe3e8;
-  --color-accent: #2f5d8c;
-  --font-answer: ui-serif, Georgia, serif;
-  --radius-card: 10px;
+  --color-surface: #ffffff;
+  --color-surface-sunk: #f4f4f5;
+  --color-ink: #09090b;
+  --color-ink-muted: #71717a;
+  --color-ink-faint: #a1a1aa;
+  --color-rule: #e4e4e7;
+  --color-accent: #09090b;
+  --color-accent-ink: #ffffff;
+  --color-correction: #dc2626;
+  --color-correction-soft: #fef2f2;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+}
+
+/*
+ * Inter first, Noto Sans Devanagari behind it. Unlike React Native, CSS
+ * has real font stacks: the browser falls through per glyph, so Latin is
+ * drawn by Inter and Devanagari by Noto in the same run of text without
+ * anything having to detect the script.
+ */
+html {
+  font-family: 'Inter', 'Noto Sans Devanagari', ui-sans-serif, system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   background: var(--color-paper);
   color: var(--color-ink);
-  -webkit-text-size-adjust: 100%;
+  font-size: 16px;
+  line-height: 1.5625;
+  letter-spacing: -0.006em;
 }
 
 /*
@@ -30,29 +61,19 @@ body {
  * focus visible"). Never remove this without replacing it.
  */
 :focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 2px solid var(--color-ink);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 /*
- * The exam family's signature element. Scoped to a class the layout only
- * applies when the pack asks for it — a music-school family gets none of
- * this, with no code change.
+ * A family may declare a signature element. The exam family's ruled
+ * paper is deliberately NOT applied to whole surfaces any more — as a
+ * page background it fought every other line on the screen. It survives
+ * as an opt-in accent a family can still ask for.
  */
-.signature-ruled_answer_sheet .signature-surface {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent,
-    transparent 27px,
-    var(--color-rule-line) 27px,
-    var(--color-rule-line) 28px
-  );
-  background-attachment: local;
-}
-
 .signature-ruled_answer_sheet .signature-margin {
-  border-left: 2px solid color-mix(in srgb, var(--color-ink-correction) 35%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--color-correction) 30%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

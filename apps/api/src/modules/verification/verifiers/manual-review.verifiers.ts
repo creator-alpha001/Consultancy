@@ -13,6 +13,7 @@ import { CredentialVerifier } from './verifier.interface';
 @Injectable()
 export class DocumentReviewVerifier implements CredentialVerifier {
   readonly code = 'document_review';
+  readonly inputs = [{ key: 'documentRef', kind: 'document' as const, required: true }];
 
   async check(): Promise<AutomatedCheckResult> {
     return {
@@ -26,6 +27,7 @@ export class DocumentReviewVerifier implements CredentialVerifier {
 @Injectable()
 export class SanctionDocumentVerifier implements CredentialVerifier {
   readonly code = 'sanction_document';
+  readonly inputs = [{ key: 'documentRef', kind: 'document' as const, required: true }];
 
   async check(): Promise<AutomatedCheckResult> {
     return {

@@ -32,6 +32,11 @@ export async function registerAction(_prev: FormState, form: FormData): Promise<
         // CLAUDE.md #27 — the platform is 18+ and the API refuses
         // registration without an explicit attestation.
         confirmsAdult: form.get('confirmsAdult') === 'on',
+        // Which pack's wording was on the screen. The acceptance record
+        // stores the exact text, so this is what ties it to what was
+        // actually shown rather than to whatever the pack says later.
+        domainCode: String(form.get('domainCode') ?? '') || undefined,
+        lang: String(form.get('lang') ?? '') || undefined,
       }),
     });
   } catch (err) {

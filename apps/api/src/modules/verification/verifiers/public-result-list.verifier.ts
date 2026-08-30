@@ -24,6 +24,13 @@ interface ResultListEntryRow {
 @Injectable()
 export class PublicResultListVerifier implements CredentialVerifier {
   readonly code = 'public_result_list';
+  // Exactly what `check()` reads below — if that changes, this changes,
+  // because a form that collects the wrong fields fails at review time
+  // rather than at submission.
+  readonly inputs = [
+    { key: 'rollNo', kind: 'text' as const, required: true },
+    { key: 'year', kind: 'number' as const, required: true },
+  ];
 
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,

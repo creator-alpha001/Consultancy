@@ -3,6 +3,7 @@ import {
   AssessmentTemplateInput,
   CategoryNodeInput,
   CredentialTypeInput,
+  ReviewDimensionInput,
   DomainManifestInput,
   EngagementType,
   FamilyManifestInput,
@@ -94,6 +95,9 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
   const seekerLabel = v.labelMap(labelsRaw.seeker, 'labels.seeker');
   const providerLabel = v.labelMap(labelsRaw.provider, 'labels.provider');
   const engagementLabel = v.labelMap(labelsRaw.engagement, 'labels.engagement');
+  // Optional: absent is valid, present must still be a real label map.
+  const categoryLabel =
+    labelsRaw.category === undefined ? undefined : v.labelMap(labelsRaw.category, 'labels.category');
 
   const engagementTypes = v.array(m.engagementTypes, 'engagementTypes', (item, p) => v.engagementType(item, p));
   const flagshipEngagement = v.engagementType(m.flagshipEngagement, 'flagshipEngagement');
@@ -152,8 +156,25 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
       active: typeof c.active === 'boolean' ? c.active : true,
       requiresPaidWorkSanction: typeof c.requiresPaidWorkSanction === 'boolean' ? c.requiresPaidWorkSanction : false,
       grantsPaidWorkSanction: typeof c.grantsPaidWorkSanction === 'boolean' ? c.grantsPaidWorkSanction : false,
+      // Fail closed: anything not a clean array of strings publishes
+      // nothing, rather than publishing whatever was there.
+      publicFields: Array.isArray(c.publicFields)
+        ? c.publicFields.filter((f): f is string => typeof f === 'string')
+        : [],
     };
   });
+
+  // Optional. A family with no dimensions gets a plain overall rating,
+  // which is what the product had before and is still valid.
+  const reviewDimensions = m.reviewDimensions === undefined
+    ? []
+    : v.array<ReviewDimensionInput>(m.reviewDimensions, 'reviewDimensions', (item, p) => {
+        const d = (item ?? {}) as Record<string, unknown>;
+        const dCode = v.string(d.code, `${p}.code`);
+        const dLabels = v.labelMap(d.labels, `${p}.labels`);
+        if (!dCode || !dLabels) return undefined;
+        return { code: dCode, labels: dLabels };
+      });
 
   const policyRaw = (m.policy ?? {}) as Record<string, unknown>;
   if (typeof policyRaw.minTierForPaidWork !== 'string') v.fail('policy.minTierForPaidWork', 'must be a string');
@@ -191,6 +212,46 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     }
   }
 
+  // Family-declared, because the family owns safety policy. Validated
+  // like every other pack list: a bad reason code fails the publish, not
+  // the report that later cites it.
+  const reportReasons = v.array(m.reportReasons, 'reportReasons', (item, p) => {
+    const r = (item ?? {}) as Record<string, unknown>;
+    const rcode = v.string(r.code, `${p}.code`);
+    const labels = v.labelMap(r.labels, `${p}.labels`);
+    if (!rcode || !labels) return undefined;
+    if (r.isWelfareConcern !== undefined && typeof r.isWelfareConcern !== 'boolean') {
+      v.fail(`${p}.isWelfareConcern`, 'must be a boolean when present');
+    }
+    return {
+      code: rcode,
+      labels,
+      ...(r.isWelfareConcern === true ? { isWelfareConcern: true as const } : {}),
+    };
+  });
+  const reasonCodes = new Set<string>();
+  reportReasons.forEach((r, i) => {
+    if (reasonCodes.has(r.code)) v.fail(`reportReasons[${i}].code`, `duplicate reason code "${r.code}"`);
+    reasonCodes.add(r.code);
+  });
+
+  // The wording of what people agree to. Validated like any other pack
+  // list so a malformed document fails the publish rather than the flow
+  // that later needs it.
+  const agreementDocuments = v.array(m.agreementDocuments, 'agreementDocuments', (item, p) => {
+    const a = (item ?? {}) as Record<string, unknown>;
+    const acode = v.string(a.code, `${p}.code`);
+    const aversion = v.string(a.version, `${p}.version`);
+    const text = v.labelMap(a.text, `${p}.text`);
+    if (!acode || !aversion || !text) return undefined;
+    return { code: acode, version: aversion, text };
+  });
+  const agreementCodes = new Set<string>();
+  agreementDocuments.forEach((a, i) => {
+    if (agreementCodes.has(a.code)) v.fail(`agreementDocuments[${i}].code`, `duplicate document code "${a.code}"`);
+    agreementCodes.add(a.code);
+  });
+
   const supportResources = v.array(m.supportResources, 'supportResources', (item, p) => {
     const r = (item ?? {}) as Record<string, unknown>;
     const label = v.string(r.label, `${p}.label`);
@@ -210,13 +271,22 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
   return {
     code: code!,
     version: version!,
-    labels: { family: familyLabel!, seeker: seekerLabel!, provider: providerLabel!, engagement: engagementLabel! },
+    labels: {
+      family: familyLabel!,
+      seeker: seekerLabel!,
+      provider: providerLabel!,
+      engagement: engagementLabel!,
+      ...(categoryLabel ? { category: categoryLabel } : {}),
+    },
     engagementTypes,
     flagshipEngagement: flagshipEngagement!,
     skills,
     assessmentTemplates,
     credentialTypes,
+    reviewDimensions,
     policy: policyRaw as unknown as FamilyManifestInput['policy'],
+    reportReasons,
+    agreementDocuments,
     supportResources,
     theme: { signature: themeSignature!, tokens: themeRaw.tokens as Record<string, string> },
   };

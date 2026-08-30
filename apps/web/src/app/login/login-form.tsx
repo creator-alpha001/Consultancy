@@ -26,7 +26,7 @@ export function LoginForm(): JSX.Element {
   return (
     <form action={action}>
       {needsCode ? (
-        <div role="status" className="mb-4 rounded-card border border-accent bg-paper-raised p-3 text-sm">
+        <div role="status" className="mb-4 rounded-card border border-accent bg-surface-sunk p-3 text-sm">
           <p className="font-medium">One more step</p>
           <p className="mt-1 text-ink-muted">
             {state.error?.code === 'MFA_INVALID'

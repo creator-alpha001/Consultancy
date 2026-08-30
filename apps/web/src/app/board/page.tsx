@@ -53,7 +53,7 @@ export default async function BoardPage(): Promise<JSX.Element> {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2" aria-labelledby="open">
-          <h2 id="open" className="mb-3 font-answer text-lg font-semibold">
+          <h2 id="open" className="mb-3 text-lg font-semibold">
             Open requests
           </h2>
           {posts.length === 0 ? (
@@ -97,7 +97,7 @@ export default async function BoardPage(): Promise<JSX.Element> {
 
         <aside className="space-y-4">
           <Card>
-            <h2 id="ask" className="mb-2 font-answer text-base font-semibold">
+            <h2 id="ask" className="mb-2 text-base font-semibold">
               Ask a free question
             </h2>
             <p className="mb-3 text-sm text-ink-muted">
@@ -108,7 +108,7 @@ export default async function BoardPage(): Promise<JSX.Element> {
           </Card>
 
           <Card>
-            <h2 className="mb-2 font-answer text-base font-semibold">Recent questions</h2>
+            <h2 className="mb-2 text-base font-semibold">Recent questions</h2>
             {questions.length === 0 ? (
               <p className="text-sm text-ink-muted">Nothing published yet.</p>
             ) : (

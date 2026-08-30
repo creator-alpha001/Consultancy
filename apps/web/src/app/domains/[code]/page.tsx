@@ -81,7 +81,7 @@ export default async function DomainPage({ params }: { params: { code: string } 
       </PageTitle>
 
       {!domain.publiclyListed && (
-        <div role="note" className="mb-6 rounded-card border border-correction bg-paper-raised p-3 text-sm">
+        <div role="note" className="mb-6 rounded-card border border-correction bg-surface-sunk p-3 text-sm">
           <p className="font-medium text-correction">This domain is not open yet.</p>
           <p className="mt-1 text-ink-muted">
             It is seeded but not publicly listed — its exam pattern still needs confirming against the
@@ -93,7 +93,7 @@ export default async function DomainPage({ params }: { params: { code: string } 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card className="signature-surface signature-margin">
-            <h2 className="mb-3 font-answer text-lg font-semibold">Papers and skills</h2>
+            <h2 className="mb-3 text-lg font-semibold">Papers and skills</h2>
             {allProvisional && (
               <p className="mb-3 border-b border-rule pb-2 text-xs text-correction">
                 Every pattern below is provisional — seeded, but not yet checked against the current
@@ -110,7 +110,7 @@ export default async function DomainPage({ params }: { params: { code: string } 
 
         <div className="space-y-4">
           <Card>
-            <h2 className="mb-2 font-answer text-base font-semibold">Inherited from the family</h2>
+            <h2 className="mb-2 text-base font-semibold">Inherited from the family</h2>
             <dl className="space-y-1.5 text-sm">
               <div className="flex justify-between gap-2">
                 <dt className="text-ink-muted">Minimum tier for paid work</dt>
@@ -131,7 +131,7 @@ export default async function DomainPage({ params }: { params: { code: string } 
           </Card>
 
           <Card>
-            <h2 className="mb-2 font-answer text-base font-semibold">If you are struggling</h2>
+            <h2 className="mb-2 text-base font-semibold">If you are struggling</h2>
             <ul className="space-y-1 text-sm">
               {domain.family.supportResources.map((r) => (
                 <li key={r.value} className="flex justify-between gap-2">

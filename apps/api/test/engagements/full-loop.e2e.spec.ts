@@ -157,6 +157,66 @@ describe('M3 acceptance: agenda -> lock -> escrow -> deliver -> assess -> comple
     expect(finalEscrow?.status).toBe('released');
   });
 
+  /**
+   * An evaluation must carry the dimensions it was scored against.
+   *
+   * Its absence was a live 500 on every completed engagement page: two
+   * clients had hand-written types declaring `dimensions`, the API had
+   * never sent it, and `.map` on undefined took the page down for both
+   * parties — the seeker could not see their marks and the mentor could
+   * not see what they had returned. Nothing caught it because no test
+   * and no journey opened a page for an engagement that had been marked.
+   */
+  it('returns the dimensions an evaluation is scored against', async () => {
+    const { seekerId, providerId } = await seedUsers(pool);
+    const engagement = await engagements.createDraft({
+      seekerId,
+      providerId,
+      domainCode: 'uppsc',
+      categoryId,
+      engagementType: 'document_review',
+      currency: 'INR',
+      amountPaise: 50_000n,
+      language: 'en',
+    });
+    await engagements.agree(engagement.id);
+    const agenda = await agendas.createDraft({
+      engagementId: engagement.id,
+      originalLang: 'en',
+      expectedDeliverable: 'Annotated answer',
+      successCriteria: 'Three weakest areas named',
+      items: [{ labelLang: 'en', labelText: 'Review structure' }],
+    });
+    await agendas.lock(agenda.id);
+    await escrows.hold({
+      engagementId: engagement.id,
+      seekerId,
+      providerId,
+      currency: 'INR',
+      amountPaise: 50_000n,
+      idempotencyKey: `hold:${engagement.id}`,
+    });
+    const submission = await submissions.submit({
+      engagementId: engagement.id,
+      seekerId,
+      contentRef: 's3://placeholder/a.pdf',
+    });
+    const evaluation = await evaluations.open({
+      engagementId: engagement.id,
+      providerId,
+      submissionId: submission.id,
+    });
+
+    expect(evaluation.dimensions.length).toBeGreaterThan(0);
+    // Labels, not just codes: a client cannot render "content" as
+    // something a person reads without them, and core names no dimension.
+    expect(evaluation.dimensions.every((d) => d.code && d.labels)).toBe(true);
+
+    // They survive a re-read, which is the path every client actually uses.
+    const reread = await evaluations.get(evaluation.id);
+    expect(reread.dimensions.map((d) => d.code)).toEqual(evaluation.dimensions.map((d) => d.code));
+  });
+
   it('rejects delivering before the engagement is working', async () => {
     const { seekerId, providerId } = await seedUsers(pool);
     const engagement = await engagements.createDraft({

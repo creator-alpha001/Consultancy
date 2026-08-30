@@ -58,7 +58,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
       <PageTitle sub={`Signed in as ${user.email} · ${roleWord}`}>Dashboard</PageTitle>
 
       {isProvider && paidWork.blocked && (
-        <div role="note" className="mb-6 rounded-card border border-correction bg-paper-raised p-3 text-sm">
+        <div role="note" className="mb-6 rounded-card border border-correction bg-surface-sunk p-3 text-sm">
           <p className="font-medium text-correction">Paid work is on hold for this account.</p>
           <p className="mt-1 text-ink-muted">
             A verified credential on file requires departmental sanction before you can take paid
@@ -70,7 +70,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2" aria-labelledby="engagements">
           <div className="mb-3 flex items-center justify-between">
-            <h2 id="engagements" className="font-answer text-lg font-semibold">
+            <h2 id="engagements" className="text-lg font-semibold">
               Your engagements
             </h2>
             <Link href="/board" className="text-sm underline">
@@ -120,7 +120,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
         <aside className="space-y-4">
           {isProvider && (
             <Card>
-              <h2 className="mb-2 font-answer text-base font-semibold">Your skills</h2>
+              <h2 className="mb-2 text-base font-semibold">Your skills</h2>
               {stats.length === 0 ? (
                 <p className="text-sm text-ink-muted">
                   No verified skills yet. Submit a credential to be matched.
@@ -154,7 +154,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
           )}
 
           <Card>
-            <h2 className="mb-2 font-answer text-base font-semibold">Ask a question</h2>
+            <h2 className="mb-2 text-base font-semibold">Ask a question</h2>
             <p className="mb-3 text-sm text-ink-muted">
               {domain?.policy.freeQuestionsPerDay ?? 3} free questions a day, answered by verified
               mentors.
@@ -166,7 +166,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
 
           {user.role === 'admin' && (
             <Card>
-              <h2 className="mb-2 font-answer text-base font-semibold">Operations</h2>
+              <h2 className="mb-2 text-base font-semibold">Operations</h2>
               <Link href="/admin" className="text-sm underline">
                 Reconciliation and queues
               </Link>

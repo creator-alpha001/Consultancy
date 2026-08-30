@@ -29,27 +29,41 @@ export function PackShell({
     <div style={themeStyle(domain)} className={`signature-${signature(domain)} min-h-screen bg-paper text-ink`}>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-accent focus:px-4 focus:py-2 focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-accent focus:px-lg focus:py-sm focus:text-accent-ink"
       >
         Skip to content
       </a>
 
-      <header className="border-b border-rule bg-paper-raised">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-          <Link href="/" className="font-answer text-lg font-semibold tracking-tight">
+      <header className="border-b border-rule bg-paper">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-xl gap-y-sm px-xl py-lg">
+          <Link href="/" className="text-heading font-semibold">
             {familyName}
           </Link>
           {domainName && (
-            <span className="rounded-full border border-rule px-2.5 py-0.5 text-xs text-ink-muted">
+            <span className="rounded-pill bg-surface-sunk px-md py-xs text-caption text-ink-muted">
               {domainName}
             </span>
           )}
-          <nav className="ml-auto flex items-center gap-4 text-sm" aria-label="Main">
+          <nav className="ml-auto flex items-center gap-xl text-small" aria-label="Main">
             <Link href="/domains" className="hover:underline">
               Explore
             </Link>
+            <Link href="/mentors" className="hover:underline">
+              Find a mentor
+            </Link>
             {actor ? (
               <>
+                <Link href="/engagements" className="hover:underline">
+                  Engagements
+                </Link>
+                <Link href="/sessions" className="hover:underline">
+                  Sessions
+                </Link>
+                {actor.role === 'provider' && (
+                  <Link href="/mentor" className="hover:underline">
+                    Workspace
+                  </Link>
+                )}
                 <Link href="/dashboard" className="hover:underline">
                   Dashboard
                 </Link>
@@ -62,7 +76,7 @@ export function PackShell({
             ) : (
               <Link
                 href="/login"
-                className="rounded-card bg-accent px-3 py-1.5 text-white hover:opacity-90"
+                className="rounded-pill bg-accent px-lg py-md text-small font-medium text-accent-ink hover:opacity-90"
               >
                 Sign in
               </Link>
@@ -71,14 +85,14 @@ export function PackShell({
         </div>
       </header>
 
-      <main id="main" className="mx-auto max-w-5xl px-4 py-6">
+      <main id="main" className="mx-auto max-w-5xl px-xl py-xxl">
         {children}
       </main>
 
-      <footer className="mt-12 border-t border-rule px-4 py-6 text-center text-xs text-ink-muted">
+      <footer className="mt-xxxl border-t border-rule px-xl py-xxl text-center text-caption text-ink-muted">
         {/* CLAUDE.md #26/#27: never guarantee outcomes; the platform is 18+. */}
         <p>Guidance from verified experts. No outcome is promised or implied.</p>
-        <p className="mt-1">For adults aged 18 and over.</p>
+        <p className="mt-xs">For adults aged 18 and over.</p>
       </footer>
     </div>
   );

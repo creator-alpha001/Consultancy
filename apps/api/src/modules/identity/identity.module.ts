@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DomainsModule } from '../domains/domains.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
@@ -14,6 +15,7 @@ import { TotpService } from './totp.service';
  * there is exactly one place that decides who a request is from.
  */
 @Module({
+  imports: [DomainsModule],
   controllers: [AuthController],
   providers: [AuthService, PasswordService, TotpService, SessionService, AuthGuard],
   exports: [AuthService, SessionService, AuthGuard, PasswordService, TotpService],

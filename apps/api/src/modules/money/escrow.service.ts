@@ -15,9 +15,31 @@ import { FeeScheduleService } from './fee-schedule.service';
 import { OutboxService } from './outbox.service';
 import { PAYMENT_AGGREGATOR, PaymentAggregator } from './pa/payment-aggregator.interface';
 import { EscrowRow } from './types';
+import { AuditService } from '../../common/audit/audit.service';
 
-export interface HoldEscrowInput {
+/**
+ * Who asked for this movement.
+ *
+ * Optional because some paths genuinely have no human actor — a relay,
+ * a scheduled job — and a null actor is a distinguishable fact rather
+ * than a missing one (see `audit_log.actor_id`). It is not optional
+ * because callers may skip it: every caller that knows the actor is
+ * expected to pass it.
+ */
+export interface EscrowActor {
+  actorId?: string | null;
+  actorRole?: string | null;
+}
+
+export interface HoldEscrowInput extends EscrowActor {
   engagementId: string;
+  /**
+   * Set when this hold is for a paid session extension rather than the
+   * engagement itself. An extension is charged as its own transaction so
+   * it can be refunded on its own, and gets its own escrow row beside
+   * the engagement's.
+   */
+  sessionExtensionId?: string | null;
   seekerId: string;
   providerId: string;
   currency: string;
@@ -25,20 +47,20 @@ export interface HoldEscrowInput {
   idempotencyKey: string;
 }
 
-export interface ReleaseEscrowInput {
+export interface ReleaseEscrowInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   bankAccountLast4?: string;
   bankIfsc?: string;
 }
 
-export interface RefundEscrowInput {
+export interface RefundEscrowInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   reason: string;
 }
 
-export interface SettleSplitInput {
+export interface SettleSplitInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   /** Strictly inside (0, escrow amount) — a full award either way is a release or a refund, and must be recorded as one. */
@@ -49,7 +71,7 @@ export interface SettleSplitInput {
   bankIfsc?: string;
 }
 
-export interface PlatformFailureInput {
+export interface PlatformFailureInput extends EscrowActor {
   escrowId: string;
   idempotencyKey: string;
   /** What broke on our side — recorded for the evidence packet, never shown as blame to either party. */
@@ -70,6 +92,7 @@ interface EscrowDbRow {
   status: EscrowRow['status'];
   hold_transaction_id: string | null;
   resolution_transaction_id: string | null;
+  session_extension_id: string | null;
 }
 
 function mapEscrowRow(row: EscrowDbRow): EscrowRow {
@@ -85,6 +108,7 @@ function mapEscrowRow(row: EscrowDbRow): EscrowRow {
     status: row.status,
     holdTransactionId: row.hold_transaction_id,
     resolutionTransactionId: row.resolution_transaction_id,
+    sessionExtensionId: row.session_extension_id,
   };
 }
 
@@ -108,6 +132,7 @@ export class EscrowService {
     @Inject(FeeScheduleService) private readonly feeSchedule: FeeScheduleService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
     @Inject(PAYMENT_AGGREGATOR) private readonly paymentAggregator: PaymentAggregator,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   /**
@@ -116,7 +141,22 @@ export class EscrowService {
    * (CLAUDE.md — only money/ writes ledger, escrow, payout and refund tables).
    */
   async findByEngagementId(engagementId: string): Promise<EscrowRow | null> {
-    const res = await this.pool.query<EscrowDbRow>(`SELECT * FROM escrows WHERE engagement_id = $1`, [engagementId]);
+    // The engagement's OWN escrow. Since extensions gained their own
+    // rows against the same engagement, an unscoped lookup here would
+    // sometimes return an extension and release the wrong money.
+    const res = await this.pool.query<EscrowDbRow>(
+      `SELECT * FROM escrows WHERE engagement_id = $1 AND session_extension_id IS NULL`,
+      [engagementId],
+    );
+    return res.rows[0] ? mapEscrowRow(res.rows[0]) : null;
+  }
+
+  /** The escrow behind one paid session extension. */
+  async findByExtensionId(sessionExtensionId: string): Promise<EscrowRow | null> {
+    const res = await this.pool.query<EscrowDbRow>(
+      `SELECT * FROM escrows WHERE session_extension_id = $1`,
+      [sessionExtensionId],
+    );
     return res.rows[0] ? mapEscrowRow(res.rows[0]) : null;
   }
 
@@ -127,8 +167,10 @@ export class EscrowService {
     try {
       await client.query('BEGIN');
       const existing = await client.query<EscrowDbRow>(
-        `SELECT * FROM escrows WHERE engagement_id = $1`,
-        [input.engagementId],
+        input.sessionExtensionId
+          ? `SELECT * FROM escrows WHERE session_extension_id = $1`
+          : `SELECT * FROM escrows WHERE engagement_id = $1 AND session_extension_id IS NULL`,
+        [input.sessionExtensionId ?? input.engagementId],
       );
       if (existing.rows[0]) {
         escrowId = existing.rows[0].id;
@@ -138,10 +180,17 @@ export class EscrowService {
         }
       } else {
         const inserted = await client.query<{ id: string }>(
-          `INSERT INTO escrows (engagement_id, seeker_id, provider_id, currency, amount_paise)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO escrows (engagement_id, seeker_id, provider_id, currency, amount_paise, session_extension_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id`,
-          [input.engagementId, input.seekerId, input.providerId, input.currency, input.amountPaise.toString()],
+          [
+            input.engagementId,
+            input.seekerId,
+            input.providerId,
+            input.currency,
+            input.amountPaise.toString(),
+            input.sessionExtensionId ?? null,
+          ],
         );
         escrowId = inserted.rows[0].id;
       }
@@ -215,6 +264,24 @@ export class EscrowService {
             engagementId: input.engagementId,
             amountPaise: input.amountPaise,
             paReference: capture.paReference,
+          },
+        });
+        // Inside the same transaction as the transition, so there can
+        // never be an entry for a hold that rolled back — and never a
+        // hold without an entry. Both branches of the `if` above are
+        // idempotent no-ops; only this one actually moved money.
+        await this.audit.recordIn(client2, {
+          actorId: input.actorId ?? null,
+          actorRole: input.actorRole ?? null,
+          action: 'escrow.held',
+          subjectType: 'escrow',
+          subjectId: escrowId,
+          detail: {
+            engagementId: input.engagementId,
+            amountPaise: input.amountPaise,
+            platformFeePaise,
+            currency: input.currency,
+            feeScheduleId: fee.id,
           },
         });
       }
@@ -309,6 +376,23 @@ export class EscrowService {
         payload: { providerId: escrow.provider_id, amountPaise: netPaise, currency: escrow.currency },
       });
 
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.released',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          providerId: escrow.provider_id,
+          amountPaise,
+          platformFeePaise,
+          netPaise,
+          currency: escrow.currency,
+          fromStatus: escrow.status,
+        },
+      });
+
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -379,6 +463,22 @@ export class EscrowService {
         payload: { seekerId: escrow.seeker_id, amountPaise, currency: escrow.currency, reason: input.reason },
       });
 
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.refunded',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          seekerId: escrow.seeker_id,
+          amountPaise,
+          currency: escrow.currency,
+          reason: input.reason,
+          fromStatus: escrow.status,
+        },
+      });
+
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -437,6 +537,14 @@ export class EscrowService {
         `UPDATE escrows SET status = 'disputed_hold' WHERE id = $1 RETURNING *`,
         [escrow.id],
       );
+      await this.audit.recordIn(client, {
+        actorId: null,
+        actorRole: null,
+        action: 'escrow.frozen_for_dispute',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: { engagementId: escrow.engagement_id, amountPaise: BigInt(escrow.amount_paise), currency: escrow.currency },
+      });
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -584,6 +692,22 @@ export class EscrowService {
         },
       });
 
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.settled_split',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          seekerRefundPaise,
+          providerNetPaise,
+          feePaise,
+          currency: escrow.currency,
+          reason: input.reason,
+        },
+      });
+
       await client.query('COMMIT');
       return mapEscrowRow(updated.rows[0]);
     } catch (err) {
@@ -701,6 +825,26 @@ export class EscrowService {
           amountPaise: providerDuePaise,
           currency: escrow.currency,
           fundedFrom: 'reserve',
+        },
+      });
+
+      // The one escrow outcome the platform pays for itself (#23). If
+      // any entry in this table is going to be read back in anger, it
+      // is this one: it is the record of us admitting a failure and
+      // what it cost.
+      await this.audit.recordIn(client, {
+        actorId: input.actorId ?? null,
+        actorRole: input.actorRole ?? null,
+        action: 'escrow.platform_failure_resolved',
+        subjectType: 'escrow',
+        subjectId: escrow.id,
+        detail: {
+          engagementId: escrow.engagement_id,
+          seekerRefundPaise: amountPaise,
+          providerDuePaise,
+          fundedFrom: 'reserve',
+          currency: escrow.currency,
+          failureDetail: input.failureDetail,
         },
       });
 

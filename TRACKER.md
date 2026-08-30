@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-28 · after the frontend (apps/web)
+Last updated: 2026-08-30 · after paid session extensions and the agreements record
 
 ---
 
@@ -25,9 +25,10 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
 | M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
-| M9 | Hardening | **Partial — not complete** | No — reconciliation, restore drill and a DB perf baseline are real and verified; 3G, accessibility and the security review are not. See below. |
+| M9 | Hardening | **Partial — not complete** | Mostly. Reconciliation, restore drill and the DB perf baseline are real and verified. **3G and accessibility now are too** — `apps/web/test/hardening.mjs` drives the real pages over a throttled Fast-3G profile with a 4× CPU slowdown and runs axe-core against WCAG 2.1 A/AA, in CI on every push. **The security review has now been run** and the one finding it produced is fixed. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
-| — | **apps/web** (frontend, unscheduled) | **First vertical slice working** | n/a — see below |
+| — | **apps/web** (frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see below |
+| — | **apps/mobile** (React Native, unscheduled) | **Both journeys working — the primary client** | n/a — see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt
@@ -57,14 +58,31 @@ live agenda checklist, ticking real `agenda_items` rows during an
 pattern exactly) so a real SFU vendor is a drop-in class later.
 
 **Not built — needs real infrastructure or a client, not more backend
-code:** RRULE availability/exceptions/buffers/notice-periods (§9's
-booking engine — a scheduling-UI-sized feature on its own, not attempted
-here); adaptive bitrate and the network-quality indicator; reconnection
-with session-time credit; screen share; in-call chat; file share; the
-session timer with a 5-minute warning and paid extension; live
-translated subtitles. These aren't stubbed with fakes because there is
-no meaningful backend-only fake for "the video adapted its bitrate" —
-unlike a payment capture, there's no discrete call to mock.
+code:** adaptive bitrate and the network-quality indicator; screen
+share; live translated subtitles. These aren't stubbed with fakes
+because there is no meaningful backend-only fake for "the video adapted
+its bitrate" — unlike a payment capture, there's no discrete call to
+mock. A column saying the bitrate adapted would be a lie with a schema.
+
+**Built since, closing most of the §9 list:** the availability and
+booking engine (migration 0036 — weekly recurrence, exceptions, buffers,
+notice period, advance horizon, timezone-correct through the tz
+database); in-call chat, append-only because a session's chat is
+evidence in a dispute; file share, where sharing creates the grant so a
+listed file is one the other party can actually open; the session timer
+with a five-minute warning stamped exactly once; reconnection credit,
+merged across parties so a shared outage counts once; and the 90-day
+recording retention with a legal-hold flag.
+
+**The paid extension is built.** The product owner chose: charged
+**separately** from the engagement, as its own transaction with its own
+escrow, so it can be refunded on its own. The seeker must accept a
+recorded agreement before any money moves, and the money is held rather
+than paid straight over — the extra time has not happened yet when it is
+bought — settling when the session ends rather than when the whole
+engagement completes.
+
+Calendar sync (Google/Outlook) is still unbuilt.
 
 ### Why M6 is "Complete, with debt," not plainly Complete
 
@@ -121,20 +139,136 @@ overflow on every public page; skip-link as first tab stop and a visible
   is why the header renders in Hindi on `upsc_cse` without a line of
   language-switching code.
 
-**Screens that exist:** landing, domain catalogue, domain detail (real
-category tree from `taxonomy/`, with the seeded patterns' provisional
-status surfaced from `categories.traits`), register, login (including the
-2FA challenge and recovery-code path), 2FA enrolment, dashboard
-(seeker and provider variants), board with the question flow, engagement
-detail (agenda, lock state, hash, escrow status, lifecycle progress), and
-admin reconciliation.
+**Screens that exist (23 routes):** landing, domain catalogue, domain
+detail, register, login (2FA challenge and recovery codes), 2FA
+enrolment, dashboard, admin reconciliation — plus the booking and
+mentorship loop added 2026-08-28:
 
-**Not built yet:** the write paths for most of the loop — creating a
-board post, submitting a proposal, drafting and locking an agenda,
-submitting work, evaluating it, and the dispute screens — are read-only
-or absent in the UI even though every one of those endpoints now exists
-and is tested. Recorded as D25 rather than half-built behind a button
-that does nothing.
+| Route | What it does |
+|---|---|
+| `/mentors` | Search verified mentors by category + language. No price sort, at any layer |
+| `/mentors/[id]` | Profile: per-skill tiers, reviews. Never the credential evidence (#30) |
+| `/mentors/[id]/book` | Engagement type, slot picker, language, price against the pack's band |
+| `/engagements` · `/engagements/[id]` | List, and the action hub for whatever the lifecycle allows now |
+| `/engagements/[id]/agenda` | Add/remove goals, out-of-scope, lock with explicit confirmation |
+| `/engagements/[id]/evaluate` | The rubric: one slider per template dimension, return gated on completeness |
+| `/sessions` · `/sessions/[id]` | Session list, and the room: consent gate, live checklist, audio fallback |
+| `/board/new` · `/board/[id]` | Post a request; propose on one; accept a proposal |
+| `/mentor` | Mentor workspace: what needs marking, upcoming sessions, eligible requests, own stats |
+
+**Verified in a real browser, not just compiled.** `test/booking-journey.mjs`
+drives the whole flow against the real API and a seeded database — 25
+checks, all passing, screenshots in `docs/screens/booking/`. It proves
+the things that are easy to claim and easy to get wrong: that no price
+sort control exists on the mentor list, that the profile leaks no
+verification evidence, that declining a recording is offered with the
+same weight as agreeing, that the lock button is disabled until
+confirmed and no edit affordance survives locking, and that both new
+screens fit 360px without horizontal overflow.
+
+**Two enabling controllers were written for it.** `assessment/` and
+`sessions/` had been service-only since M3/M5 — real, tested, and
+unreachable over HTTP. Booking cannot exist without them, so
+`SessionsController` and `AssessmentController` were added, plus
+`ProvidersController` (in `reputation/`, because `verification/ →
+reputation/` would have been a module cycle) for mentor discovery.
+
+**Still not built:** dispute detail and appeal screens (raising one
+works), the admin adjudication and moderation queues, and provider
+credential submission. See D25.
+
+### apps/mobile — the native app
+
+Added 2026-08-28 after the user said plainly that the web UI was poor and
+asked whether this was a web app or a mobile app. It was a web app; the
+users CLAUDE.md describes ("mid-range Android over patchy networks") want
+an app. So there is now a real React Native one (Expo Router), talking to
+the same API.
+
+**This is a stack addition, made on an explicit request.** CLAUDE.md's
+stack table names Next.js for web and says not to substitute without
+asking. The user asked. `apps/web` stays — it is still the right surface
+for SEO, desktop and the admin screens.
+
+**What was wrong with the web UI, specifically** — worth recording so it
+is not repeated:
+- *Engineering commentary was shipped as product copy.* Every screen
+  carried a grey `RuleNote` explaining why there is no price sort, what
+  the database refuses, which rule was being obeyed. That was written for
+  a reviewer, not a user, and it is most of why the screens read as an
+  internal tool. The constraints still hold in the mobile app; they are
+  enforced silently.
+- A desktop layout squeezed onto a phone: wrapping top nav, no bottom
+  tabs, no app chrome.
+- Mentor cards repeated "No reviews yet / 0 completed" under all fourteen
+  verified skills, burying the person under their own metadata.
+- **A real bug**: `{providerWord}s` rendered `2 मेंटरs` and `an अभ्यर्थी
+  account` — an English plural and article welded onto a Devanagari noun.
+  Fixed in `apps/mobile/src/lib/pack.ts` (`plural()` uses the count where
+  a script does not pluralise by suffix). **`apps/web` still has this
+  bug** — see D29.
+
+**Built:** five bottom tabs (Home, Find, Work, Sessions, You), mentor
+search and profile, booking with a slot picker, the engagement hub, the
+agenda (draft, add/remove goals, lock behind an explicit confirmation),
+the live session room (both-party consent, live checklist, audio-only
+fallback), sign-in and register.
+
+**One genuine architectural difference from the web app.** There, the
+browser never touches the API and the session sits in an httpOnly cookie.
+A native app has no server half, so it holds the token itself — in the
+platform keystore via `expo-secure-store`. On the web target used for
+screenshots there is no SecureStore, so it is memory-only and a reload
+signs you out; `localStorage` was deliberately refused for a token that
+can move money.
+
+**Verification is honest but limited.** There is no Android SDK, no
+emulator and no `/dev/kvm` in this container, so the native app cannot be
+run here. `test/shots.mjs` drives the *same* React Native components
+through react-native-web at a Pixel 7 viewport against the real API — it
+proves the screens compose, fetch and navigate, and it caught the
+Devanagari plural leak. It is not a substitute for a device. Run
+`npx expo start` and open it in Expo Go to actually hold it.
+
+### Profiles and reviews (0031)
+
+A profile showed a tier and a star average and nothing else, and a review
+was one integer plus a paragraph. Neither is enough to decide who to give
+money to, so both were rebuilt.
+
+**Achievements are credentials, published as conclusions.** The platform
+already held verified credentials — a published rank, mains cleared,
+interview appeared — and showed none of them. They now appear on a
+profile, filtered through an ALLOW-LIST each credential type declares in
+the family manifest (`publicFields`). It defaults to **empty**: a type
+that says nothing publishes only its own label. Core names no field, so a
+family verifying music grades publishes different facts with no code
+change. `verifier_data` holds the roll number, the claimed name and the
+document reference that PROVED each achievement, and a test asserts none
+of those three ever reach the response (#30).
+
+**Reviews gained dimensions, context and a right of reply.**
+- Per-dimension scores (`review_dimension_scores`), with the dimensions
+  themselves declared by the family — deliberately not an assessment
+  template, which grades the *work* against a category rubric (#16),
+  while these describe what the person was like to work with.
+- Each review carries the skills the engagement actually required
+  (snapshotted at `agree()`), so it counts toward the work it was for
+  rather than whatever the category maps to now.
+- A **right of reply**: one, by the review's subject only, append-only.
+  A review the reviewed party cannot answer is a weapon rather than a
+  record; one they could rewrite would be worth nothing.
+- A summary view with the rating distribution — a fact about that
+  person's own consistency. Still no rank, percentile or comparison to
+  any other provider (#17), and a test greps the response to prove it.
+
+**A track record**, computed from their own history: completed, distinct
+seekers, and *repeat* seekers — the one number a provider cannot talk
+their way into. Refunded engagements are shown rather than hidden; a
+record that reports only successes is not a record.
+
+Everything append-only, everything a view rather than a stored count,
+same reasoning as money's "no `balance` column".
 
 ### Why M9 is partial — what is real, and what is not
 
@@ -145,7 +279,7 @@ half was built and the rest is named rather than faked.
 
 **Real, verified, and running:**
 
-- **Reconciliation** (`admin/ReconciliationService`, 10 checks). Read-only
+- **Reconciliation** (`admin/ReconciliationService`, 13 checks). Read-only
   by design — it reports, it never "fixes," because an automated
   correction to a money table turns a detectable problem into an
   undetectable one. Each check is tested against *manufactured
@@ -175,14 +309,37 @@ half was built and the rest is named rather than faked.
   `NET_ADMIN` in this container) and a real client. The baseline above
   measures the database layer only and says so in its own output; calling
   it "p95 on 3G" would be a lie about what was tested.
-- **Accessibility.** There is no frontend — `apps/` contains only `api`.
-  360px layout, keyboard reachability and contrast ≥ 4.5:1 are properties
-  of a UI that does not exist. This is not blocked by infrastructure; it
-  is blocked by the frontend not being written.
-- **The security review.** Partly moot and partly premature: identity/
-  closed the biggest hole (see below), but object storage, signed URLs
-  and watermarking (#29) do not exist to review, and D18/D20/D21/D22
-  remain open. A review now would mostly re-list known debt.
+- **Accessibility — now done and enforced.** `hardening.mjs` runs
+  axe-core (WCAG 2.1 A/AA) over six public routes, checks contrast
+  directly against CLAUDE.md's own 4.5:1 bar, walks the tab order to
+  prove every visible control is keyboard-reachable, and confirms the
+  skip link is the first stop. It found a real failure on first run:
+  `inkMuted` and `correction` measured **4.39:1** on the sunk surface,
+  on every page. Both were darkened at the token source, so the fix
+  reached web and mobile together.
+
+- **3G — now done.** Same harness: a Fast-3G profile (1.6 Mbit down,
+  150 ms RTT) with a 4× CPU throttle, a cold context per run, three runs
+  per route, reported as p95. Currently p95 TTFB 127 ms, DCL 755 ms,
+  load 2.07 s, 225 KB — comfortably inside the budget. **The budget
+  itself is a decision, not a measurement**: no supplied document states
+  a target, so `hardening.mjs` picks one (TTFB 3 s, DCL 8 s, load 12 s,
+  1.2 MB) and says so at the top of its output. Worth confirming with
+  whoever owns the product bar.
+- **The security review — done.** Run over the whole branch diff. One
+  finding, now fixed: `AttachmentService.grant()` checked that the file
+  existed and that the grantee was not already its owner, but never that
+  the **granting** party could read it. Both new callers
+  (`SubmissionService.submit()` and `SessionRoomService.shareFile()`)
+  take the attachment id straight from a request body, and authorising
+  the caller as a session participant or an engagement's seeker says
+  nothing about the file they named — so anyone who learned an id could
+  have minted a grant on a stranger's document for a confederate. The
+  check now lives inside `grant()` rather than at each call site, so a
+  future third caller is covered by construction, and it shares one
+  predicate with the read path so the two cannot drift apart in the
+  direction that grants too much. D18 (plaintext TOTP secrets) and
+  D20-D22 remain open and are unchanged by this review.
 
 **Three drill bugs worth recording**, because each was the same mistake
 and it is an easy one to repeat: a check that passes *vacuously*. A
@@ -232,8 +389,8 @@ currently tells.
 
 | # | From | Item | Why it matters |
 |---|---|---|---|
-| D4 | M1 | No payout/refund settle path | `payout_status`/`refund_status` carry `settled`/`failed`, but nothing transitions off `initiated`. No PA webhook handler. Money looks paid in our DB when it has not moved. |
-| D5 | M1 | `IdempotencyService` deletes its key on handler failure | A concurrent retry racing that window can double-execute. Acceptable with no live traffic; must close before M6 opens the board to real users. |
+| D28 | M1 | Notification transports do not exist, so those outbox events never leave | **The money half is closed.** `notifications/` now has a relay: it claims outbox rows with `FOR UPDATE SKIP LOCKED`, calls the aggregator outside any transaction, and records the reference — so `release()` finally results in an instructed transfer and a settlement webhook can actually arrive. What remains is that `escrow.held`, `payout.failed` and the rest have no transport (no email, SMS, WhatsApp or push), so the relay deliberately leaves them pending rather than marking them delivered, and reconciliation reports them. That is the honest state, not a silent drop. |
+| D27 | M1 | A crashed process strands an idempotency key `in_flight` forever | Closing D5 removed the delete-on-failure race, but if the process dies between claiming a key and recording an outcome, nothing ever completes or fails that row. Every retry of that request then gets `IDEMPOTENCY_REQUEST_IN_FLIGHT` permanently, pushing the caller toward retrying under a *new* key — the double-charge idempotency exists to prevent. Surfaced, not fixed: reconciliation reports `IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`. **The fix is a policy decision nobody should invent**: a lease that auto-releases a stale claim would hand a second caller permission to re-run a money handler on the strength of a guess about whether the first one moved money before it died. Options are (a) ops releases stranded keys by hand from the reconciliation report, (b) a lease window long enough that the original handler is certainly dead, relying on the ledger's own idempotency layer to catch a double-execution, or (c) handler-specific compensation. Needs a call from whoever owns money risk. |
 | D6 | M2 | Loader cache is per-process | Correct for one deployable. A second instance serves stale manifests until its own publish. Invalidation must become pub/sub before horizontal scaling, not after. |
 | D7 | M1 | Reserve balance is unmonitored | `resolvePlatformFailure` draws on `reserve` without limit and the account is expected to run negative. Nothing alerts when it does. Needs a reconciliation check in M9; deliberately not a runtime block, since refusing to make a wronged provider whole is the worse failure. |
 | D9 | M3 | No revision path short of a dispute | `evaluations.returned_at` is one-shot; a seeker who wants a small correction has no option between "accept it" and "raise a dispute." M7 built the dispute path (so an engagement *can* now reach `disputed`), but a lightweight revision request — the thing that should absorb most of these — still doesn't exist. |
@@ -242,8 +399,28 @@ currently tells.
 | D10 | M3 | Change orders don't model bilateral approval | `AgendaService.createChangeOrder` supersedes and replaces in one call by whichever actor invokes it — there's no proposer/accept/reject state. SPEC-PLATFORM.md §8 says changes need "mutually accepted" agreement; today it's single-actor. |
 | D11 | M4 | No periodic recheck | §11's pipeline is "submit -> automated checks -> human review -> tier assignment -> **periodic recheck**." Nothing expires or re-verifies a `provider_skills` tier. A credential verified once is trusted forever until someone manually revisits it. |
 | D12 | M4 | No result-list import pipeline | `result_list_entries` is real, queried data — but nothing populates it. Ops would need a batch-import tool (CSV upload, scraper, whatever a given PSC's publication format allows) that doesn't exist yet. The verifier is real; the data pipeline feeding it is not. |
-| D25 | web | The UI reads more of the loop than it writes | Board-post creation, proposal submission, agenda drafting/locking, submission, evaluation and the dispute screens are not built, though every endpoint exists and is tested. The engagement page shows an agenda and its lock state but cannot create one. This is the next slice, not a design gap. |
-| D26 | web | No frontend test suite beyond the browser journey | `test/journey.mjs` drives the real flows and catches a lot, but there are no component tests and nothing runs in CI. It also needs a live API and a seeded database, so it is a smoke test of a running stack rather than a unit suite. |
+| D36 | both | The design system is shared by generation, not by import | `packages/design/tokens.json` is the single source; `scripts/sync-tokens.mjs` writes a generated copy into each app and `--check` (wired into `dev.sh test`) fails when either is stale. It works and it is verified, but it is a workaround for there being no workspace: with a root `package.json` and workspaces, both apps could import one package and the generator would be unnecessary. Worth doing when something else needs the monorepo tooling anyway. |
+| D38 | M2 | `reviewDimensions` was validated and stored but never resolved | Fixed: the family manifest carried proper labels ("Told me the hard truth" / "स्पष्टवादिता") and `getDomain` never surfaced them, so every client fell back to the raw code and the profile showed "candour". Recorded because of the shape of the bug, not its size: a manifest field can pass validation, be persisted, and still be invisible to every client, and nothing in the test suite noticed for as long as no screen rendered it. Worth a resolver test that asserts each declared manifest field survives to `getDomain`. |
+| D39 | M2 | The manifest validator accepts a `verifier` name nothing implements | `verifier` is checked as a string only, never against the registered verifier set, so a family can publish a credential type whose checker does not exist. It fails at automated-check time, long after publish, and it will happen the first time a verifier is renamed or removed while published manifests still reference it. Handled defensively (an unregistered verifier asks for no inputs rather than breaking the list, with a test) but not prevented. The fix needs `domains/` to know the registry, which today would be a module cycle — probably a registry constant both import. |
+| D40 | M4 | An endpoint can be broken for its whole life if nothing calls it (swept) | `GET /admin/credentials/queue` ordered by `created_at`, a column `provider_credentials` does not have, so it threw on every call from the day it was written. Nothing noticed: no screen called it and no test ran it. Fixed, with a test that asserts the oldest-first ordering the queue exists for. **The sweep is done**: every `ORDER BY created_at` in `src/` was checked against the tables that have no such column, and it found exactly one more — `listForProvider`, in the same file, which made a provider's own credential list throw. Both now order by `submitted_at` and both have tests. The class of gap remains open though: a route with no client and no test is unverified whatever its module's coverage says, and CI (D41) only exercises what a journey actually drives. |
+| D41 | ci | CI runs the journeys against a stack it builds, not against a deployment | `.github/workflows/ci.yml` brings the whole thing up with `./scripts/dev.sh up` and drives it — one definition shared with local, so a CI file cannot reimplement the setup and drift from it. What it does **not** do is exercise anything deployed, because nothing is deployed. There is no staging environment, no smoke test against a real URL, and no check that a migration applies to a database that already holds data — CI always starts from an empty one. That last gap is the one that bites first. |
+| D42 | M1 | Nothing ticks the relay durably | `OutboxRelayScheduler` is a `setInterval`, off unless `OUTBOX_RELAY_INTERVAL_MS` is set, plus a button on `/admin`. That makes money move and makes it verifiable, but it is not the Redis + BullMQ worker the stack calls for: an interval dies with the process, does not survive a deploy, and gives no visibility into a backlog. Redis is installed here and unused. The seam is deliberate — `runOnce()` knows nothing about what calls it — so this is a swap, not a rewrite. |
+| D43 | M1 | A dead-lettered payout is reported and nobody is *told* | Partly addressed. `OUTBOX_DEAD_LETTERED_MONEY` is now its own **critical** finding, separate from the `OUTBOX_UNRELAYED` warning — reading those at the same severity is how a provider who is owed money hides inside a pile of undelivered notifications — and any critical finding is rendered above everything else on `/admin`, before the reader has scrolled or chosen where to look. What is still missing is the part that reaches a person who is not already looking: no scheduler runs the report (D23) and there is no alerting transport (D28's remaining half). The defence today is that someone who opens the page cannot miss it, which is better than nothing and is not monitoring. |
+| D44 | both | Client response types are not checked against the API — **now partly guarded** | `test/contract/client-response-shapes.e2e.spec.ts` lists, per endpoint, the fields the clients actually destructure, and fails the moment the API stops sending one. Verified against the real bug: dropping `dimensions` fails it and names the field. It covers evaluation, submission, engagement and agenda — the shapes that have already broken. It is a hand-maintained list, so it guards what someone remembered to add and nothing else; a generated client is still the real fix. Four instances so far, the worst being every completed engagement page returning 500 because both clients declared `dimensions` and the API never sent it. |
+| D45 | safety | **Closed** — reporting is built | `safety/` is now the three things CLAUDE.md scopes it to. Migration 0034: `reports` (self-report and half-resolved states refused by CHECK, one live report per person per subject by partial unique index, resolution terminal by trigger) and `content_holds`. **Policy came from the product owner, not from a spec** — no supplied document covers reporting, and CLAUDE.md says to ask rather than invent on safety. What was decided: reported **content** is held from public view on sight and released when the last live report on it is dismissed; a **person** is never auto-suspended and an engagement is never frozen, because one report must not be able to stop someone else's paid work; a person, content, a session and an engagement are all reportable; the reporter is told their report was **received** and later **reviewed**, and never the outcome. Reason codes are **family manifest data** — core names none, and a new family declares its own without a migration. A welfare-concern reason never holds anything and is answered with the family's real helplines (#25). Holds live beside the row rather than on it because `reviews` is append-only, and a held review drops out of the rating as well as the list — filtering the words while keeping the score is the wrong half. Reporter surfaces on mobile and web, reviewer queue on web, all covered by the journeys.
+| D46 | M1 | `audit_log` covers every consequential decision; the one remaining gap is `fee_schedules` | Built (migration 0033, append-only by trigger, `AuditService` in `common/` so no module has to depend on `admin/` to record a decision). Now recorded: credential verify/reject, dispute rulings **and settlement**, family/domain manifest publishes, **every escrow outcome** (hold, release, refund, dispute freeze, split settlement, platform-failure resolution), **moderation clears**, and **recording consent and refusal**. The escrow entries are written inside the same transaction as the movement, so there is never an entry for a hold that rolled back and never a movement without one; the idempotent no-op paths deliberately write nothing, so a retry cannot fabricate a second payout in the record. Consent is the one case where the log holds a fact the row does not: `session_consents` upserts, so a consent later withdrawn survives only here — which is exactly what #21's shifted evidentiary burden turns on. Actor plumbing runs controller → `engagements/`/`disputes/` → `money/`, because the person who decided is known only to the caller; a null actor means the platform acted and is distinguishable from an unrecorded one. **Still open:** **no code path writes `fee_schedules` at all** — a rate change is a manual SQL statement today, so there is nothing to audit and nothing to review either. Nothing reads the log back yet either: there is no admin view of it, so it is evidence in the database rather than a tool anyone uses.
+| D53 | legal | **The agreement wording has not been through legal review** | `agreementDocuments` in the family pack now carries the terms of service, the 18+ attestation and the session-extension agreement, and the mechanism around them is real: the exact text is stored on acceptance, append-only, with its version and language. **The words themselves are placeholders** with the same status as the platform fee percentage. The extension wording in particular was asked for as a no-refund waiver; it is written as an acknowledgement of satisfaction at a point in time, with an explicit line preserving statutory rights, because a consumer cannot generally waive those under the Consumer Protection Act 2019 and a clause that looks like a waiver but is not enforceable is worse than one that does not pretend — it deters people who do not know their rights while a court disregards it. **A lawyer should rewrite all three.** Bump `version` when they do: an acceptance of v1 must never read as acceptance of v2, which is why the full text is stored rather than a reference. |
+| D54 | identity | Agreements are recorded at registration only when the client sends a domain | `POST /auth/register` takes an optional `domainCode` naming which pack's wording was shown. The web app sends it; the mobile app does not yet, so a mobile registration still records only the bare `adult_confirmed_at` timestamp — the weaker state this work exists to move away from. Small client fix, listed rather than left implied. |
+| D50 | storage | The viewer watermark is identity-*binding*, not a burned-in mark | #29 asks for documents "watermarked with viewer identity". What exists: a signed link is bound to one viewer and refuses anyone else, expires in five minutes, is re-checked against the grant when redeemed, and every issue is audit-logged with who asked. What does not: nothing re-renders a PDF or an image to burn the viewer's name into the pixels, because that needs a render step per content type. `SignedLink.watermark` carries the text a viewer that can stamp it should use, and the download response names who it was served to. So a leaked *link* is traceable and useless to anyone else; a leaked *screenshot* is not yet traceable by looking at it. Named rather than counted as done. |
+| D51 | storage | Neither client can upload a file yet | `POST /attachments` and the whole access model are real and tested, and `submissions.attachment_id` / the credential reviewer link use them. But the mobile and web screens still submit a text `contentRef`, so in practice no file reaches the store through the product. Needs a file picker on each client (`expo-document-picker` on mobile) — a client task, not a backend one. |
+| D52 | i18n | Working language is settable; **interface** language is still English-only | Two different things share the word. The one that decides matching — what languages a provider works in — is now declarable by the provider, validated against the pack, and gates matching via `can_evaluate` (#19). The one that decides what the app renders in is still D33: pack vocabulary translates, every string the app itself owns is hardcoded English. So a Marathi-medium aspirant can now *find* a Marathi-speaking mentor, and will do it through an English interface. |
+| D48 | safety | Nothing *tells* anyone a report exists | The queue is correct and a reviewer who opens `/admin/reports` cannot miss a welfare concern — but nothing notifies them, so the time-to-look is however long until someone happens to visit. Same shape as D43 for dead-lettered payouts, and it matters more here: the policy holds content on sight, so an unread queue means someone's post stays wrongly hidden. Needs the notification transport that does not exist yet. The reporter is likewise only acknowledged in the response and in `/reports/mine`; nothing reaches them when the report is later reviewed. |
+| D49 | board | The web app has no free-question board | `GET /board/questions/:id` now returns a question with its (unheld) answers — added so a reported answer has a read path to disappear from — but no screen renders it, on either client. Answers have been writable and unreadable since M6; reporting made the gap visible rather than causing it. |
+| D47 | docs | `SPEC-FEATURES.md` and `SPEC-SCREENS.md` are referenced but have never existed | CLAUDE.md's reference table names both as authoritative — "Feature behaviour, APIs, edge cases, acceptance criteria" and "Screen layout, states, copy" — and its precedence order puts them below `SPEC-PLATFORM.md` but above nothing. Neither file has ever been committed. Everything built to those two headings has therefore been built from inference, and where this build disagrees with an intention nobody wrote down, there is no document to check against. It also means the acceptance criteria a milestone is supposed to be measured by do not exist except in `SPEC-PLATFORM.md` §18. |
+| D32 | mobile | `applyPack()` exists but is never called — family theming is unwired | `src/theme/tokens.ts` exports it and the kit imports the palette directly instead, so a family cannot actually re-skin the app (#7). Latent rather than harmful today, because there is one family; it becomes a real blocker the moment a second one needs its own accent. Found while rewriting the theme, recorded rather than half-wired. |
+| D33 | mobile | No i18n catalogue — UI chrome is English-only | Pack-supplied vocabulary is translated (the family, seeker, provider, engagement and now category words all render in Hindi), and so are language names, via `Intl.DisplayNames`. But every string the app itself owns — "Language", "Your offer", "What do you need?", "Nothing is charged yet." — is hardcoded English. On a Hindi-default domain that produces a screen half in each language, which is worse than either. `engagementTypeLabel()` is English-only for the same reason and should move into the catalogue when one exists. |
+| D34 | mobile | Devanagari falls back inconsistently outside the kit's own components | The kit picks the bundled Noto face per string via `fontFor()`, so anything rendered through `Body`/`Small`/`H1` is right. Around 40 call sites still spread `type.X` into a bare `<Text>`; those carry the Inter family and rely on the platform substituting its own Devanagari face for missing glyphs. It renders — no tofu — but at a different weight and baseline from the text beside it. The fix is to route those call sites through the kit. |
+| D31 | M4 | `credential_types.public_fields` is security-relevant data with no review gate | The allow-list that keeps verification evidence off a public profile (#30) is a `text[]` column, so a single `UPDATE` publishes `rollNumber` and `claimedName` to the world with no code change, no migration and no review. Confirmed by doing it: widening the list leaked both fields into `GET /providers/:id` immediately. The booking journey now catches it, but only if someone runs the journey. The column should be writable only through the admin pack editor with an audit-logged change, and the pack validator should warn when a new credential type declares any `public_fields` at all. |
 | D23 | M9 | Reconciliation is a manual endpoint, not a schedule | `GET /admin/reconciliation` exists and works, but nothing runs it. A critical finding — a ledger that no longer balances — would sit undetected until an admin happened to look. Needs the scheduler (D14's neighbourhood) plus alerting on `criticalCount > 0`. |
 | D24 | M9 | The restore drill is manual and local | `scripts/restore-drill.sh` is real and passes, but it dumps a local database on demand. There is no backup *storage*, no retention policy, no WAL archiving, and therefore no point-in-time recovery — so "restore verified" is verified for the mechanism, not for a production backup that does not exist yet. |
 | D18 | identity | TOTP secrets are stored unencrypted | `auth_factors.secret` is plaintext in the database. Anyone with a DB dump can mint valid codes for every provider and admin forever, which defeats #32 at exactly the moment it matters. Needs application-level encryption with a KMS-held key — an ops/infrastructure task, not a code one, so it is recorded rather than half-built. |
@@ -258,7 +435,10 @@ currently tells.
 test), D3 (reserve-funded platform failure) — 2026-08-27. D8 (required-
 skill tier now enforced at proposal submission, both by
 `check_proposal_requires_skills_and_tier` and a `MatchingService`
-pre-check in `ProposalService.submit()`) — 2026-08-27.
+pre-check in `ProposalService.submit()`) — 2026-08-27. D5 (idempotency
+delete-on-failure; migration 0029 replaced it with a state machine) and
+D4 (settlement webhooks; migration 0030 — the *inbound* half only, see
+D28 for what remains) — 2026-08-28. Both in Decisions below.
 
 ---
 
@@ -269,31 +449,67 @@ trusting any of them.**
 
 | Thing | Reality | Replaced in |
 |---|---|---|
-| `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money | M1 debt / pre-launch |
-| `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires | `notifications/` relay |
+| `RazorpayRouteSandbox` / `CashfreeEasySplitSandbox` | Local, no network, always succeed. No declines, no timeouts, no real money. **One exception: `verifyWebhookSignature` is real** — a real HMAC-SHA256 over the real bytes, compared in constant time. A sandbox that trusted every caller would train the codebase to accept an endpoint that must not be trusting | M1 debt / pre-launch |
+| `outbox` | Written to correctly and transactionally; **nothing reads it**. No external effect ever fires. This is now the *only* thing between a completed engagement and a provider actually being paid — see D28 | `notifications/` relay |
 | `MoneyController` (`/internal/escrows/*`) | Ops scaffolding from M1, now superseded by the real path: `engagements/` orchestrates hold/release via `EscrowService` directly. Kept only for ops tooling and the M1/M2 tests that predate the engagement loop — don't extend it. | Superseded by `engagements/` |
-| `agenda/`, `engagements/`, `assessment/`, `verification/`, `board/`, `sessions/`, `reputation/`, `disputes/` | **Service layer only — no HTTP controllers.** Every M3–M7 test drives the services directly. There is no public API for the engagement loop, credential pipeline, board, sessions, reviews or disputes yet; that arrives with identity/auth (routes need a real actor, not a header) | Whichever milestone adds real auth |
-| Dispute evidence packet | Real, and assembled from the engagement's own record in the original languages — but it copies **text**, not artefacts. `submissions.content_ref` and any recording are referenced by pointer only, and there is no object storage behind those pointers yet, so an adjudicator cannot actually open the disputed file | When object storage is wired up |
+| `taxonomy/` | **Service layer only — no HTTP controller**, internal by design. `safety/` left this row when reporting landed (D45). `notifications/` left this row when the outbox relay was built; the moderation queue is now reachable through `board/`'s own controller. `taxonomy/` is internal by design. `safety/` is the one that matters — see D45 | Whichever milestone needs the screen |
+| Dispute evidence packet | Real, and assembled from the engagement's own record in the original languages — but it copies **text**, not artefacts. Storage and grants now exist, so an adjudicator *could* be granted the disputed file; nothing does it yet, so the packet still contains no openable artefact | Grant the adjudicator the submission on dispute-raise |
 | `disputes/` reviewer assignment | A ruling records *which* admin made it, and the DB enforces that they are one. Nothing assigns disputes to reviewers, balances a queue, or prevents the same admin ruling on their own escalation — `listAwaitingRuling()` is the whole queue | Admin queue work, with M9's ops hardening |
 | `ScreeningService` (`safety/`) | A handful of deterministic regexes for distress language and off-platform-contact mentions — **not a real classifier, no ML, no clinical review of the patterns.** Enough to prove the hold/never-auto-publish/never-auto-reject mechanism (CLAUDE.md #25) works; the patterns themselves are a placeholder, same spirit as M4's illustrative tier thresholds | Needs clinical/policy input before this reaches real users, not another regex |
-| `submissions.content_ref` | A plain text column standing in for a real private-storage pointer. No S3, no `attachment_grants`, no signed URLs (CLAUDE.md #29 unmet) | When object storage is wired up |
+| `submissions.content_ref` | No longer a placeholder for storage: `submissions.attachment_id` points at a real private object, and submitting grants the provider access in the same transaction. `content_ref` stays for rows written before this existed and for a submission that genuinely is a pointer to something the seeker published elsewhere. **What is still a stand-in:** the object store itself is local disk (`LocalDiskStorage` behind the `OBJECT_STORAGE` seam, same shape as the PA sandboxes) — no S3, no bucket, no `ap-south-1` | Real bucket at deploy time; access model is done |
 | `assessment_scores.score` range (0–100) | Placeholder scale. `SPEC-FEATURES.md`, which would define the real one, was never supplied — confirm before this reaches an evaluator screen | Pending SPEC-FEATURES.md |
 | `credentialTypes[].minTierGranted` values in the test fixture (`exam_rank` → t3, `mains_cleared` → t2) | Illustrative placeholders written to exercise the mechanism, same caveat as M1's platform fee % — **not a business decision**, since the mechanism itself makes this manifest data, not core code. Confirm real thresholds with the business before any real credential type ships. | Pending business/compliance sign-off |
 | `provider_credentials.verifier_data` / result-list matching | No real identity documents, no fuzzy name matching (exact case-insensitive string compare only) — a legitimate candidate whose name is recorded slightly differently will fail the automated check and fall to manual review, which is the safe failure direction but still crude | Pre-launch verification hardening |
 | `HundredMsSandboxRoomProvider` | Local, no network, no real room ever created. Same shape as the M1 PA sandboxes — no live SFU credentials in this environment | M5 debt / pre-launch |
-| Session booking | Booked directly against a fixed `scheduled_start`/`scheduled_end` chosen by the caller. No RRULE availability, exceptions, buffers, or notice periods (§9) | Not built — see the M5 note above |
+| Session booking | **Built** (migration 0036). Weekly recurrence with BYDAY, per-date exceptions (whole-day or partial), buffers around booked sessions, a notice period, an advance horizon and a slot grid — all timezone-correct through the tz database rather than offset arithmetic. A booking by a seeker must land on a slot the provider offers; the provider may still arrange their own. **The RRULE support is a documented subset** — `FREQ=WEEKLY;BYDAY=…` only, and anything else is refused at the boundary rather than partially understood. Calendar sync (Google/Outlook) is not built | Fuller RRULE and calendar sync when a real need appears |
 | `sessions.mode = 'audio_only'` | Records that a session is in audio-only mode; nothing actually adapts bitrate or detects network quality to trigger it | Needs a real client + SFU |
-| `transcripts.content_ref` | Same placeholder pattern as `submissions.content_ref` — no object storage, no real transcript ever generated | When object storage is wired up |
+| `transcripts.content_ref` | Not migrated to `attachments` — a transcript is generated rather than uploaded, and nothing generates one yet, so there is no file to store | Needs a real SFU/transcription pipeline first |
 | `seed/domains.ts` exam patterns | **The single most misleading-looking thing in the repo.** Nineteen plausible, structurally-reasonable exam trees, none confirmed against an official notification. They are marked unverified in the DB and none is publicly listed — but they will look authoritative to anyone who skims them. Read `seed/PROVENANCE.md` first | Human confirmation, per domain, before listing |
 | `result_list_entries` for all 19 seeded domains | Every domain declares a `resultSource` and the verifier reading it is real, but **nothing populates the table** (D12). Every `exam_rank` credential in every seeded domain will fail its automated check and fall to manual review | The import pipeline (D12) |
 | `docs/reference/schema-v4-family.sql` | Reference only; never applied. Assumes tables from schema v1–v3 we never received | n/a |
 
 ---
 
+### Demo data is real, not fabricated
+
+`seed/demo-engagements.ts` drives the actual services — draft → agree →
+agenda lock → escrow hold → submit → evaluate → complete → review — so
+the five completed engagements behind the demo profiles have real ledger
+postings, real escrow releases and a real frozen skill snapshot. Nothing
+is inserted straight into a table and no trigger is disabled.
+
+Verified after seeding: every ledger transaction sums to zero, escrow
+drains to 0, ₹5,550 in became ₹832.50 platform fee and ₹4,717.50 in
+provider wallets at the 15% schedule.
+
+This matters beyond tidiness. Writing those rows directly would have
+produced engagements that look right on a profile and are wrong in
+reconciliation — the exact class of fake this file exists to prevent.
+It also surfaced a real gap: **the dev database had no `fee_schedule`
+row at all**, so completing an engagement would have failed at release.
+The seeder now creates one, and it was only found by running the whole
+loop rather than the parts.
+
 ## Decisions and deviations from spec
 
 Where the build knowingly differs from a spec document, and why. If a
 future task is surprised by something, it should be recorded here.
+
+- **`apps/web` and `apps/mobile` keep separate component layers, deliberately.**
+  Confirmed with the user (2026-08-29) after the web app was brought onto
+  the mobile design. They share *design tokens* — palette, type scale,
+  spacing, radii — from `packages/design/tokens.json`, and
+  `./scripts/dev.sh test` fails if the generated copies drift. They do
+  **not** share components: `apps/web/src/components/ui.tsx` and
+  `apps/mobile/src/components/kit.tsx` are two implementations that were
+  matched by hand and will be maintained that way. The consequence is
+  accepted, not overlooked: a component added to one does not appear in
+  the other, and a padding changed in one does not follow. In exchange
+  each app can use its own platform idioms — server components, CSS font
+  stacks and hover states on web; bottom tabs, the platform keystore and
+  per-string font selection on mobile — without a lowest-common-denominator
+  abstraction between them. **Anything that must not diverge belongs in
+  the token file, not in a shared component.**
 
 - **Schema is built forward from M1, not from `schema-v4-family.sql`.** The
   supplied schema files (v1–v3) were never provided; only the v4 patch,
@@ -310,6 +526,47 @@ future task is surprised by something, it should be recorded here.
   the whole request) and ledger (`ledger_transactions.idempotency_key`,
   last line of defence if a handler somehow runs twice). This is
   deliberate redundancy on money paths, not an accident.
+- **An idempotency key is never deleted; it carries a state (0029).**
+  This closed D5. The old code removed its own key when the handler
+  threw, so that a transient failure would not poison the key forever —
+  but that opened a worse window: caller A inserts, caller B's
+  `ON CONFLICT DO NOTHING` returns nothing, A fails and deletes, and B's
+  follow-up SELECT finds **no row**. B then read `undefined.request_hash`
+  — a 500 on a money endpoint — and, had it re-inserted instead, would
+  have run a handler concurrently with a sibling carrying the same key.
+  A failed attempt is now recorded as `failed` and re-claimed by the next
+  retry through a conditional `UPDATE .. WHERE state = 'failed'`. That is
+  atomic without an explicit lock: under READ COMMITTED the loser blocks
+  on the row, re-evaluates its WHERE against the winner's committed row,
+  matches nothing, and is told the request is in flight. The claim loop
+  is bounded at three reads rather than spinning, and it still tolerates
+  a vanished row (an ops purge or a future retention job) by
+  re-inserting, because the alternative is the same 500 as before.
+  Verified non-vacuously: re-introducing the DELETE makes four of the
+  nine new tests fail.
+- **The two idempotency conflicts have distinct codes, deliberately.**
+  Both are 409 and both were previously a bare `ConflictException`,
+  which the envelope filter rendered as `code: "CONFLICT"`.
+  `IDEMPOTENCY_REQUEST_IN_FLIGHT` means "retry this exact call shortly"
+  and carries `detail.retryable`; `IDEMPOTENCY_KEY_REUSED` means "you
+  changed the body, never retry this". A client that cannot tell them
+  apart will either give up on a request that would have succeeded or
+  hammer one that never will — and on a money path the first choice
+  tempts a retry under a fresh key. `IDEMPOTENCY_KEY_REQUIRED` and
+  `IDEMPOTENCY_ACTOR_UNRESOLVED` follow the same registry pattern as
+  `money/errors.ts`.
+- **A re-claimed key re-runs a handler that may have already had a
+  partial effect.** This is a knowing trade. Refusing all retries after
+  a failure would poison the key permanently and force the caller to
+  retry under a new key, which is strictly more dangerous; the ledger's
+  own `idempotency_key` is the layer that catches a genuine
+  double-execution, which is exactly the redundancy noted above. What is
+  *not* decided here is the crashed-process case — see D27.
+- **`markFailed` swallows its own error.** The handler's exception is
+  what the caller needs; masking a declined payment behind a connection
+  reset would be worse than leaving a row `in_flight`. The cost of that
+  choice is D27, and it is reported by reconciliation rather than
+  hidden.
 - **No "at least two entries" ledger trigger.** `amount_paise <> 0` plus
   sum-to-zero already makes a single-entry transaction impossible; a second
   trigger for the same case was removed as dead weight.
@@ -482,6 +739,75 @@ future task is surprised by something, it should be recorded here.
   requirements, and confirming a factor burns every enrolment session the
   user holds. Scope is checked *before* roles in the guard, so a ticket
   cannot reach a route merely because its holder has the right role.
+- **Settlement is inbound-by-webhook, and the signature is the whole
+  gate.** Closing D4 meant accepting a callback from a machine that holds
+  no session and never will, so `POST /webhooks/payment-aggregator` is
+  `@Public()` — which makes the HMAC the only authentication the route
+  has. It verifies before parsing, over the RAW bytes (a re-serialised
+  body is different bytes and would never verify, which is why `main.ts`
+  and `createTestApp` both enable Nest's `rawBody`), and it **fails
+  closed**: no configured secret means no webhook is trusted. Notably it
+  is NOT behind `IdempotencyInterceptor` — that enforces a header we
+  require of *our* clients, scoped to an authenticated actor, and there
+  is no actor here.
+- **Replay safety comes from the aggregator's event id, not from us.**
+  Every aggregator guarantees at-least-once delivery, so a duplicate
+  webhook is normal traffic rather than an anomaly. `pa_webhook_events`
+  is unique on `(pa_provider, pa_event_id)`; a redelivery inserts nothing
+  and returns `applied: false` without touching the payout. The ledger's
+  own `idempotency_key` (`payout-settled:<id>`) sits behind that as the
+  second layer, the same deliberate redundancy noted above. The event row
+  is written *before* it is applied, inside the same transaction, so a
+  crash mid-apply rolls both back rather than leaving a duplicate marker
+  for something that never happened.
+- **A settled payout posts to the ledger; a failed one does not.**
+  `release()` credited `provider_wallet` — what we owe the provider — and
+  settlement discharges that liability (`provider_wallet` →
+  `payment_aggregator`, mirroring `hold()`'s capture in the opposite
+  direction). A *failed* payout posts nothing at all, because the money
+  never left `provider_wallet`: it is still owed and the ledger already
+  says so. Inventing a reversal would put two entries in an append-only
+  record describing a movement that did not happen.
+- **A settled refund posts nothing; a failed one moves to
+  `seeker_wallet`.** The asymmetry with payouts is real rather than an
+  oversight: `refund()` already posts escrow → `payment_aggregator` at
+  *initiation*, so the ledger has said "on its way back to the seeker"
+  since then and confirmation adds nothing. A failure is the case that
+  needs a posting — the money is stranded with the aggregator and still
+  owed to a named person, so it moves to their `seeker_wallet` (an
+  account type that has existed since 0003 for exactly this). Leaving it
+  in `payment_aggregator` would hide a debt to a real person inside a
+  clearing account. **This one is a judgement call the specs are silent
+  on; worth confirming with whoever owns money risk.**
+- **A settlement outcome is terminal, enforced by trigger.** Money
+  confirmed as delivered must not quietly become undelivered because a
+  stale webhook arrived out of order, and a failure must not be papered
+  over by a late success. A contradicting event gets
+  `SETTLEMENT_ALREADY_TERMINAL` (409) and needs a human — a redelivery of
+  the *same* event is still a silent no-op, so this only fires on a
+  genuine conflict.
+- **`payout_clearing` is still unused, deliberately.** 0003 defined it as
+  "funds in flight to a provider's bank account", which belongs to the
+  dispatch step — and nothing dispatches yet (D28). Posting through it
+  now would mean inventing an "in flight" moment that does not exist, so
+  `release()`'s postings were left alone rather than rewritten around a
+  step that has not been built.
+- **A frontend type that guessed a field name took a page down.**
+  `EngagementSummary` carried `agreedPricePaise`; the API sends
+  `amountPaise`. `rupees()` guarded `null` but not `undefined`, so
+  `/engagements` died on `BigInt(undefined)` — a 500 on a route the
+  booking journey happened never to visit. Two fixes, and the second is
+  the one that matters: the field name was corrected *against the actual
+  query*, and `rupees()` now degrades to an em dash rather than taking a
+  whole page down for a missing amount. The journey test now walks every
+  route the UI links to, not only the ones the happy path passes through.
+- **Stranded idempotency keys are reported, never auto-released.** The
+  eleventh reconciliation check (`IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`)
+  surfaces a key claimed long ago and never resolved. It does not free
+  it, for the same reason nothing else in reconciliation writes: whether
+  the dead handler moved money before it died is precisely what a human
+  has to establish, and a timeout that flipped the row back to `failed`
+  would hand the next caller permission to re-run it on a guess.
 - **Reconciliation never writes.** It has no "fix" endpoint and no
   mutation of any kind. CLAUDE.md is explicit that corrections are
   reversing entries made by a human who understands what happened; an
@@ -583,15 +909,59 @@ future task is surprised by something, it should be recorded here.
 
 ---
 
+## Design direction
+
+The mobile app was rebuilt (2026-08-29) to a clean, near-white,
+typographic aesthetic on request: white ground, flat grey card fills
+with no borders and no drop shadows, one large tightly-tracked display
+size, pill-shaped black primary buttons, and a lot more whitespace.
+Reference given was the ElevenLabs marketing site.
+
+**apps/web was brought in line on the same day.** Both apps now read
+their palette, type scale, spacing and radii from
+`packages/design/tokens.json`. Fixed in the port: the Devanagari plural
+bug (D29 — "2 मेंटरs"), the English article glued to a Devanagari noun
+("an अभ्यर्थी account"), raw language codes, "Paper" hardcoded in four
+places of web copy, and the `RuleNote` engineering commentary (D30) —
+26 blocks converted to code comments, 9 hand-reviewed, of which 4 became
+short product copy because they told the user something they actually
+needed.
+
+Two consequences worth knowing:
+
+- **The base palette is now neutral, and the family supplies only an
+  accent.** The old base was the exam family's warm paper and red ink,
+  which meant the core wore one family's costume — the thing CLAUDE.md #7
+  exists to prevent. `applyPack()` now takes the accent and the
+  correction colour and leaves the ground white whatever a family says.
+  (It is still not actually called — D32.)
+- **Type is Inter, with Noto Sans Devanagari bundled alongside it.**
+  Inter has no Devanagari coverage at all. Loading only Inter would have
+  left every Hindi string to whatever the platform substituted, on the
+  screens a Hindi speaker reads first. `fontFor()` picks the face from
+  the string's script.
+
 ## Environment notes
 
+- **`./scripts/dev.sh up` does all of the below.** It is the supported way
+  to get a running stack: it starts Postgres, creates the role and both
+  databases if the container is cold, installs missing dependencies,
+  migrates, seeds, then builds and starts the API and web app, waiting on
+  a real HTTP response from each. `status` / `down` / `restart` / `seed` /
+  `mobile` / `test` / `logs` are the other subcommands. The notes that
+  follow explain what it is doing and remain the manual fallback.
 - Postgres runs locally in this container and **stops when the container
   idles**. `service postgresql start` before running tests.
 - Tests require `DATABASE_URL` to contain `test` (`test/setup.ts` refuses
   otherwise). Current: `postgres://sankalp:sankalp@localhost:5432/sankalp_test`.
-- Full suite: `cd apps/api && npm test` — **246 tests, all passing**,
-  including a from-scratch run (`DROP DATABASE`, re-run all 28 migrations,
+- Full suite: `cd apps/api && npm test` — **320 tests, all passing**,
+  including a from-scratch run (`DROP DATABASE`, re-run all 31 migrations,
   full suite) to confirm migration order integrity, as of this update.
+- On a cold container the database is empty of *everything*, roles
+  included. `service postgresql start`, then as the postgres superuser:
+  `CREATE ROLE sankalp WITH LOGIN PASSWORD 'sankalp' CREATEDB;` and
+  `CREATE DATABASE sankalp_test OWNER sankalp;` (plus `sankalp_dev`),
+  then `npm install && npm run migrate`.
 - `npm run migrate` and `npm run seed` need `DATABASE_URL` in the
   environment; they do not read `.env` themselves.
   `export $(grep -v '^#' .env | xargs)` first.
@@ -607,6 +977,28 @@ future task is surprised by something, it should be recorded here.
   categories deactivate instead of deleting). Verified against a real
   `sankalp_dev` database, twice.
 - Docker is unavailable in this environment; use the local cluster.
+- **`./scripts/dev.sh up` now takes the API port rather than warning about
+  it.** A foreign process on :3000 used to be accepted with a warning,
+  which is the stale-build failure wearing a different hat — `up` reports
+  Ready, the port answers, and you are talking to a build from before
+  your change. Freeing it needs the holder's whole process GROUP killed:
+  `ts-node-dev --respawn` is a supervisor, so killing the listener alone
+  brings the child straight back and the port never clears.
+- **Never write `.catch(() => [])` around a queue fetch.** An ops screen
+  that renders "nothing waiting" when the request actually failed is the
+  most dangerous thing it can say: it reports no work when there may be a
+  pile of it. Both admin queues surface the failure instead.
+- **Never stop a service with `pkill -f <pattern>`.** If the pattern
+  appears in the command line of the shell running it, it matches that
+  shell and kills the caller — this cost a session's worth of confusing
+  exits. `dev.sh` stops services by recorded PID, signalling the whole
+  process group because `ts-node-dev` and `next` fork children that
+  otherwise survive and keep holding the port.
+- **Always rebuild `apps/web` before serving it.** A stale `.next` served
+  on an already-bound port looks exactly like a working app and produces a
+  confident, wrong verdict about a change you just made. `dev.sh up`
+  rebuilds unconditionally for this reason; the fifteen seconds are cheap
+  against an hour of debugging the wrong build.
 
 ---
 

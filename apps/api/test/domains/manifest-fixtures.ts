@@ -42,7 +42,15 @@ export function familyManifestV1(): unknown {
       // minTierGranted values are illustrative placeholders — see
       // TRACKER.md: real thresholds need business/compliance sign-off
       // before launch, same caveat as the platform fee % from M1.
-      { code: 'exam_rank', labels: { en: 'Exam rank' }, verifier: 'public_result_list', minTierGranted: 't3' },
+      {
+        code: 'exam_rank',
+        labels: { en: 'Exam rank' },
+        verifier: 'public_result_list',
+        minTierGranted: 't3',
+        // The achievement, never the evidence: `rollNumber` is
+        // deliberately absent and the tests assert it stays absent.
+        publicFields: ['year', 'rank'],
+      },
       { code: 'mains_cleared', labels: { en: 'Mains cleared' }, verifier: 'document_review', minTierGranted: 't2' },
       {
         code: 'serving_officer',
@@ -57,6 +65,11 @@ export function familyManifestV1(): unknown {
         grantsPaidWorkSanction: true,
       },
     ],
+    reviewDimensions: [
+      { code: 'clarity', labels: { en: 'Made it clear' } },
+      { code: 'punctuality', labels: { en: 'On time' } },
+    ],
+
     policy: {
       minTierForPaidWork: 't2',
       freeQuestionsPerDay: 3,
@@ -72,6 +85,20 @@ export function familyManifestV1(): unknown {
         { tier: 3, code: 'appeal_panel', responseHours: 240, final: true },
       ],
     },
+    reportReasons: [
+      { code: 'harassment', labels: { en: 'Harassment or abuse' } },
+      { code: 'spam', labels: { en: 'Spam or advertising' } },
+      { code: 'welfare_concern', labels: { en: "I'm worried about this person" }, isWelfareConcern: true },
+    ],
+    agreementDocuments: [
+      { code: 'terms_of_service', version: '1', text: { en: 'Use this platform honestly.' } },
+      { code: 'adult_attestation', version: '1', text: { en: 'I am 18 or older.' } },
+      {
+        code: 'session_extension',
+        version: '1',
+        text: { en: 'I am satisfied with the session so far and will pay for the extra time.' },
+      },
+    ],
     supportResources: [{ label: 'Tele-MANAS', value: '14416' }],
     theme: { signature: 'ruled_answer_sheet', tokens: { '--color-ink': '#1a1a2e' } },
   };
