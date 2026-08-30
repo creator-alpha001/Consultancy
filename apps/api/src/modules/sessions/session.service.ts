@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { AgendaService } from '../agenda/agenda.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { AvailabilityService } from './availability.service';
 import { recordingConsentIncomplete, sessionNotFound, sessionWrongStatus } from './errors';
 import { ROOM_PROVIDER, RoomProvider } from './room/room-provider.interface';
 import { ScheduleSessionInput, SessionMode, SessionRow, SessionStatus } from './types';
@@ -55,9 +56,23 @@ export class SessionService {
     @Inject(ROOM_PROVIDER) private readonly roomProvider: RoomProvider,
     @Inject(AgendaService) private readonly agendas: AgendaService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(AvailabilityService) private readonly availability: AvailabilityService,
   ) {}
 
-  async schedule(input: ScheduleSessionInput): Promise<SessionRow> {
+  /**
+   * Books a session.
+   *
+   * `enforceAvailability` defaults on: a booking must land on a slot the
+   * provider actually offers. It can be turned off for a session the
+   * provider arranges themselves, and for the fixtures that predate the
+   * availability engine — but never from an HTTP route, where the caller
+   * is a seeker picking a time.
+   */
+  async schedule(input: ScheduleSessionInput & { enforceAvailability?: boolean }): Promise<SessionRow> {
+    if (input.enforceAvailability) {
+      await this.availability.assertBookable(input.providerId, input.scheduledStart, input.scheduledEnd);
+    }
+
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');

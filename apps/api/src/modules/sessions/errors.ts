@@ -29,3 +29,34 @@ export function recordingConsentIncomplete(sessionId: string, consenting: number
     { status: HttpStatus.CONFLICT, detail: { sessionId, consenting, total } },
   );
 }
+
+/**
+ * A recurrence rule outside the supported subset.
+ *
+ * Refused rather than partially understood: a rule quietly misread
+ * books sessions at times the provider never offered, and nobody finds
+ * out until a seeker turns up to an empty room.
+ */
+export function invalidRrule(rrule: string): AppError {
+  return new AppError(
+    'AVAILABILITY_RRULE_UNSUPPORTED',
+    `only FREQ=WEEKLY;BYDAY=... is supported, got "${rrule}"`,
+    { status: HttpStatus.BAD_REQUEST, detail: { rrule, supported: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU' } },
+  );
+}
+
+export function invalidAvailabilityWindow(startMinute: number, endMinute: number, why?: string): AppError {
+  return new AppError(
+    'AVAILABILITY_WINDOW_INVALID',
+    why ?? `availability must end after it starts (got ${startMinute}-${endMinute})`,
+    { status: HttpStatus.BAD_REQUEST, detail: { startMinute, endMinute } },
+  );
+}
+
+export function slotNotAvailable(providerId: string, startIso: string): AppError {
+  return new AppError(
+    'SESSION_SLOT_NOT_AVAILABLE',
+    'that time is not available — it may have just been taken, or it falls outside the hours offered',
+    { status: HttpStatus.CONFLICT, detail: { providerId, start: startIso } },
+  );
+}

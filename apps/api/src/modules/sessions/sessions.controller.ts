@@ -1,11 +1,12 @@
-import { BadRequestException, Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { AgendaService } from '../agenda/agenda.service';
 import { EngagementAccessService } from '../engagements/engagement-access.service';
 import { EngagementsService } from '../engagements/engagements.service';
-import { CurrentActor } from '../identity/auth.guard';
+import { CurrentActor, Public, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
+import { AvailabilityService } from './availability.service';
 import { SessionService } from './session.service';
 import { TranscriptService } from './transcript.service';
 import { SessionRow } from './types';
@@ -28,6 +29,7 @@ export class SessionsController {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(AvailabilityService) private readonly availability: AvailabilityService,
     @Inject(TranscriptService) private readonly transcripts: TranscriptService,
     @Inject(AgendaService) private readonly agendas: AgendaService,
     @Inject(EngagementsService) private readonly engagements: EngagementsService,
@@ -53,10 +55,15 @@ export class SessionsController {
   /**
    * Book a session on an engagement.
    *
-   * A fixed window the two parties already agreed — NOT the RRULE
-   * availability engine SPEC-PLATFORM.md §9 describes. That remains
-   * unbuilt (TRACKER.md); this exposes what actually exists rather than
-   * implying a scheduling engine we do not have.
+   * The time must land on a slot the provider actually offers — the
+   * availability engine decides, not the caller. A seeker picking a time
+   * out of the air used to be accepted, including 3am and on top of an
+   * existing session.
+   *
+   * The provider booking their own session is the one exception: they
+   * are allowed to arrange something outside their published hours,
+   * because those hours are a statement to seekers rather than a rule
+   * about their own diary.
    */
   @Post('engagements/:engagementId/sessions')
   async book(
@@ -77,7 +84,111 @@ export class SessionsController {
       scheduledStart: start,
       scheduledEnd: end,
       timezone: body.timezone,
+      enforceAvailability: actor.userId !== parties.providerId,
     });
+  }
+
+  // ── Availability (SPEC-PLATFORM.md §9) ──────────────────────────────
+
+  /**
+   * The slots a seeker can actually pick.
+   *
+   * Public: when someone is bookable is not privileged, and a seeker
+   * comparing two providers should not have to sign up to see whether
+   * either has time this week.
+   */
+  @Get('providers/:id/slots')
+  @Public()
+  async slots(
+    @Param('id') providerId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ): Promise<Array<{ start: string; end: string }>> {
+    const fromIso = from ?? new Date().toISOString();
+    const toIso = to ?? new Date(Date.now() + 14 * 86_400_000).toISOString();
+    const slots = await this.availability.slotsFor(providerId, fromIso, toIso);
+    return slots.map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString() }));
+  }
+
+  @Get('me/availability')
+  @Roles('provider')
+  async myAvailability(@CurrentActor() actor: Actor): Promise<{
+    rules: unknown[];
+    policy: unknown;
+  }> {
+    const [rules, policy] = await Promise.all([
+      this.availability.listRules(actor.userId),
+      this.availability.getPolicy(actor.userId),
+    ]);
+    return { rules, policy };
+  }
+
+  @Post('me/availability/rules')
+  @Roles('provider')
+  async addRule(
+    @CurrentActor() actor: Actor,
+    @Body()
+    body: {
+      timezone?: string;
+      rrule?: string;
+      startMinute?: number;
+      endMinute?: number;
+      effectiveFrom?: string;
+      effectiveTo?: string;
+    },
+  ): Promise<unknown> {
+    if (!body.timezone) throw new BadRequestException('timezone is required (an IANA name, never an offset)');
+    if (!body.rrule) throw new BadRequestException('rrule is required');
+    if (typeof body.startMinute !== 'number' || typeof body.endMinute !== 'number') {
+      throw new BadRequestException('startMinute and endMinute are required');
+    }
+    return this.availability.addRule(actor.userId, {
+      timezone: body.timezone,
+      rrule: body.rrule,
+      startMinute: body.startMinute,
+      endMinute: body.endMinute,
+      effectiveFrom: body.effectiveFrom,
+      effectiveTo: body.effectiveTo ?? null,
+    });
+  }
+
+  @Post('me/availability/rules/:ruleId/remove')
+  @Roles('provider')
+  async removeRule(@Param('ruleId') ruleId: string, @CurrentActor() actor: Actor): Promise<{ ok: true }> {
+    await this.availability.removeRule(actor.userId, ruleId);
+    return { ok: true };
+  }
+
+  /** "Not that day." Kept separate from the rules so a holiday does not edit the rule away. */
+  @Post('me/availability/exceptions')
+  @Roles('provider')
+  async addException(
+    @CurrentActor() actor: Actor,
+    @Body() body: { onDate?: string; startMinute?: number; endMinute?: number; reason?: string },
+  ): Promise<{ ok: true }> {
+    if (!body.onDate) throw new BadRequestException('onDate is required');
+    await this.availability.addException(actor.userId, {
+      onDate: body.onDate,
+      startMinute: body.startMinute ?? null,
+      endMinute: body.endMinute ?? null,
+      reason: body.reason,
+    });
+    return { ok: true };
+  }
+
+  @Post('me/availability/policy')
+  @Roles('provider')
+  async setPolicy(
+    @CurrentActor() actor: Actor,
+    @Body()
+    body: {
+      minNoticeMinutes?: number;
+      bufferMinutes?: number;
+      maxAdvanceDays?: number;
+      slotMinutes?: number;
+    },
+  ): Promise<unknown> {
+    return this.availability.setPolicy(actor.userId, body);
   }
 
   @Get('sessions/:id')

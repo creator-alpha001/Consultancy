@@ -3,6 +3,7 @@ import { AgendaModule } from '../agenda/agenda.module';
 import { EngagementsModule } from '../engagements/engagements.module';
 import { HundredMsSandboxRoomProvider } from './room/hundred-ms-sandbox.provider';
 import { ROOM_PROVIDER } from './room/room-provider.interface';
+import { AvailabilityService } from './availability.service';
 import { SessionService } from './session.service';
 import { SessionsController } from './sessions.controller';
 import { TranscriptService } from './transcript.service';
@@ -13,10 +14,12 @@ import { TranscriptService } from './transcript.service';
   controllers: [SessionsController],
   providers: [
     SessionService,
+    AvailabilityService,
     TranscriptService,
     HundredMsSandboxRoomProvider,
     { provide: ROOM_PROVIDER, useExisting: HundredMsSandboxRoomProvider },
   ],
-  exports: [SessionService, TranscriptService],
+  exports: [SessionService,
+    AvailabilityService, TranscriptService],
 })
 export class SessionsModule {}

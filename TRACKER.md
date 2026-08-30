@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-30 · after provider-declared working languages
+Last updated: 2026-08-30 · after the availability and booking engine (M5)
 
 ---
 
@@ -420,7 +420,7 @@ trusting any of them.**
 | `credentialTypes[].minTierGranted` values in the test fixture (`exam_rank` → t3, `mains_cleared` → t2) | Illustrative placeholders written to exercise the mechanism, same caveat as M1's platform fee % — **not a business decision**, since the mechanism itself makes this manifest data, not core code. Confirm real thresholds with the business before any real credential type ships. | Pending business/compliance sign-off |
 | `provider_credentials.verifier_data` / result-list matching | No real identity documents, no fuzzy name matching (exact case-insensitive string compare only) — a legitimate candidate whose name is recorded slightly differently will fail the automated check and fall to manual review, which is the safe failure direction but still crude | Pre-launch verification hardening |
 | `HundredMsSandboxRoomProvider` | Local, no network, no real room ever created. Same shape as the M1 PA sandboxes — no live SFU credentials in this environment | M5 debt / pre-launch |
-| Session booking | Booked directly against a fixed `scheduled_start`/`scheduled_end` chosen by the caller. No RRULE availability, exceptions, buffers, or notice periods (§9) | Not built — see the M5 note above |
+| Session booking | **Built** (migration 0036). Weekly recurrence with BYDAY, per-date exceptions (whole-day or partial), buffers around booked sessions, a notice period, an advance horizon and a slot grid — all timezone-correct through the tz database rather than offset arithmetic. A booking by a seeker must land on a slot the provider offers; the provider may still arrange their own. **The RRULE support is a documented subset** — `FREQ=WEEKLY;BYDAY=…` only, and anything else is refused at the boundary rather than partially understood. Calendar sync (Google/Outlook) is not built | Fuller RRULE and calendar sync when a real need appears |
 | `sessions.mode = 'audio_only'` | Records that a session is in audio-only mode; nothing actually adapts bitrate or detects network quality to trigger it | Needs a real client + SFU |
 | `transcripts.content_ref` | Not migrated to `attachments` — a transcript is generated rather than uploaded, and nothing generates one yet, so there is no file to store | Needs a real SFU/transcription pipeline first |
 | `seed/domains.ts` exam patterns | **The single most misleading-looking thing in the repo.** Nineteen plausible, structurally-reasonable exam trees, none confirmed against an official notification. They are marked unverified in the DB and none is publicly listed — but they will look authoritative to anyone who skims them. Read `seed/PROVENANCE.md` first | Human confirmation, per domain, before listing |
