@@ -17,9 +17,18 @@ function Submit(): JSX.Element {
 export function RegisterForm({
   seekerWord,
   providerWord,
+  domainCode,
+  lang = 'en',
+  adultText,
+  termsText,
 }: {
   seekerWord: string;
   providerWord: string;
+  domainCode: string;
+  lang?: string;
+  /** The 18+ wording, from the family pack — never written in this file. */
+  adultText: string;
+  termsText: string | null;
 }): JSX.Element {
   const [state, action] = useFormState<FormState, FormData>(registerAction, {});
 
@@ -60,11 +69,26 @@ export function RegisterForm({
         </p>
       </fieldset>
 
-      {/* CLAUDE.md #27 — 18+. The API refuses registration without this. */}
+      {/*
+        The wording comes from the family pack and is stored in full when
+        accepted — so what someone agreed to survives the text being
+        revised later. It is shown here rather than linked, because an
+        agreement nobody read is not much of an agreement.
+      */}
+      <input type="hidden" name="domainCode" value={domainCode} />
+      <input type="hidden" name="lang" value={lang} />
+
       <label className="mb-4 flex items-start gap-2 text-sm">
-        <input type="checkbox" name="confirmsAdult" className="mt-1 h-4 w-4" />
-        <span>I confirm I am 18 years of age or older.</span>
+        <input type="checkbox" name="confirmsAdult" className="mt-1 h-4 w-4" required />
+        <span>{adultText}</span>
       </label>
+
+      {termsText && (
+        <details className="mb-4 rounded-card border border-rule bg-surface-sunk p-3 text-sm">
+          <summary className="cursor-pointer font-medium">What you are agreeing to</summary>
+          <p className="mt-2 whitespace-pre-wrap text-ink-muted">{termsText}</p>
+        </details>
+      )}
 
       <Submit />
     </form>

@@ -66,6 +66,7 @@ export class DomainLoaderService {
       credentialTypes: (m.credentialTypes ?? []).filter((c) => c.active !== false),
       policy: m.policy,
       reportReasons: m.reportReasons ?? [],
+      agreementDocuments: m.agreementDocuments ?? [],
       supportResources: m.supportResources,
       theme: m.theme,
     };

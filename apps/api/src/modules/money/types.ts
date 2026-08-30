@@ -50,6 +50,12 @@ export interface EscrowRow {
   status: EscrowStatus;
   holdTransactionId: string | null;
   resolutionTransactionId: string | null;
+  /**
+   * Null for the engagement's own escrow; set for a paid session
+   * extension, which is charged as its own transaction so it can be
+   * refunded on its own.
+   */
+  sessionExtensionId: string | null;
 }
 
 export interface FeeSchedule {

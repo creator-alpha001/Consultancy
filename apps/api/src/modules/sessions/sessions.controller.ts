@@ -7,6 +7,7 @@ import { EngagementsService } from '../engagements/engagements.service';
 import { CurrentActor, Public, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
 import { AvailabilityService } from './availability.service';
+import { SessionExtensionService } from './session-extension.service';
 import { SessionRoomService } from './session-room.service';
 import { SessionService } from './session.service';
 import { TranscriptService } from './transcript.service';
@@ -32,6 +33,7 @@ export class SessionsController {
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(AvailabilityService) private readonly availability: AvailabilityService,
     @Inject(SessionRoomService) private readonly inRoom: SessionRoomService,
+    @Inject(SessionExtensionService) private readonly extensions: SessionExtensionService,
     @Inject(TranscriptService) private readonly transcripts: TranscriptService,
     @Inject(AgendaService) private readonly agendas: AgendaService,
     @Inject(EngagementsService) private readonly engagements: EngagementsService,
@@ -274,6 +276,68 @@ export class SessionsController {
     return { creditedSeconds: await this.inRoom.creditedSeconds(id) };
   }
 
+  // ── Paid extensions (SPEC-PLATFORM.md §9) ───────────────────────────
+
+  /**
+   * Either party offers more time at a price. Only while the session is
+   * running: adding time to a finished session is a renegotiation of
+   * work already delivered, which is what a change order is for.
+   */
+  @Post('sessions/:id/extensions')
+  async proposeExtension(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { minutes?: number; amountPaise?: number },
+  ): Promise<unknown> {
+    await this.assertParticipant(id, actor);
+    if (typeof body.minutes !== 'number' || body.minutes <= 0) {
+      throw new BadRequestException('minutes must be a positive number');
+    }
+    if (typeof body.amountPaise !== 'number' || body.amountPaise <= 0) {
+      throw new BadRequestException('amountPaise must be a positive number');
+    }
+    const extension = await this.extensions.propose({
+      sessionId: id,
+      proposedBy: actor.userId,
+      minutes: body.minutes,
+      amountPaise: BigInt(body.amountPaise),
+    });
+    return serializeExtension(extension);
+  }
+
+  /**
+   * The seeker agrees and pays. The agreement they accept comes from the
+   * family pack and is stored in full, so revising the wording later
+   * cannot change what they actually agreed to.
+   */
+  @Post('extensions/:extensionId/accept')
+  async acceptExtension(
+    @Param('extensionId') extensionId: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { lang?: string },
+  ): Promise<unknown> {
+    const extension = await this.extensions.accept({
+      extensionId,
+      userId: actor.userId,
+      lang: body.lang ?? 'en',
+    });
+    return serializeExtension(extension);
+  }
+
+  @Post('extensions/:extensionId/decline')
+  async declineExtension(
+    @Param('extensionId') extensionId: string,
+    @CurrentActor() actor: Actor,
+  ): Promise<unknown> {
+    return serializeExtension(await this.extensions.decline(extensionId, actor.userId));
+  }
+
+  @Get('sessions/:id/extensions')
+  async listExtensions(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<unknown[]> {
+    await this.assertParticipant(id, actor);
+    return (await this.extensions.listForSession(id)).map(serializeExtension);
+  }
+
   @Get('sessions/:id')
   async get(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<unknown> {
     const session = await this.sessions.get(id);
@@ -392,4 +456,29 @@ function parseInstant(value: string | undefined, field: string): Date {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) throw new BadRequestException(`${field} is not a valid timestamp`);
   return parsed;
+}
+
+/** Money crosses the wire as paise-as-string, never a JS number. */
+function serializeExtension(e: {
+  id: string;
+  sessionId: string;
+  proposedBy: string;
+  minutes: number;
+  currency: string;
+  amountPaise: bigint;
+  status: string;
+  agreementId: string | null;
+  acceptedAt: Date | null;
+}): Record<string, unknown> {
+  return {
+    id: e.id,
+    sessionId: e.sessionId,
+    proposedBy: e.proposedBy,
+    minutes: e.minutes,
+    currency: e.currency,
+    amountPaise: e.amountPaise.toString(),
+    status: e.status,
+    agreementId: e.agreementId,
+    acceptedAt: e.acceptedAt,
+  };
 }

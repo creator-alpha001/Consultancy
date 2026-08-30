@@ -33,6 +33,13 @@ export interface EscrowActor {
 
 export interface HoldEscrowInput extends EscrowActor {
   engagementId: string;
+  /**
+   * Set when this hold is for a paid session extension rather than the
+   * engagement itself. An extension is charged as its own transaction so
+   * it can be refunded on its own, and gets its own escrow row beside
+   * the engagement's.
+   */
+  sessionExtensionId?: string | null;
   seekerId: string;
   providerId: string;
   currency: string;
@@ -85,6 +92,7 @@ interface EscrowDbRow {
   status: EscrowRow['status'];
   hold_transaction_id: string | null;
   resolution_transaction_id: string | null;
+  session_extension_id: string | null;
 }
 
 function mapEscrowRow(row: EscrowDbRow): EscrowRow {
@@ -100,6 +108,7 @@ function mapEscrowRow(row: EscrowDbRow): EscrowRow {
     status: row.status,
     holdTransactionId: row.hold_transaction_id,
     resolutionTransactionId: row.resolution_transaction_id,
+    sessionExtensionId: row.session_extension_id,
   };
 }
 
@@ -132,7 +141,22 @@ export class EscrowService {
    * (CLAUDE.md — only money/ writes ledger, escrow, payout and refund tables).
    */
   async findByEngagementId(engagementId: string): Promise<EscrowRow | null> {
-    const res = await this.pool.query<EscrowDbRow>(`SELECT * FROM escrows WHERE engagement_id = $1`, [engagementId]);
+    // The engagement's OWN escrow. Since extensions gained their own
+    // rows against the same engagement, an unscoped lookup here would
+    // sometimes return an extension and release the wrong money.
+    const res = await this.pool.query<EscrowDbRow>(
+      `SELECT * FROM escrows WHERE engagement_id = $1 AND session_extension_id IS NULL`,
+      [engagementId],
+    );
+    return res.rows[0] ? mapEscrowRow(res.rows[0]) : null;
+  }
+
+  /** The escrow behind one paid session extension. */
+  async findByExtensionId(sessionExtensionId: string): Promise<EscrowRow | null> {
+    const res = await this.pool.query<EscrowDbRow>(
+      `SELECT * FROM escrows WHERE session_extension_id = $1`,
+      [sessionExtensionId],
+    );
     return res.rows[0] ? mapEscrowRow(res.rows[0]) : null;
   }
 
@@ -143,8 +167,10 @@ export class EscrowService {
     try {
       await client.query('BEGIN');
       const existing = await client.query<EscrowDbRow>(
-        `SELECT * FROM escrows WHERE engagement_id = $1`,
-        [input.engagementId],
+        input.sessionExtensionId
+          ? `SELECT * FROM escrows WHERE session_extension_id = $1`
+          : `SELECT * FROM escrows WHERE engagement_id = $1 AND session_extension_id IS NULL`,
+        [input.sessionExtensionId ?? input.engagementId],
       );
       if (existing.rows[0]) {
         escrowId = existing.rows[0].id;
@@ -154,10 +180,17 @@ export class EscrowService {
         }
       } else {
         const inserted = await client.query<{ id: string }>(
-          `INSERT INTO escrows (engagement_id, seeker_id, provider_id, currency, amount_paise)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO escrows (engagement_id, seeker_id, provider_id, currency, amount_paise, session_extension_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id`,
-          [input.engagementId, input.seekerId, input.providerId, input.currency, input.amountPaise.toString()],
+          [
+            input.engagementId,
+            input.seekerId,
+            input.providerId,
+            input.currency,
+            input.amountPaise.toString(),
+            input.sessionExtensionId ?? null,
+          ],
         );
         escrowId = inserted.rows[0].id;
       }

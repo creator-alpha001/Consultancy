@@ -17,6 +17,7 @@ import { EngagementsModule } from './modules/engagements/engagements.module';
 import { MoneyModule } from './modules/money/money.module';
 import { ReputationModule } from './modules/reputation/reputation.module';
 import { SafetyModule } from './modules/safety/safety.module';
+import { AgreementsModule } from './common/agreements/agreements.module';
 import { StorageModule } from './common/storage/storage.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { VerificationModule } from './modules/verification/verification.module';
@@ -36,6 +37,7 @@ import { VerificationModule } from './modules/verification/verification.module';
     SessionsModule,
     SafetyModule,
     StorageModule,
+    AgreementsModule,
     BoardModule,
     ReputationModule,
     DisputesModule,

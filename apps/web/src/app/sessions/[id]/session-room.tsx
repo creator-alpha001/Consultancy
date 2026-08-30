@@ -2,8 +2,11 @@
 
 import { useFormState, useFormStatus } from 'react-dom';
 import {
+  acceptExtensionAction,
   audioOnlyAction,
   consentAction,
+  declineExtensionAction,
+  proposeExtensionAction,
   endSessionAction,
   recordingAction,
   startSessionAction,
@@ -170,12 +173,144 @@ function Checklist({ sessionId, agenda, live }: { sessionId: string; agenda: Age
   );
 }
 
+/**
+ * Buying more time.
+ *
+ * Two rules are visible in this component, and both are product
+ * decisions rather than implementation details:
+ *
+ *   * the extension is charged **separately** from the booking, so it
+ *     can be refunded on its own — the copy says so, because a person
+ *     seeing one price and being charged two deserves to know why;
+ *   * the seeker reads the agreement **before** the money moves. The
+ *     text comes from the family pack and is stored in full when
+ *     accepted, so revising it later cannot change what they agreed to.
+ *
+ * Only the seeker sees the accept form: it is their money.
+ */
+function Extensions({
+  sessionId,
+  extensions,
+  isSeeker,
+  live,
+  agreementText,
+  currencyRupees,
+}: {
+  sessionId: string;
+  extensions: Array<{ id: string; minutes: number; amountPaise: string; status: string }>;
+  isSeeker: boolean;
+  live: boolean;
+  agreementText: string | null;
+  currencyRupees: (paise: string) => string;
+}): JSX.Element | null {
+  const [proposeState, proposeForm] = useFormState<ActionState, FormData>(proposeExtensionAction, {});
+  const [acceptState, acceptForm] = useFormState<ActionState, FormData>(acceptExtensionAction, {});
+  const [declineState, declineForm] = useFormState<ActionState, FormData>(declineExtensionAction, {});
+
+  if (!live) return null;
+  const open = extensions.find((e) => e.status === 'proposed');
+  const settled = extensions.filter((e) => e.status === 'accepted' || e.status === 'settled');
+
+  return (
+    <Card className="mb-4">
+      <p className="text-bodyStrong font-medium">More time</p>
+      <ErrorNote code={proposeState.error?.code} message={proposeState.error?.message} />
+      <ErrorNote code={acceptState.error?.code} message={acceptState.error?.message} />
+      <ErrorNote code={declineState.error?.code} message={declineState.error?.message} />
+
+      {settled.length > 0 && (
+        <ul className="mt-sm text-small text-ink-muted">
+          {settled.map((e) => (
+            <li key={e.id}>
+              +{e.minutes} min · {currencyRupees(e.amountPaise)} · charged separately from the booking
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {open ? (
+        isSeeker ? (
+          <form action={acceptForm} className="mt-md flex flex-col gap-md">
+            <input type="hidden" name="extensionId" value={open.id} />
+            <input type="hidden" name="sessionId" value={sessionId} />
+            <input type="hidden" name="lang" value="en" />
+            <p className="text-small">
+              {open.minutes} more minutes for {currencyRupees(open.amountPaise)}, charged separately from
+              the original booking.
+            </p>
+            {agreementText && (
+              <label className="flex items-start gap-md text-small">
+                <input type="checkbox" name="agreed" className="mt-1" required />
+                <span className="whitespace-pre-wrap">{agreementText}</span>
+              </label>
+            )}
+            <div className="flex gap-md">
+              <Button type="submit" variant="primary">
+                Agree and add the time
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="mt-md flex flex-col gap-md">
+            <p className="text-small text-ink-muted">
+              Offered: {open.minutes} more minutes for {currencyRupees(open.amountPaise)}. Waiting for them
+              to accept — only the person paying can.
+            </p>
+            <form action={declineForm}>
+              <input type="hidden" name="extensionId" value={open.id} />
+              <input type="hidden" name="sessionId" value={sessionId} />
+              <Button type="submit" variant="secondary">
+                Withdraw the offer
+              </Button>
+            </form>
+          </div>
+        )
+      ) : (
+        <form action={proposeForm} className="mt-md flex flex-wrap items-end gap-md">
+          <input type="hidden" name="sessionId" value={sessionId} />
+          <label className="text-small">
+            <span className="mb-1 block text-ink-muted">Minutes</span>
+            <input
+              type="number"
+              name="minutes"
+              min={5}
+              max={120}
+              defaultValue={15}
+              className="w-24 rounded-card border border-rule bg-paper px-2 py-1 tabular-nums"
+            />
+          </label>
+          <label className="text-small">
+            <span className="mb-1 block text-ink-muted">Cost (₹)</span>
+            <input
+              type="number"
+              name="rupees"
+              min={1}
+              defaultValue={300}
+              className="w-28 rounded-card border border-rule bg-paper px-2 py-1 tabular-nums"
+            />
+          </label>
+          <Button type="submit" variant="secondary">
+            Offer more time
+          </Button>
+        </form>
+      )}
+    </Card>
+  );
+}
+
 export function SessionRoom({
   detail,
   myUserId,
+  isSeeker = false,
+  extensions = [],
+  extensionAgreementText = null,
 }: {
   detail: SessionDetail;
   myUserId: string;
+  /** Only the person paying can accept an extension. */
+  isSeeker?: boolean;
+  extensions?: Array<{ id: string; minutes: number; amountPaise: string; status: string }>;
+  extensionAgreementText?: string | null;
 }): JSX.Element {
   const { session, consents, agenda } = detail;
   const [startState, startForm] = useFormState<ActionState, FormData>(startSessionAction, {});
@@ -193,6 +328,15 @@ export function SessionRoom({
       <ErrorNote code={startState.error?.code} message={startState.error?.message} />
       <ErrorNote code={endState.error?.code} message={endState.error?.message} />
       <ErrorNote code={audioState.error?.code} message={audioState.error?.message} />
+
+      <Extensions
+        sessionId={session.id}
+        extensions={extensions}
+        isSeeker={isSeeker}
+        live={live}
+        agreementText={extensionAgreementText}
+        currencyRupees={(paise) => `₹${(Number(paise) / 100).toLocaleString('en-IN')}`}
+      />
 
       {/* The call surface. No SFU is wired up — saying so beats a fake video tile. */}
       <Card className="mb-4">

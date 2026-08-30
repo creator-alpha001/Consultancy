@@ -33,6 +33,16 @@ function sql(q) {
 }
 
 /**
+ * The first value only.
+ *
+ * `INSERT ... RETURNING` prints the value AND psql's own "INSERT 0 1"
+ * status line, so the raw output is not a usable id.
+ */
+function sqlValue(q) {
+  return sql(q).split('\n')[0].trim();
+}
+
+/**
  * A fresh open dispute, every run.
  *
  * Dispute rows and their evidence are append-only, so a ruled dispute
@@ -244,14 +254,24 @@ console.log('\n7. Reports from people');
     return tokenText;
   }
 
-  const [author, reporter] = sql(
-    `SELECT string_agg(id::text, ',') FROM (SELECT id FROM users WHERE role = 'seeker' ORDER BY created_at LIMIT 2) t`,
-  ).split(',');
+  // Fresh accounts per run. Reusing the oldest two seekers exhausted the
+  // pack's free-question quota after three runs and failed with a 429 —
+  // a real product rule doing its job, tripped by a test that should not
+  // have been reusing an account in the first place.
+  const stamp = Date.now();
+  const author = sqlValue(
+    `INSERT INTO users (email, role, status, adult_confirmed_at)
+     VALUES ('journey-author-${stamp}@test.local', 'seeker', 'active', now()) RETURNING id`,
+  );
+  const reporter = sqlValue(
+    `INSERT INTO users (email, role, status, adult_confirmed_at)
+     VALUES ('journey-reporter-${stamp}@test.local', 'seeker', 'active', now()) RETURNING id`,
+  );
 
   if (!author || !reporter) {
     bad('could not find two seekers to run the reporting check with');
   } else {
-    const authorToken = sessionFor(author, 'journey-question-author');
+    const authorToken = sessionFor(author, `journey-question-author-${stamp}`);
     const asked = await fetch(`${API}/board/questions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${authorToken}` },
@@ -268,7 +288,7 @@ console.log('\n7. Reports from people');
       : bad(`could not ask a question through the API (${asked.status})`);
 
     if (questionId) {
-      const reporterToken = sessionFor(reporter, 'journey-report-token');
+      const reporterToken = sessionFor(reporter, `journey-report-token-${stamp}`);
       const raised = await fetch(`${API}/reports`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${reporterToken}` },

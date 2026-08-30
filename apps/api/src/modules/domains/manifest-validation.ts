@@ -235,6 +235,23 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     reasonCodes.add(r.code);
   });
 
+  // The wording of what people agree to. Validated like any other pack
+  // list so a malformed document fails the publish rather than the flow
+  // that later needs it.
+  const agreementDocuments = v.array(m.agreementDocuments, 'agreementDocuments', (item, p) => {
+    const a = (item ?? {}) as Record<string, unknown>;
+    const acode = v.string(a.code, `${p}.code`);
+    const aversion = v.string(a.version, `${p}.version`);
+    const text = v.labelMap(a.text, `${p}.text`);
+    if (!acode || !aversion || !text) return undefined;
+    return { code: acode, version: aversion, text };
+  });
+  const agreementCodes = new Set<string>();
+  agreementDocuments.forEach((a, i) => {
+    if (agreementCodes.has(a.code)) v.fail(`agreementDocuments[${i}].code`, `duplicate document code "${a.code}"`);
+    agreementCodes.add(a.code);
+  });
+
   const supportResources = v.array(m.supportResources, 'supportResources', (item, p) => {
     const r = (item ?? {}) as Record<string, unknown>;
     const label = v.string(r.label, `${p}.label`);
@@ -269,6 +286,7 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     reviewDimensions,
     policy: policyRaw as unknown as FamilyManifestInput['policy'],
     reportReasons,
+    agreementDocuments,
     supportResources,
     theme: { signature: themeSignature!, tokens: themeRaw.tokens as Record<string, string> },
   };

@@ -4,6 +4,7 @@ import { PG_POOL } from '../../database/db.module';
 import { AgendaService } from '../agenda/agenda.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { AvailabilityService } from './availability.service';
+import { SessionExtensionService } from './session-extension.service';
 import { recordingConsentIncomplete, sessionNotFound, sessionWrongStatus } from './errors';
 import { ROOM_PROVIDER, RoomProvider } from './room/room-provider.interface';
 import { ScheduleSessionInput, SessionMode, SessionRow, SessionStatus } from './types';
@@ -57,6 +58,7 @@ export class SessionService {
     @Inject(AgendaService) private readonly agendas: AgendaService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(AvailabilityService) private readonly availability: AvailabilityService,
+    @Inject(SessionExtensionService) private readonly extensions: SessionExtensionService,
   ) {}
 
   /**
@@ -230,6 +232,12 @@ export class SessionService {
         RETURNING *`,
       [sessionId],
     );
+
+    // The extra time was delivered when the session ended, so it is paid
+    // now — not when the whole engagement completes, which may be days
+    // later. This is the point of charging an extension separately.
+    await this.extensions.settleForSession(sessionId);
+
     return mapSession(res.rows[0]);
   }
 

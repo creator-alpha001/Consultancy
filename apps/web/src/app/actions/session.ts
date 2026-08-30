@@ -99,3 +99,69 @@ export async function tickAgendaItemAction(_prev: ActionState, form: FormData): 
   revalidatePath(`/sessions/${sessionId}`);
   return result;
 }
+
+/**
+ * Offering more time at a price. Either party may offer; only the seeker
+ * can accept, because it is their money.
+ */
+export async function proposeExtensionAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const sessionId = String(form.get('sessionId') ?? '');
+  const minutes = Number(form.get('minutes') ?? 0);
+  const rupees = Number(form.get('rupees') ?? 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    return { error: { code: 'MINUTES_REQUIRED', message: 'How many more minutes?' } };
+  }
+  if (!Number.isFinite(rupees) || rupees <= 0) {
+    return { error: { code: 'AMOUNT_REQUIRED', message: 'What does the extra time cost?' } };
+  }
+  try {
+    await apiAsUser(`/sessions/${sessionId}/extensions`, {
+      method: 'POST',
+      // Rupees on the screen, paise on the wire — money is never a float.
+      body: JSON.stringify({ minutes, amountPaise: Math.round(rupees * 100) }),
+    });
+    revalidatePath(`/sessions/${sessionId}`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError) return { error: { code: err.code, message: err.message } };
+    throw err;
+  }
+}
+
+/**
+ * The seeker accepts the pack's terms and pays. The wording they saw is
+ * stored in full server-side, so this action deliberately does NOT send
+ * the text — a client that supplied what it claims to have shown could
+ * claim anything.
+ */
+export async function acceptExtensionAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const extensionId = String(form.get('extensionId') ?? '');
+  const sessionId = String(form.get('sessionId') ?? '');
+  if (form.get('agreed') !== 'on') {
+    return { error: { code: 'AGREEMENT_REQUIRED', message: 'You have to accept the terms to add time.' } };
+  }
+  try {
+    await apiAsUser(`/extensions/${extensionId}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({ lang: String(form.get('lang') ?? 'en') }),
+    });
+    revalidatePath(`/sessions/${sessionId}`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError) return { error: { code: err.code, message: err.message } };
+    throw err;
+  }
+}
+
+export async function declineExtensionAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const extensionId = String(form.get('extensionId') ?? '');
+  const sessionId = String(form.get('sessionId') ?? '');
+  try {
+    await apiAsUser(`/extensions/${extensionId}/decline`, { method: 'POST' });
+    revalidatePath(`/sessions/${sessionId}`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError) return { error: { code: err.code, message: err.message } };
+    throw err;
+  }
+}

@@ -107,6 +107,26 @@ export interface ReportReasonInput {
   isWelfareConcern?: boolean;
 }
 
+/**
+ * Something a person is asked to agree to, in their own language.
+ *
+ * Family data, not core code, for two reasons. The obvious one is
+ * CLAUDE.md #2: no hardcoded user-facing strings. The important one is
+ * that the WORDING of an agreement is a legal decision — it will be
+ * revised by lawyers, and revising it must not require a deploy.
+ *
+ * `version` is what a stored acceptance points at. Bump it whenever the
+ * text changes: an acceptance of v1 must never be read as acceptance of
+ * v2, and the stored record keeps the full text precisely so a later
+ * edit cannot rewrite what someone agreed to.
+ */
+export interface AgreementDocumentInput {
+  code: string;
+  version: string;
+  /** The full text, per language. What the person actually reads. */
+  text: LabelMap;
+}
+
 export interface SupportResource {
   label: string;
   value: string;
@@ -138,6 +158,8 @@ export interface FamilyManifestInput {
   policy: FamilyPolicy;
   /** Optional: a family with none has no reporting reasons, and the report endpoint refuses everything. */
   reportReasons?: ReportReasonInput[];
+  /** What people are asked to agree to. A family with none cannot run a flow that requires one. */
+  agreementDocuments?: AgreementDocumentInput[];
   supportResources: SupportResource[];
   theme: ThemeTokens;
 }
@@ -210,6 +232,8 @@ export interface ResolvedFamily {
   policy: FamilyPolicy;
   /** What a person may report something for. Family data — core names none of them. */
   reportReasons: ReportReasonInput[];
+  /** The agreement texts, by code. Core never contains the wording. */
+  agreementDocuments: AgreementDocumentInput[];
   supportResources: SupportResource[];
   theme: ThemeTokens;
 }

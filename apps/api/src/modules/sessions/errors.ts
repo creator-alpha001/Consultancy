@@ -60,3 +60,34 @@ export function slotNotAvailable(providerId: string, startIso: string): AppError
     { status: HttpStatus.CONFLICT, detail: { providerId, start: startIso } },
   );
 }
+
+export function extensionNotFound(id: string): AppError {
+  return new AppError('SESSION_EXTENSION_NOT_FOUND', `no session extension ${id}`, {
+    status: HttpStatus.NOT_FOUND,
+    detail: { id },
+  });
+}
+
+export function extensionNotProposed(id: string, status: string): AppError {
+  return new AppError(
+    'SESSION_EXTENSION_WRONG_STATUS',
+    `extension ${id} is ${status} — only a proposed extension can be accepted or declined`,
+    { status: HttpStatus.CONFLICT, detail: { id, status } },
+  );
+}
+
+/** It is the seeker's money, so it is the seeker's decision. */
+export function extensionNotSeeker(id: string): AppError {
+  return new AppError('SESSION_EXTENSION_NOT_SEEKER', 'only the person paying can accept an extension', {
+    status: HttpStatus.FORBIDDEN,
+    detail: { id },
+  });
+}
+
+export function extensionSessionNotLive(sessionId: string, status: string): AppError {
+  return new AppError(
+    'SESSION_EXTENSION_SESSION_NOT_LIVE',
+    `session ${sessionId} is ${status} — time can only be added while it is running`,
+    { status: HttpStatus.CONFLICT, detail: { sessionId, status } },
+  );
+}

@@ -1,7 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { Pool, PoolClient } from 'pg';
 import { PG_POOL } from '../../database/db.module';
+import { AgreementService } from '../../common/agreements/agreement.service';
 import {
   accountLocked,
   accountNotActive,
@@ -87,7 +88,10 @@ export class AuthService {
     @Inject(PasswordService) private readonly passwords: PasswordService,
     @Inject(TotpService) private readonly totp: TotpService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(AgreementService) private readonly agreements: AgreementService,
   ) {}
+
+  private readonly log = new Logger(AuthService.name);
 
   async register(input: RegisterInput): Promise<UserRow> {
     // CLAUDE.md #27: the platform is 18+, and we do not build flows that
@@ -109,6 +113,32 @@ export class AuthService {
     );
     const user = mapUser(res.rows[0]);
     await this.recordEvent(this.pool, user.id, 'register', { role: user.role });
+
+    // `adult_confirmed_at` is a timestamp with no record of WHAT was
+    // confirmed, which is worth nothing once the wording changes. The
+    // agreement record keeps the exact words that were on the screen.
+    // Best-effort on purpose: a failure here must not cost somebody
+    // their registration, and the timestamp above still stands.
+    if (input.familyCode) {
+      for (const documentCode of ['adult_attestation', 'terms_of_service']) {
+        await this.agreements
+          .accept({
+            userId: user.id,
+            familyCode: input.familyCode,
+            documentCode,
+            lang: input.lang ?? 'en',
+            ipPrefix: input.ipPrefix ?? null,
+          })
+          .catch((err) => {
+            this.log.error(
+              `agreement not recorded at registration (${documentCode}): ${
+                err instanceof Error ? err.message : String(err)
+              }`,
+            );
+          });
+      }
+    }
+
     return user;
   }
 

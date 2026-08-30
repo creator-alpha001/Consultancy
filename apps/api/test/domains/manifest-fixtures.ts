@@ -90,6 +90,15 @@ export function familyManifestV1(): unknown {
       { code: 'spam', labels: { en: 'Spam or advertising' } },
       { code: 'welfare_concern', labels: { en: "I'm worried about this person" }, isWelfareConcern: true },
     ],
+    agreementDocuments: [
+      { code: 'terms_of_service', version: '1', text: { en: 'Use this platform honestly.' } },
+      { code: 'adult_attestation', version: '1', text: { en: 'I am 18 or older.' } },
+      {
+        code: 'session_extension',
+        version: '1',
+        text: { en: 'I am satisfied with the session so far and will pay for the extra time.' },
+      },
+    ],
     supportResources: [{ label: 'Tele-MANAS', value: '14416' }],
     theme: { signature: 'ruled_answer_sheet', tokens: { '--color-ink': '#1a1a2e' } },
   };

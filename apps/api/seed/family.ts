@@ -245,6 +245,55 @@ export function civilServicesExamsFamily(): FamilyManifestInput {
       { code: 'other', labels: { en: 'Something else', hi: 'कुछ और' } },
     ],
 
+    // What people are asked to agree to, in the languages they read.
+    //
+    // ⚠️ NONE OF THIS WORDING HAS BEEN THROUGH LEGAL REVIEW. It is
+    // placeholder text with the same status as the platform fee
+    // percentage: it exercises the mechanism and decides nothing. It
+    // lives here rather than in core precisely so a lawyer can rewrite
+    // it without a deploy — bump `version` when they do, because an
+    // acceptance of v1 must never be read as acceptance of v2.
+    agreementDocuments: [
+      {
+        code: 'terms_of_service',
+        version: '1',
+        text: {
+          en:
+            'You agree to use Sankalp honestly: your account is yours alone, the qualifications you claim are real, ' +
+            'and payment for work happens here rather than privately. You must be 18 or older. We hold money for an ' +
+            'engagement until its agreed goals are met, and either side may raise a dispute.',
+          hi:
+            'आप सत्यनिष्ठा से संकल्प का उपयोग करने के लिए सहमत हैं: आपका खाता केवल आपका है, आपके द्वारा दावा की गई ' +
+            'योग्यताएँ वास्तविक हैं, और कार्य का भुगतान यहीं होगा, निजी तौर पर नहीं। आपकी आयु 18 वर्ष या अधिक होनी चाहिए। ' +
+            'सहमत लक्ष्य पूरे होने तक हम धनराशि सुरक्षित रखते हैं, और कोई भी पक्ष विवाद उठा सकता है।',
+        },
+      },
+      {
+        code: 'adult_attestation',
+        version: '1',
+        text: {
+          en: 'I confirm I am 18 years of age or older. This platform is not for anyone under 18.',
+          hi: 'मैं पुष्टि करता/करती हूँ कि मेरी आयु 18 वर्ष या उससे अधिक है। यह मंच 18 वर्ष से कम आयु वालों के लिए नहीं है।',
+        },
+      },
+      {
+        code: 'session_extension',
+        version: '1',
+        text: {
+          en:
+            'I am asking to extend this session and to pay for the extra time. ' +
+            'I confirm the session so far has been delivered as agreed and I am satisfied with it. ' +
+            'The extension is charged separately from the original booking. ' +
+            'This does not affect any right I have to raise a dispute or seek a refund under applicable law.',
+          hi:
+            'मैं इस सत्र को बढ़ाने और अतिरिक्त समय का भुगतान करने का अनुरोध कर रहा/रही हूँ। ' +
+            'मैं पुष्टि करता/करती हूँ कि अब तक का सत्र सहमति के अनुसार पूरा हुआ है और मैं इससे संतुष्ट हूँ। ' +
+            'यह विस्तार मूल बुकिंग से अलग शुल्क के रूप में लिया जाएगा। ' +
+            'इससे लागू कानून के अंतर्गत विवाद उठाने या धन-वापसी माँगने का मेरा कोई अधिकार प्रभावित नहीं होता।',
+        },
+      },
+    ],
+
     // CLAUDE.md #25: a distress-flagged post is answered with these, not
     // with a rejection notice. Tele-MANAS is the Government of India's
     // national mental-health helpline.

@@ -6,11 +6,26 @@
  * `npm run seed` plus `seed/demo-fixtures.ts` (which publishes a domain
  * and verifies three mentors) before it will find anyone to book.
  */
+import { execFileSync } from 'node:child_process';
 import { launchBrowser } from './browser.mjs';
 import { totp } from './totp.mjs';
 import { mkdirSync } from 'node:fs';
 
 const WEB = process.env.WEB ?? 'http://localhost:3001';
+/**
+ * Read a fact straight from the database.
+ *
+ * Used only where the screen is not the thing being tested — "the money
+ * went into a separate escrow" is a claim about the ledger, and a page
+ * that says so proves nothing on its own.
+ */
+function sql(q) {
+  return execFileSync('psql', ['-U', 'sankalp', '-h', 'localhost', '-d', 'sankalp_dev', '-tAc', q], {
+    env: { ...process.env, PGPASSWORD: 'sankalp' },
+    encoding: 'utf8',
+  }).trim();
+}
+
 const SHOTS = process.env.SHOTS ?? '../../docs/screens/booking';
 const uniq = Date.now();
 const PASS = 'a-long-enough-passphrase';
@@ -376,6 +391,78 @@ if ((await openLink.count()) > 0) {
       await page.waitForTimeout(1000);
       ok('an agenda item was ticked live during the session');
       console.log('   → ' + (await shot(page, 'session-agenda-ticked')));
+    }
+
+    // ── Paying for more time ────────────────────────────────────────
+    //
+    // Two product decisions are checked here, not just that the flow
+    // works: the extension is charged SEPARATELY from the booking, and
+    // the seeker reads the agreement BEFORE any money moves.
+    console.log('\n10b. Paying for more time');
+    body = await page.textContent('body');
+    if (body.includes('More time')) {
+      ok('the session offers more time while it is running');
+
+      await page.fill('input[name="minutes"]', '15');
+      await page.fill('input[name="rupees"]', '300');
+      await page.click('button:has-text("Offer more time")');
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1500);
+
+      body = await page.textContent('body');
+      body.includes('charged separately')
+        ? ok('the screen says plainly it is charged separately from the booking')
+        : bad('the separate-charge promise is not on screen: ' + body.slice(0, 200));
+
+      // The agreement has to be readable before the button that spends
+      // money, not linked from somewhere else.
+      const agreeBox = page.locator('input[name="agreed"]');
+      (await agreeBox.count()) > 0
+        ? ok('an agreement must be accepted before the extra time is bought')
+        : bad('no agreement shown before paying');
+      const agreementLabel = await page.locator('label:has(input[name="agreed"])').textContent();
+      (agreementLabel ?? '').length > 60
+        ? ok('the full agreement wording is on screen, not a link to it')
+        : bad('agreement wording is missing or too short to be the real text');
+
+      // The button is disabled-by-required until the box is ticked;
+      // ticking it and submitting is what moves the money.
+      await agreeBox.check();
+      await page.click('button:has-text("Agree and add the time")');
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(2000);
+
+      const afterBody = await page.textContent('body');
+      /\+15 min/.test(afterBody)
+        ? ok('the extra time is bought and shown on the session')
+        : bad('extension not reflected after accepting: ' + afterBody.slice(0, 200));
+      console.log('   → ' + (await shot(page, 'session-extension')));
+
+      // The money and the agreement, checked at the source rather than
+      // trusted to the screen.
+      const extensionRow = sql(
+        `SELECT status || '|' || amount_paise || '|' || (agreement_id IS NOT NULL)
+           FROM session_extensions ORDER BY created_at DESC LIMIT 1`,
+      );
+      extensionRow.startsWith('accepted|30000|t')
+        ? ok('accepted, ₹300, with an agreement recorded against it')
+        : bad(`extension row is ${extensionRow}`);
+
+      const separate = sql(
+        `SELECT count(*) FROM escrows WHERE session_extension_id IS NOT NULL`,
+      );
+      Number(separate) > 0
+        ? ok('the extension has its own escrow, separate from the engagement')
+        : bad('no separate escrow for the extension');
+
+      const storedText = sql(
+        `SELECT length(text_shown) FROM agreements WHERE document_code = 'session_extension' ORDER BY accepted_at DESC LIMIT 1`,
+      );
+      Number(storedText) > 60
+        ? ok('the exact wording accepted is stored in full, not by reference')
+        : bad('agreement text was not stored');
+    } else {
+      bad('no way to buy more time in a live session');
     }
   }
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { apiAsUser, apiPublic } from '@/lib/api';
 import { PackShell } from '@/components/pack-shell';
 import { Card, PageTitle, Status } from '@/components/ui';
 import { duration, getEngagement, getSession, when } from '@/lib/engagements';
@@ -17,6 +18,20 @@ export default async function SessionPage({ params }: { params: { id: string } }
   if (!detail) notFound();
 
   const engagement = await getEngagement(detail.session.engagementId).catch(() => null);
+
+  // The offers on the table, and the wording the seeker must accept
+  // before one is charged. The text comes from the family pack — this
+  // file never contains it.
+  const [extensions, extensionAgreementText] = await Promise.all([
+    apiAsUser<Array<{ id: string; minutes: number; amountPaise: string; status: string }>>(
+      `/sessions/${params.id}/extensions`,
+    ).catch(() => []),
+    apiPublic<{ text: string }>(
+      `/agreements/document?domainCode=${engagement?.domainCode ?? 'upsc_cse'}&code=session_extension&lang=en`,
+    )
+      .then((d) => d.text)
+      .catch(() => null),
+  ]);
   const domain = engagement?.domainCode
     ? await getDomain(engagement.domainCode).catch(() => null)
     : null;
@@ -46,7 +61,13 @@ export default async function SessionPage({ params }: { params: { id: string } }
         </Link>
       </div>
 
-      <SessionRoom detail={detail} myUserId={actor.id} />
+      <SessionRoom
+        detail={detail}
+        myUserId={actor.id}
+        isSeeker={engagement?.seekerId === actor.id}
+        extensions={extensions}
+        extensionAgreementText={extensionAgreementText}
+      />
 
       {detail.transcript ? (
         <Card>
