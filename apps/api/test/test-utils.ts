@@ -23,6 +23,7 @@ export async function resetDatabase(pool: Pool): Promise<void> {
       proposals, board_posts,
       seeker_domains,
       provider_availability_rules, provider_availability_exceptions, provider_booking_policy,
+      session_messages, session_shared_files, session_interruptions,
       transcripts, session_consents, session_participants, sessions,
       result_list_entries,
       provider_skills, provider_languages,

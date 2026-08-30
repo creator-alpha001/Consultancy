@@ -157,8 +157,19 @@ export class SessionService {
         throw recordingConsentIncomplete(sessionId, consenting, total);
       }
     }
+    // §9: "90-day retention extended only under legal hold." The clock
+    // starts when recording first starts, and is never shortened by a
+    // later start — a second recording in the same session does not
+    // reset the retention of the first.
     const res = await this.pool.query<SessionDbRow>(
-      `UPDATE sessions SET recording_active = $2 WHERE id = $1 RETURNING *`,
+      `UPDATE sessions
+          SET recording_active = $2,
+              recording_retention_until = CASE
+                WHEN $2 AND recording_retention_until IS NULL THEN now() + interval '90 days'
+                ELSE recording_retention_until
+              END
+        WHERE id = $1
+        RETURNING *`,
       [sessionId, active],
     );
     if (!res.rows[0]) throw sessionNotFound(sessionId);
@@ -182,11 +193,41 @@ export class SessionService {
     return mapSession(res.rows[0]);
   }
 
+  /**
+   * Ends the session and freezes the interruption credit.
+   *
+   * Cached onto the row at exactly this moment because the
+   * interruptions are final now and not before: recomputing later would
+   * keep counting an interruption nobody ever closed, and a session that
+   * ended while someone was still disconnected would accrue credit
+   * forever.
+   */
   async end(sessionId: string): Promise<SessionRow> {
     const session = await this.get(sessionId);
     if (session.status !== 'in_progress') throw sessionWrongStatus(sessionId, session.status, ['in_progress']);
     const res = await this.pool.query<SessionDbRow>(
-      `UPDATE sessions SET status = 'completed', ended_at = now() WHERE id = $1 RETURNING *`,
+      `WITH closed AS (
+         -- Anyone still disconnected at the end stops accruing here.
+         UPDATE session_interruptions SET ended_at = now()
+          WHERE session_id = $1 AND ended_at IS NULL
+          RETURNING 1
+       ),
+       spans AS (
+         SELECT tstzrange(started_at, COALESCE(ended_at, now())) AS span
+           FROM session_interruptions WHERE session_id = $1
+       ),
+       merged AS (
+         -- Merged, not summed: both parties dropping for the same minute
+         -- is one lost minute, not two.
+         SELECT COALESCE(SUM(EXTRACT(epoch FROM (upper(s.span) - lower(s.span)))), 0)::int AS seconds
+           FROM (SELECT unnest(range_agg(span)) AS span FROM spans) s
+       )
+       UPDATE sessions
+          SET status = 'completed',
+              ended_at = now(),
+              credited_seconds = (SELECT seconds FROM merged)
+        WHERE id = $1
+        RETURNING *`,
       [sessionId],
     );
     return mapSession(res.rows[0]);

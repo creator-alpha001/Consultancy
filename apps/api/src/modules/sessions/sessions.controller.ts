@@ -7,6 +7,7 @@ import { EngagementsService } from '../engagements/engagements.service';
 import { CurrentActor, Public, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
 import { AvailabilityService } from './availability.service';
+import { SessionRoomService } from './session-room.service';
 import { SessionService } from './session.service';
 import { TranscriptService } from './transcript.service';
 import { SessionRow } from './types';
@@ -30,6 +31,7 @@ export class SessionsController {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(AvailabilityService) private readonly availability: AvailabilityService,
+    @Inject(SessionRoomService) private readonly inRoom: SessionRoomService,
     @Inject(TranscriptService) private readonly transcripts: TranscriptService,
     @Inject(AgendaService) private readonly agendas: AgendaService,
     @Inject(EngagementsService) private readonly engagements: EngagementsService,
@@ -189,6 +191,87 @@ export class SessionsController {
     },
   ): Promise<unknown> {
     return this.availability.setPolicy(actor.userId, body);
+  }
+
+  // ── Inside the room (SPEC-PLATFORM.md §9) ───────────────────────────
+
+  /**
+   * In-call chat. Append-only, and only while the session is live: it is
+   * a record of what was said during the call, not a thread to continue
+   * arguing in afterwards.
+   */
+  @Post('sessions/:id/messages')
+  async postMessage(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { body?: string; lang?: string },
+  ): Promise<unknown> {
+    await this.assertParticipant(id, actor);
+    if (!body.body || body.body.trim() === '') throw new BadRequestException('body is required');
+    return this.inRoom.postMessage({
+      sessionId: id,
+      senderId: actor.userId,
+      body: body.body,
+      bodyLang: body.lang ?? 'en',
+    });
+  }
+
+  @Get('sessions/:id/messages')
+  async listMessages(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<unknown[]> {
+    await this.assertParticipant(id, actor);
+    return this.inRoom.listMessages(id);
+  }
+
+  /**
+   * Handing a file to the other party. The share creates the grant, so a
+   * file listed here is one they can actually open (#29).
+   */
+  @Post('sessions/:id/files')
+  async shareFile(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { attachmentId?: string },
+  ): Promise<{ ok: true }> {
+    await this.assertParticipant(id, actor);
+    if (!body.attachmentId) throw new BadRequestException('attachmentId is required');
+    await this.inRoom.shareFile({ sessionId: id, attachmentId: body.attachmentId, sharedBy: actor.userId });
+    return { ok: true };
+  }
+
+  @Get('sessions/:id/files')
+  async listFiles(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<unknown[]> {
+    await this.assertParticipant(id, actor);
+    return this.inRoom.listFiles(id);
+  }
+
+  /**
+   * The clock, including the five-minute warning and any time credited
+   * back for a dropped connection.
+   */
+  @Get('sessions/:id/timer')
+  async timer(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<unknown> {
+    await this.assertParticipant(id, actor);
+    return this.inRoom.timer(id);
+  }
+
+  /**
+   * Connection dropped / came back.
+   *
+   * Idempotent on purpose: a flaky connection is exactly what produces
+   * duplicate reports, and double-counting them would hand back more
+   * time than was actually lost.
+   */
+  @Post('sessions/:id/connection')
+  async connection(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { state?: string },
+  ): Promise<{ creditedSeconds: number }> {
+    await this.assertParticipant(id, actor);
+    if (body.state === 'disconnected') await this.inRoom.reportDisconnected(id, actor.userId);
+    else if (body.state === 'reconnected') await this.inRoom.reportReconnected(id, actor.userId);
+    else throw new BadRequestException("state must be 'disconnected' or 'reconnected'");
+    return { creditedSeconds: await this.inRoom.creditedSeconds(id) };
   }
 
   @Get('sessions/:id')

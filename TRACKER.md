@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-30 · after the availability and booking engine (M5)
+Last updated: 2026-08-30 · after the session room (M5)
 
 ---
 
@@ -58,14 +58,29 @@ live agenda checklist, ticking real `agenda_items` rows during an
 pattern exactly) so a real SFU vendor is a drop-in class later.
 
 **Not built — needs real infrastructure or a client, not more backend
-code:** RRULE availability/exceptions/buffers/notice-periods (§9's
-booking engine — a scheduling-UI-sized feature on its own, not attempted
-here); adaptive bitrate and the network-quality indicator; reconnection
-with session-time credit; screen share; in-call chat; file share; the
-session timer with a 5-minute warning and paid extension; live
-translated subtitles. These aren't stubbed with fakes because there is
-no meaningful backend-only fake for "the video adapted its bitrate" —
-unlike a payment capture, there's no discrete call to mock.
+code:** adaptive bitrate and the network-quality indicator; screen
+share; live translated subtitles. These aren't stubbed with fakes
+because there is no meaningful backend-only fake for "the video adapted
+its bitrate" — unlike a payment capture, there's no discrete call to
+mock. A column saying the bitrate adapted would be a lie with a schema.
+
+**Built since, closing most of the §9 list:** the availability and
+booking engine (migration 0036 — weekly recurrence, exceptions, buffers,
+notice period, advance horizon, timezone-correct through the tz
+database); in-call chat, append-only because a session's chat is
+evidence in a dispute; file share, where sharing creates the grant so a
+listed file is one the other party can actually open; the session timer
+with a five-minute warning stamped exactly once; reconnection credit,
+merged across parties so a shared outage counts once; and the 90-day
+recording retention with a legal-hold flag.
+
+**Still open in §9, and needing a decision rather than code:** the
+**paid extension**. §9 asks for one; no spec says how the money works,
+and the escrow is one-per-engagement with a fixed amount. Topping it up,
+raising a change order, or charging separately are three different
+answers with different dispute and refund consequences — CLAUDE.md says
+to ask rather than invent on money, so it is asked rather than guessed.
+Calendar sync (Google/Outlook) is also unbuilt.
 
 ### Why M6 is "Complete, with debt," not plainly Complete
 
