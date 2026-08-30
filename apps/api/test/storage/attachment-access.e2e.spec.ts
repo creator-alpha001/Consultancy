@@ -166,6 +166,56 @@ describe('private attachments and who may read them', () => {
     expect(log.rows.every((r) => r.actor_id === providerId)).toBe(true);
   });
 
+  it('refuses to let someone share a file they cannot read themselves', async () => {
+    // Every route that reaches grant() takes the attachment id from a
+    // request body. Authorising the CALLER — as a session participant,
+    // as an engagement's seeker — says nothing about the FILE they
+    // named, so without this check anyone who learned an id could mint a
+    // grant on a stranger's document for a confederate.
+    const stranger = await seedUsers(pool);
+    const attacker = await seedUsers(pool);
+    const confederate = await seedUsers(pool);
+    const privateFile = await attachments.upload({
+      ownerId: stranger.seekerId,
+      bytes: pdf,
+      contentType: 'application/pdf',
+      originalFilename: 'someone-elses-id.pdf',
+    });
+
+    await expect(
+      attachments.grant({
+        attachmentId: privateFile.id,
+        granteeId: confederate.providerId,
+        grantedBy: attacker.seekerId,
+        reason: 'session_share:whatever',
+      }),
+    ).rejects.toMatchObject({ code: 'ATTACHMENT_NOT_FOUND' });
+
+    // And the confederate still cannot read it.
+    await expect(
+      attachments.signedUrlFor(privateFile.id, { id: confederate.providerId, label: 'confederate' }),
+    ).rejects.toMatchObject({ code: 'ATTACHMENT_NOT_FOUND' });
+
+    // Someone who CAN read it may pass it on — the owner, and anyone
+    // holding a live grant. Sharing on is how a file reaches an
+    // adjudicator, so it must stay possible.
+    await attachments.grant({
+      attachmentId: privateFile.id,
+      granteeId: attacker.seekerId,
+      grantedBy: stranger.seekerId,
+      reason: 'engagement_submission:test',
+    });
+    await attachments.grant({
+      attachmentId: privateFile.id,
+      granteeId: confederate.providerId,
+      grantedBy: attacker.seekerId,
+      reason: 'session_share:now-legitimate',
+    });
+    expect(
+      (await attachments.signedUrlFor(privateFile.id, { id: confederate.providerId, label: 'ok now' })).url,
+    ).toContain(privateFile.id);
+  });
+
   it('refuses a file type that is not on the allow-list, and one over the size limit', async () => {
     const { seekerId } = await seedUsers(pool);
 

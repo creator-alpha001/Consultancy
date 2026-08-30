@@ -175,10 +175,21 @@ export class AttachmentService {
   /**
    * Gives one person access to one attachment.
    *
-   * `client` lets a caller do this inside its own transaction — a
-   * credential submission grants the reviewer queue access in the same
-   * transaction that records the submission, so there is never a
-   * submitted document nobody can open.
+   * **A person can only share what they can already read.** Without that
+   * check, any caller who learned an attachment id could mint a grant on
+   * a stranger's document for a confederate — every route that reaches
+   * here takes the id from a request body, and authorising the *caller*
+   * (as the engagement's seeker, as a session participant) says nothing
+   * about the *file* they named. The check lives here rather than at
+   * each call site so that a future third caller is covered by
+   * construction.
+   *
+   * `grantedBy: null` is the platform granting as part of a workflow —
+   * a credential going to whichever reviewer picks it up — and is
+   * reachable only from admin-gated routes.
+   *
+   * `client` lets a caller do this inside its own transaction, so there
+   * is never a submitted document nobody can open.
    */
   async grant(
     input: {
@@ -196,6 +207,11 @@ export class AttachmentService {
     ]);
     if (!owner.rows[0]) throw attachmentNotFound(input.attachmentId);
     if (owner.rows[0].owner_id === input.granteeId) throw attachmentGrantToOwner();
+
+    if (input.grantedBy && !(await this.mayReadWith(q, input.attachmentId, input.grantedBy))) {
+      // 404, not 403: confirming the file exists is itself a disclosure.
+      throw attachmentAccessDenied(input.attachmentId);
+    }
 
     await q.query(
       `INSERT INTO attachment_grants (attachment_id, grantee_id, granted_by, reason, expires_at)
@@ -222,7 +238,22 @@ export class AttachmentService {
 
   /** Owner, or a live unexpired grant. Nothing else — not even an admin role. */
   private async mayRead(attachmentId: string, viewerId: string): Promise<boolean> {
-    const res = await this.pool.query<{ allowed: boolean }>(
+    return this.mayReadWith(this.pool, attachmentId, viewerId);
+  }
+
+  /**
+   * The single predicate for "may this person read this file".
+   *
+   * One implementation on purpose: the read path and the share path must
+   * agree about what access means, and two copies of this would
+   * eventually disagree in the direction that grants too much.
+   */
+  private async mayReadWith(
+    q: Pool | PoolClient,
+    attachmentId: string,
+    viewerId: string,
+  ): Promise<boolean> {
+    const res = await q.query<{ allowed: boolean }>(
       `SELECT EXISTS (
          SELECT 1 FROM attachments a WHERE a.id = $1 AND a.owner_id = $2
          UNION ALL

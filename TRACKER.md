@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-30 · after M9's 3G and accessibility work
+Last updated: 2026-08-30 · after M9's security review
 
 ---
 
@@ -25,7 +25,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
 | M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
-| M9 | Hardening | **Partial — not complete** | Mostly. Reconciliation, restore drill and the DB perf baseline are real and verified. **3G and accessibility now are too** — `apps/web/test/hardening.mjs` drives the real pages over a throttled Fast-3G profile with a 4× CPU slowdown and runs axe-core against WCAG 2.1 A/AA, in CI on every push. The security review is still outstanding. See below. |
+| M9 | Hardening | **Partial — not complete** | Mostly. Reconciliation, restore drill and the DB perf baseline are real and verified. **3G and accessibility now are too** — `apps/web/test/hardening.mjs` drives the real pages over a throttled Fast-3G profile with a 4× CPU slowdown and runs axe-core against WCAG 2.1 A/AA, in CI on every push. **The security review has now been run** and the one finding it produced is fixed. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
 | — | **apps/web** (frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see below |
 | — | **apps/mobile** (React Native, unscheduled) | **Both journeys working — the primary client** | n/a — see below |
@@ -324,11 +324,20 @@ half was built and the rest is named rather than faked.
   a target, so `hardening.mjs` picks one (TTFB 3 s, DCL 8 s, load 12 s,
   1.2 MB) and says so at the top of its output. Worth confirming with
   whoever owns the product bar.
-- **The security review.** Partly moot and partly premature: identity/
-  closed the biggest hole (see below), private attachments now exist with
-  a real access model, and D18/D20/D21/D22 remain open. A review would
-  find real surface to look at now — the signed-link path and the grant
-  checks especially — rather than mostly re-listing known debt.
+- **The security review — done.** Run over the whole branch diff. One
+  finding, now fixed: `AttachmentService.grant()` checked that the file
+  existed and that the grantee was not already its owner, but never that
+  the **granting** party could read it. Both new callers
+  (`SubmissionService.submit()` and `SessionRoomService.shareFile()`)
+  take the attachment id straight from a request body, and authorising
+  the caller as a session participant or an engagement's seeker says
+  nothing about the file they named — so anyone who learned an id could
+  have minted a grant on a stranger's document for a confederate. The
+  check now lives inside `grant()` rather than at each call site, so a
+  future third caller is covered by construction, and it shares one
+  predicate with the read path so the two cannot drift apart in the
+  direction that grants too much. D18 (plaintext TOTP secrets) and
+  D20-D22 remain open and are unchanged by this review.
 
 **Three drill bugs worth recording**, because each was the same mistake
 and it is an easy one to repeat: a check that passes *vacuously*. A
