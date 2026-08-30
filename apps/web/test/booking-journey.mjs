@@ -122,15 +122,39 @@ body.includes('verified') ? ok('per-skill tiers shown as conclusions') : bad('ti
 // test exactly that: walk the whole payload, prove no evidence appears
 // at any depth, and prove each published fact was admitted by its
 // credential type's allow-list rather than by luck.
-const profileId = page.url().split('/mentors/')[1].split('?')[0];
-const profileJson = await page.evaluate(
-  async (id) => (await fetch(`${location.origin.replace('3001', '3000')}/providers/${id}`)).json(),
-  profileId,
+// EVERY profile, not just the one this run happened to book. #30 is a
+// rule about profiles, and an earlier version of this check walked only
+// the booked mentor — so whether a leak was caught depended on which
+// mentor the flow picked, which is not a property a security assertion
+// should have.
+// Ids come from the mentor list the seeker just browsed — the same
+// route a visitor takes — so this covers exactly the profiles the
+// product actually exposes.
+const listedIds = await page.evaluate(() =>
+  [...document.querySelectorAll('a[href*="/mentors/"]')]
+    .map((a) => a.getAttribute('href').split('/mentors/')[1]?.split('?')[0])
+    .filter((id) => id && /^[0-9a-f-]{36}$/.test(id)),
 );
+const uniqueIds = [...new Set([...listedIds, page.url().split('/mentors/')[1].split('?')[0]])];
+const profiles = await page.evaluate(
+  async (ids) => {
+    const api = location.origin.replace('3001', '3000');
+    return Promise.all(ids.map(async (id) => (await fetch(`${api}/providers/${id}`)).json()));
+  },
+  uniqueIds,
+);
+profiles.length > 0
+  ? ok(`${profiles.length} public profile(s) checked, not just the one booked`)
+  : bad('no public profiles came back to check');
+const profileJson = profiles;
 
 // The seed deliberately plants these in verifier_data so their absence
 // here means the allow-list filtered them, not that they never existed.
-const EVIDENCE = ['rollNumber', 'claimedName', 'documentRef', 'verifierData', 'passwordHash'];
+// `attachmentId` joined this list when private storage landed: it is the
+// pointer to someone's identity document, and a profile that published
+// it would hand the world a value that only needs a grant to become the
+// document itself.
+const EVIDENCE = ['rollNumber', 'claimedName', 'documentRef', 'attachmentId', 'verifierData', 'passwordHash'];
 const foundEvidence = [];
 (function walk(node, path) {
   if (node === null || typeof node !== 'object') return;
@@ -160,10 +184,12 @@ const PUBLISHABLE = {
   serving_officer: [],
   departmental_sanction: [],
 };
-const creds = profileJson.credentials ?? [];
+// Flattened across every profile walked: each one's qualifications must
+// obey the allow-list, not just the first one's.
+const creds = profiles.flatMap((p) => p.credentials ?? []);
 creds.length > 0
   ? ok(`${creds.length} verified qualifications published as conclusions`)
-  : bad('no credentials on the profile — the qualifications feature is not rendering');
+  : bad('no credentials on any profile — the qualifications feature is not rendering');
 const outsideAllowList = creds.flatMap((c) =>
   Object.keys(c.details ?? {})
     .filter((k) => !(PUBLISHABLE[c.credentialCode] ?? []).includes(k))

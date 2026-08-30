@@ -9,6 +9,7 @@ export async function resetDatabase(pool: Pool): Promise<void> {
   await pool.query(`
     TRUNCATE TABLE
       auth_events, recovery_codes, auth_factors, user_sessions,
+      attachment_grants, attachments,
       content_holds, reports, audit_log,
       outbox, idempotency_keys, refunds, payouts, pa_webhook_events, escrows,
       ledger_entries, ledger_transactions, ledger_accounts,

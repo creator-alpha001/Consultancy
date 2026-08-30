@@ -72,10 +72,13 @@ async function main() {
   const adminId = admin.rows[0].id;
 
   const achievements: Array<[string, string, Record<string, unknown>]> = [
-    ['asha.rathore@demo.local', 'exam_rank', { year: 2019, rank: 342, rollNumber: '0451923', claimedName: 'Asha Rathore' }],
-    ['asha.rathore@demo.local', 'interview_appeared', { year: 2020, documentRef: 's3://private/call-letter.pdf' }],
-    ['vikram.kulkarni@demo.local', 'mains_cleared', { year: 2021, rollNumber: '0662104' }],
-    ['meera.banerjee@demo.local', 'subject_expertise', { subject: 'Political Science', documentRef: 's3://private/phd.pdf' }],
+    ['asha.rathore@demo.local', 'exam_rank', { year: 2019, rank: 342, rollNumber: '0451923', claimedName: 'Asha Rathore', attachmentId: '00000000-0000-4000-8000-00000000d0c1' }],
+    ['asha.rathore@demo.local', 'interview_appeared', { year: 2020, documentRef: 's3://private/call-letter.pdf', attachmentId: '00000000-0000-4000-8000-00000000d0c2' }],
+    ['vikram.kulkarni@demo.local', 'mains_cleared', { year: 2021, rollNumber: '0662104', attachmentId: '00000000-0000-4000-8000-00000000d0c3' }],
+    // A real private-storage pointer, deliberately planted: the booking
+    // journey walks the public profile to any depth looking for it, so
+    // publishing an attachment id is caught rather than reasoned about.
+    ['meera.banerjee@demo.local', 'subject_expertise', { subject: 'Political Science', attachmentId: '00000000-0000-4000-8000-00000000d0c5' }],
   ];
 
   for (const [email, code, data] of achievements) {

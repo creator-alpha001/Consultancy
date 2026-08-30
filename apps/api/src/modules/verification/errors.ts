@@ -37,6 +37,18 @@ export function credentialWrongStatus(credentialId: string, status: string, expe
   );
 }
 
+/**
+ * The credential carries no uploaded document — either it is a type
+ * verified some other way (a result list lookup), or the provider
+ * submitted a text reference from before storage existed.
+ */
+export function credentialHasNoDocument(credentialId: string): AppError {
+  return new AppError('CREDENTIAL_HAS_NO_DOCUMENT', `credential ${credentialId} has no uploaded document`, {
+    status: HttpStatus.NOT_FOUND,
+    detail: { credentialId },
+  });
+}
+
 export function unknownVerifier(verifier: string): AppError {
   return new AppError(VerificationErrorCode.UNKNOWN_VERIFIER, `no verifier implementation for "${verifier}"`, {
     status: HttpStatus.INTERNAL_SERVER_ERROR,

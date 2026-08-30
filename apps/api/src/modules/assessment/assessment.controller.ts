@@ -27,23 +27,28 @@ export class AssessmentController {
   ) {}
 
   /**
-   * `contentRef` is a plain text pointer standing in for real private
-   * storage. Object storage, `attachment_grants` and signed URLs
-   * (CLAUDE.md #29) do not exist yet — see TRACKER.md. This route does
-   * not pretend otherwise by accepting a file.
+   * Work is submitted either as a private file (`attachmentId`, uploaded
+   * first through `POST /attachments`) or as a pointer to something the
+   * seeker already has somewhere (`contentRef`). One of the two is
+   * required — a submission that is neither is not a submission.
+   *
+   * Submitting a file grants the provider access to it, and nobody else.
    */
   @Post('engagements/:engagementId/submissions')
   async submit(
     @Param('engagementId') engagementId: string,
     @CurrentActor() actor: Actor,
-    @Body() body: { contentRef?: string; note?: string },
+    @Body() body: { contentRef?: string; attachmentId?: string; note?: string },
   ): Promise<SubmissionRow> {
     await this.access.assertSeeker(engagementId, actor);
-    if (!body.contentRef) throw new BadRequestException('contentRef is required');
+    if (!body.contentRef && !body.attachmentId) {
+      throw new BadRequestException('either attachmentId or contentRef is required');
+    }
     return this.submissions.submit({
       engagementId,
       seekerId: actor.userId,
-      contentRef: body.contentRef,
+      contentRef: body.contentRef ?? '',
+      attachmentId: body.attachmentId,
       note: body.note,
     });
   }

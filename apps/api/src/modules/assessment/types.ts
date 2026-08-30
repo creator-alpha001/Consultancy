@@ -3,6 +3,8 @@ export interface SubmissionRow {
   engagementId: string;
   seekerId: string;
   contentRef: string;
+  /** The private file, when the work is a file rather than a pointer (#29). */
+  attachmentId: string | null;
   note: string;
   submittedAt: Date;
 }

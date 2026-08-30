@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { AuditService } from '../../common/audit/audit.service';
+import { AttachmentService, SignedLink } from '../../common/storage/attachment.service';
 import { PG_POOL } from '../../database/db.module';
 import { DomainLoaderService } from '../domains/domain-loader.service';
 import { FamilyManifestService } from '../domains/family-manifest.service';
 import {
+  credentialHasNoDocument,
   credentialNotFound,
   credentialTypeNotFound,
   credentialWrongStatus,
@@ -48,6 +50,7 @@ export class CredentialService {
     @Inject(FamilyManifestService) private readonly families: FamilyManifestService,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(AttachmentService) private readonly attachments: AttachmentService,
     @Inject(PublicResultListVerifier) publicResultList: PublicResultListVerifier,
     @Inject(DocumentReviewVerifier) documentReview: DocumentReviewVerifier,
     @Inject(SanctionDocumentVerifier) sanctionDocument: SanctionDocumentVerifier,
@@ -161,6 +164,40 @@ export class CredentialService {
   }
 
   /** The admin review queue: everything a human still has to decide. */
+  /**
+   * A five-minute link to the document backing a credential, for the
+   * reviewer who is about to decide it.
+   *
+   * The grant is created here rather than at submission because there is
+   * no "the reviewer" until someone picks the credential up — granting
+   * the whole admin role in advance would be exactly the membership
+   * shortcut #29 rules out. Every issue is audit-logged with the
+   * reviewer, so "who looked at this person's identity document" is
+   * answerable.
+   *
+   * Note what this does NOT change: the document never reaches a public
+   * profile. #30's allow-list is a separate mechanism, defaulting to
+   * empty, and nothing here widens it.
+   */
+  async reviewerDocumentLink(credentialId: string, reviewer: { id: string; label: string }): Promise<SignedLink> {
+    const credential = await this.get(credentialId);
+    const attachmentId = (credential.verifierData as Record<string, unknown> | null)?.attachmentId;
+    if (typeof attachmentId !== 'string' || attachmentId === '') {
+      throw credentialHasNoDocument(credentialId);
+    }
+
+    await this.attachments.grant({
+      attachmentId,
+      granteeId: reviewer.id,
+      // The platform granted this as part of the review workflow — not a
+      // person choosing to share their document with this reviewer.
+      grantedBy: null,
+      reason: `credential_review:${credentialId}`,
+    });
+
+    return this.attachments.signedUrlFor(attachmentId, reviewer);
+  }
+
   async listAwaitingReview(): Promise<ProviderCredentialRow[]> {
     const res = await this.pool.query<CredentialDbRow>(
       // submitted_at, not created_at: this table has no created_at, and

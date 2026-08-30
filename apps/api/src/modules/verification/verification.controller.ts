@@ -73,6 +73,24 @@ export class VerificationController {
     return this.credentials.listAwaitingReview();
   }
 
+  /**
+   * The evidence, for the reviewer about to decide.
+   *
+   * A grant is created for this reviewer and the link lasts five
+   * minutes (#29). Both are recorded: a provider's identity document is
+   * the most sensitive thing on the platform, and "nobody knows who
+   * opened it" is not an acceptable answer later.
+   */
+  @Get('admin/credentials/:id/document')
+  @Roles('admin')
+  async document(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+  ): Promise<{ url: string; expiresAt: string; watermark: string }> {
+    const link = await this.credentials.reviewerDocumentLink(id, { id: actor.userId, label: actor.userId });
+    return { url: link.url, expiresAt: link.expiresAt.toISOString(), watermark: link.watermark };
+  }
+
   @Post('admin/credentials/:id/automated-check')
   @Roles('admin')
   async runCheck(@Param('id') id: string): Promise<ProviderCredentialRow> {
