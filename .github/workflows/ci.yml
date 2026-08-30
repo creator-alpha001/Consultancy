@@ -185,6 +185,14 @@ jobs:
         working-directory: apps/web
         run: npm run journey:admin
 
+      # M9: what a mid-range Android on a patchy network actually gets,
+      # and whether the pages work without sight or a mouse. Runs in CI
+      # rather than only locally, because a contrast regression is a
+      # one-line change nobody notices by looking.
+      - name: Hardening — 3G and accessibility
+        working-directory: apps/web
+        run: npm run hardening
+
       # Screenshots are the point of a failed journey — the assertion says
       # what broke, the image says what it looked like.
       - name: Screenshots and logs

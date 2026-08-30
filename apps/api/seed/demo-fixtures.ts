@@ -58,6 +58,26 @@ async function main() {
         [providerId, skillId, p.tier],
       );
     }
+    // When they actually work. Without this a provider is verified,
+    // listed, and unbookable — which is correct behaviour (nobody should
+    // be bookable at hours they never offered) and useless demo data.
+    await pool.query(`DELETE FROM provider_availability_rules WHERE provider_id = $1`, [providerId]);
+    await pool.query(
+      `INSERT INTO provider_availability_rules
+         (provider_id, timezone, rrule, start_minute, end_minute, effective_from)
+       VALUES ($1, 'Asia/Kolkata', 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU', $2, $3, current_date - 1)`,
+      [providerId, 7 * 60, 22 * 60],
+    );
+    await pool.query(
+      `INSERT INTO provider_booking_policy (provider_id, min_notice_minutes, buffer_minutes, slot_minutes)
+       VALUES ($1, 120, 15, 60)
+       ON CONFLICT (provider_id) DO UPDATE
+          SET min_notice_minutes = EXCLUDED.min_notice_minutes,
+              buffer_minutes = EXCLUDED.buffer_minutes,
+              slot_minutes = EXCLUDED.slot_minutes`,
+      [providerId],
+    );
+
     console.log(`provider ${p.email} verified on ${skillIds.length} skills at ${p.tier}`);
   }
 

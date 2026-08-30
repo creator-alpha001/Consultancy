@@ -13,38 +13,24 @@ interface Slot {
 }
 
 /**
- * Builds a fortnight of candidate slots in the browser's own timezone.
+ * Turns the provider's real free slots into something displayable.
  *
- * **This is not a real availability engine.** SPEC-PLATFORM.md §9
- * describes RRULE availability with exceptions, buffers and notice
- * periods; none of that exists yet (see TRACKER.md). The API books a
- * fixed window the two parties agreed, so these are candidate times a
- * seeker proposes — not slots a mentor has published as free.
- *
- * Saying that plainly in the UI is better than a calendar that implies
- * a mentor has confirmed availability they never entered.
+ * These come from the availability engine — their own rules, exceptions,
+ * buffers and notice period, minus anything already booked — so a time
+ * offered here is a time the server will accept. This used to be a grid
+ * the browser invented, which meant a seeker could pick 7am on a day the
+ * mentor never offered and only find out at submit.
  */
-function buildSlots(daysAhead: number, durationMins: number): Slot[] {
-  const slots: Slot[] = [];
-  const hours = [7, 9, 11, 15, 18, 20];
-  const now = new Date();
-
-  for (let d = 1; d <= daysAhead; d += 1) {
-    const day = new Date(now);
-    day.setDate(now.getDate() + d);
-    for (const h of hours) {
-      const start = new Date(day);
-      start.setHours(h, 0, 0, 0);
-      const end = new Date(start.getTime() + durationMins * 60_000);
-      slots.push({
-        startIso: start.toISOString(),
-        endIso: end.toISOString(),
-        label: new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' }).format(start),
-        day: new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }).format(start),
-      });
-    }
-  }
-  return slots;
+function toSlots(raw: Array<{ start: string; end: string }>): Slot[] {
+  return raw.map((s) => {
+    const start = new Date(s.start);
+    return {
+      startIso: s.start,
+      endIso: s.end,
+      label: new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' }).format(start),
+      day: new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }).format(start),
+    };
+  });
 }
 
 export function BookingForm({
@@ -57,6 +43,7 @@ export function BookingForm({
   languages,
   engagementTypes,
   priceBands,
+  availableSlots,
   currency = 'INR',
 }: {
   providerId: string;
@@ -68,11 +55,12 @@ export function BookingForm({
   languages: string[];
   engagementTypes: string[];
   priceBands: Record<string, [number, number]>;
+  /** The provider's real free slots, resolved on the server. */
+  availableSlots: Array<{ start: string; end: string }>;
   currency?: string;
 }): JSX.Element {
   const [state, formAction] = useFormState<ActionState, FormData>(bookMentorAction, {});
   const [engagementType, setEngagementType] = useState(engagementTypes[0] ?? 'document_review');
-  const [durationMins, setDurationMins] = useState(60);
   const [selected, setSelected] = useState<Slot | null>(null);
   const [amountRupees, setAmountRupees] = useState(() => {
     const band = priceBands[engagementTypes[0] ?? ''] ?? [8000, 25000];
@@ -80,7 +68,7 @@ export function BookingForm({
   });
 
   const needsSlot = engagementType === 'live_session';
-  const slots = useMemo(() => buildSlots(10, durationMins), [durationMins]);
+  const slots = useMemo(() => toSlots(availableSlots), [availableSlots]);
   const byDay = useMemo(() => {
     const map = new Map<string, Slot[]>();
     for (const s of slots) {
@@ -146,23 +134,13 @@ export function BookingForm({
       {needsSlot && (
         <Card className="mb-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-medium">Propose a time</span>
-            <label className="text-sm">
-              <span className="mr-2 text-ink-muted">Length</span>
-              <select
-                value={durationMins}
-                onChange={(e) => {
-                  setDurationMins(Number(e.target.value));
-                  setSelected(null);
-                }}
-                className="rounded-card border border-rule bg-paper px-2 py-1 text-sm"
-              >
-                <option value={30}>30 min</option>
-                <option value={45}>45 min</option>
-                <option value={60}>60 min</option>
-                <option value={90}>90 min</option>
-              </select>
-            </label>
+            {/*
+              No duration picker any more: the slot length is the
+              mentor's, set in their booking policy. A seeker choosing 90
+              minutes against a 60-minute grid was choosing something the
+              server would refuse.
+            */}
+            <span className="text-sm font-medium">Pick a time</span>
           </div>
 
           <div className="max-h-72 overflow-y-auto pr-1">
@@ -202,7 +180,9 @@ export function BookingForm({
             explaining our build state to them.
           */}
           <p className="mt-md text-small text-ink-muted">
-            Times you are proposing. {providerName} still has to accept.
+            {slots.length > 0
+              ? `Times ${providerName} is free. They still have to accept the work itself.`
+              : `${providerName} has nothing free in the next fortnight.`}
           </p>
         </Card>
       )}

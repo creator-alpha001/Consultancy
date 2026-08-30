@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { apiPublic } from '@/lib/api';
 import { PackShell } from '@/components/pack-shell';
 import { Card, PageTitle } from '@/components/ui';
 import { getProvider } from '@/lib/engagements';
@@ -41,6 +42,14 @@ export default async function BookPage({
   if (!provider) notFound();
 
   const domainCode = searchParams.domain ?? 'upsc_cse';
+  // The provider's real free slots for the next fortnight. Loaded here
+  // rather than in the form so the page renders with them already
+  // resolved — a slot list that arrives after the form is a form that
+  // briefly offers nothing.
+  const availableSlots = await apiPublic<Array<{ start: string; end: string }>>(
+    `/providers/${params.id}/slots`,
+  ).catch(() => [] as Array<{ start: string; end: string }>);
+
   const [domain, tree] = await Promise.all([
     getDomain(domainCode).catch(() => null),
     getCategories(domainCode).catch(() => [] as CategoryNode[]),
@@ -93,6 +102,7 @@ export default async function BookPage({
         <BookingForm
           providerId={provider.providerId}
           providerName={provider.displayName}
+          availableSlots={availableSlots}
           domainCode={domainCode}
           categoryId={category.id}
           categoryLabel={label(category.labels, language)}

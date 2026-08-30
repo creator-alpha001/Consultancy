@@ -236,16 +236,35 @@ console.log('\n5. Switch to a live session — the slot picker appears');
 await page.click('label:has-text("live session")');
 await page.waitForTimeout(300);
 body = await page.textContent('body');
-body.includes('Propose a time') ? ok('slot picker appears for live sessions only') : bad('slot picker missing');
-// Same shift: the long explanation of the missing availability engine was
-// written for a reviewer. What a user must not be misled about is that
-// these times are proposals rather than published free slots, so assert
-// the promise the screen now actually makes.
-body.includes('proposing')
-  ? ok('the screen says these times are proposals, not confirmed slots')
-  : bad('slot-proposal wording missing');
+body.includes('Pick a time') ? ok('slot picker appears for live sessions only') : bad('slot picker missing');
+// The promise changed when the availability engine landed: these are
+// slots the mentor actually published as free, not times a seeker is
+// guessing at. Assert the stronger claim, because it is the one a user
+// will act on.
+body.includes('is free')
+  ? ok('the screen says these are times the mentor is actually free')
+  : bad('slot wording missing: ' + body.slice(0, 200));
 const slots = await page.locator('button[aria-pressed]').count();
-slots > 0 ? ok(`${slots} candidate slots rendered`) : bad('no slots rendered');
+slots > 0 ? ok(`${slots} real slot(s) rendered from the provider's own hours`) : bad('no slots rendered');
+
+// And the slots are the server's, not the page's: every one offered
+// must be one the availability endpoint returns. A grid invented in the
+// browser passed this journey for weeks while offering times the server
+// would refuse.
+{
+  const offered = await page.evaluate(() =>
+    [...document.querySelectorAll('button[aria-pressed]')].length,
+  );
+  const providerIdForSlots = page.url().split('/mentors/')[1].split('/book')[0];
+  const fromApi = await page.evaluate(
+    async (id) =>
+      (await fetch(`${location.origin.replace('3001', '3000')}/providers/${id}/slots`)).json(),
+    providerIdForSlots,
+  );
+  Array.isArray(fromApi) && fromApi.length === offered
+    ? ok(`all ${offered} slots come from the availability engine`)
+    : bad(`page offers ${offered} slots, the engine has ${Array.isArray(fromApi) ? fromApi.length : '?'}`);
+}
 console.log('   → ' + (await shot(page, 'booking-slot-picker')));
 
 console.log('\n6. Pick a slot and book');

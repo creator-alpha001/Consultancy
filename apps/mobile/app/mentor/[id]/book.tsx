@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Body, Button, Card, Chip, ErrorNote, Eyebrow, H1, Row, Screen, Section, Small } from '@/components/kit';
 import { ApiError, api } from '@/lib/api';
@@ -16,34 +16,25 @@ interface Slot {
 }
 
 /**
- * Candidate times, generated locally.
+ * The mentor's real free slots, from the availability engine.
  *
- * These are times the seeker is PROPOSING. The recurring-availability
- * engine (exceptions, buffers, notice periods) is specified and unbuilt,
- * so the copy says "propose" rather than dressing this up as a calendar
- * the mentor has published.
+ * Their rules, exceptions, buffers and notice period, minus anything
+ * already booked — so a time shown here is a time the server will
+ * accept. This used to be a grid generated on the device, which meant
+ * offering 7am on a day the mentor never worked and finding out at
+ * submit.
  */
-function buildSlots(days: number, minutes: number): Slot[] {
-  const hours = [7, 9, 11, 15, 18, 20];
-  const now = new Date();
-  const out: Slot[] = [];
-  for (let d = 1; d <= days; d += 1) {
-    const day = new Date(now);
-    day.setDate(now.getDate() + d);
-    for (const h of hours) {
-      const start = new Date(day);
-      start.setHours(h, 0, 0, 0);
-      const end = new Date(start.getTime() + minutes * 60_000);
-      out.push({
-        startIso: start.toISOString(),
-        endIso: end.toISOString(),
-        time: start.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
-        day: start.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }),
-        dayKey: start.toDateString(),
-      });
-    }
-  }
-  return out;
+function toSlots(raw: Array<{ start: string; end: string }>): Slot[] {
+  return raw.map((s) => {
+    const start = new Date(s.start);
+    return {
+      startIso: s.start,
+      endIso: s.end,
+      time: start.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
+      day: start.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }),
+      dayKey: start.toDateString(),
+    };
+  });
 }
 
 export default function Book(): JSX.Element {
@@ -55,7 +46,6 @@ export default function Book(): JSX.Element {
   const options = useMemo(() => leafCategories(categories, lang), [categories, lang]);
   const [categoryId, setCategoryId] = useState(options[0]?.id ?? '');
   const [engagementType, setEngagementType] = useState(domain?.engagementTypes[0] ?? 'document_review');
-  const [minutes, setMinutes] = useState(60);
   const [dayKey, setDayKey] = useState<string | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [language, setLanguage] = useState(domain?.defaultLanguage ?? 'en');
@@ -66,7 +56,14 @@ export default function Book(): JSX.Element {
   const [rupeesValue, setRupeesValue] = useState(() => Math.round((band?.[0] ?? 8000) / 100));
 
   const needsSlot = engagementType === 'live_session';
-  const slots = useMemo(() => buildSlots(10, minutes), [minutes]);
+  const [rawSlots, setRawSlots] = useState<Array<{ start: string; end: string }>>([]);
+  useEffect(() => {
+    if (!id) return;
+    void api<Array<{ start: string; end: string }>>(`/providers/${id}/slots`, { anonymous: true })
+      .then(setRawSlots)
+      .catch(() => setRawSlots([]));
+  }, [id]);
+  const slots = useMemo(() => toSlots(rawSlots), [rawSlots]);
   const days = useMemo(() => [...new Map(slots.map((s) => [s.dayKey, s])).values()], [slots]);
   const activeDay = dayKey ?? days[0]?.dayKey ?? null;
   const daySlots = slots.filter((s) => s.dayKey === activeDay);
@@ -149,23 +146,12 @@ export default function Book(): JSX.Element {
       </Section>
 
       {needsSlot && (
-        <Section title="Propose a time">
-          <Eyebrow>How long</Eyebrow>
-          <Row gap={space.sm} wrap>
-            {[30, 45, 60, 90].map((m) => (
-              <Chip
-                key={m}
-                label={`${m} min`}
-                selected={m === minutes}
-                onPress={() => {
-                  setMinutes(m);
-                  setSlot(null);
-                }}
-              />
-            ))}
-          </Row>
-
-          <View style={{ height: space.lg }} />
+        <Section title="Pick a time">
+          {/*
+            No length picker: the slot length is the mentor's, set in
+            their booking policy. Choosing 90 minutes against a
+            60-minute grid was choosing something the server refuses.
+          */}
           <Eyebrow>Day</Eyebrow>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
             {days.map((d) => (

@@ -313,7 +313,17 @@ if ((await bookTarget.count()) > 0) {
   await tap('live session');
   await page.waitForTimeout(1400);
   body = await page.textContent('body');
-  body.includes('Propose a time') ? ok('slot picker appears for live sessions') : bad('slot picker missing');
+  body.includes('Pick a time') ? ok('slot picker appears for live sessions') : bad('slot picker missing');
+  // The times must be the mentor's real free slots, not a grid this app
+  // invented — the same claim the web journey checks.
+  const apiSlots = await page.evaluate(async () => {
+    const id = location.pathname.split('/mentor/')[1]?.split('/')[0];
+    if (!id) return null;
+    return (await fetch('http://localhost:3000/providers/' + id + '/slots')).json();
+  });
+  Array.isArray(apiSlots) && apiSlots.length > 0
+    ? ok(`the availability engine has ${apiSlots.length} slot(s) for this mentor`)
+    : bad('no slots came back from the availability engine');
   await shot('booking-slots');
 }
 

@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-30 · after the session room (M5)
+Last updated: 2026-08-30 · after M9's 3G and accessibility work
 
 ---
 
@@ -25,7 +25,7 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
 | M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
-| M9 | Hardening | **Partial — not complete** | No — reconciliation, restore drill and a DB perf baseline are real and verified; 3G, accessibility and the security review are not. See below. |
+| M9 | Hardening | **Partial — not complete** | Mostly. Reconciliation, restore drill and the DB perf baseline are real and verified. **3G and accessibility now are too** — `apps/web/test/hardening.mjs` drives the real pages over a throttled Fast-3G profile with a 4× CPU slowdown and runs axe-core against WCAG 2.1 A/AA, in CI on every push. The security review is still outstanding. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
 | — | **apps/web** (frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see below |
 | — | **apps/mobile** (React Native, unscheduled) | **Both journeys working — the primary client** | n/a — see below |
@@ -307,10 +307,23 @@ half was built and the rest is named rather than faked.
   `NET_ADMIN` in this container) and a real client. The baseline above
   measures the database layer only and says so in its own output; calling
   it "p95 on 3G" would be a lie about what was tested.
-- **Accessibility.** There is no frontend — `apps/` contains only `api`.
-  360px layout, keyboard reachability and contrast ≥ 4.5:1 are properties
-  of a UI that does not exist. This is not blocked by infrastructure; it
-  is blocked by the frontend not being written.
+- **Accessibility — now done and enforced.** `hardening.mjs` runs
+  axe-core (WCAG 2.1 A/AA) over six public routes, checks contrast
+  directly against CLAUDE.md's own 4.5:1 bar, walks the tab order to
+  prove every visible control is keyboard-reachable, and confirms the
+  skip link is the first stop. It found a real failure on first run:
+  `inkMuted` and `correction` measured **4.39:1** on the sunk surface,
+  on every page. Both were darkened at the token source, so the fix
+  reached web and mobile together.
+
+- **3G — now done.** Same harness: a Fast-3G profile (1.6 Mbit down,
+  150 ms RTT) with a 4× CPU throttle, a cold context per run, three runs
+  per route, reported as p95. Currently p95 TTFB 127 ms, DCL 755 ms,
+  load 2.07 s, 225 KB — comfortably inside the budget. **The budget
+  itself is a decision, not a measurement**: no supplied document states
+  a target, so `hardening.mjs` picks one (TTFB 3 s, DCL 8 s, load 12 s,
+  1.2 MB) and says so at the top of its output. Worth confirming with
+  whoever owns the product bar.
 - **The security review.** Partly moot and partly premature: identity/
   closed the biggest hole (see below), private attachments now exist with
   a real access model, and D18/D20/D21/D22 remain open. A review would

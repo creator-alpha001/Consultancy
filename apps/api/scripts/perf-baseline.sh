@@ -9,9 +9,9 @@
 # generated volume to be worth anything.
 #
 # What this is NOT: the "p95 on 3G" bar from SPEC-PLATFORM.md §18. That
-# is a claim about a real client over a real throttled network, and
-# neither exists in this environment (see TRACKER.md). This measures the
-# database layer only, and says so.
+# one now exists separately — apps/web/test/hardening.mjs drives the real
+# pages over a throttled Fast-3G profile with a 4x CPU slowdown. This
+# measures the database layer only, and says so.
 #
 # Usage: ./scripts/perf-baseline.sh [ENGAGEMENT_COUNT]
 #
