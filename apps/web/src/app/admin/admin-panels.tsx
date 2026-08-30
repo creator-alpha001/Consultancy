@@ -6,7 +6,9 @@ import {
   AdminActionState,
   RelayState,
   runRelayAction,
+  claimReportAction,
   clearHeldAction,
+  resolveReportAction,
   decideCredentialAction,
   ruleDisputeAction,
   runCredentialCheckAction,
@@ -182,6 +184,67 @@ export function ClearHeld({ questionId }: { questionId: string }): JSX.Element {
       <input type="hidden" name="questionId" value={questionId} />
       <Submit label="Publish it" busy="Publishing…" variant="secondary" />
     </form>
+  );
+}
+
+/**
+ * Deciding a report.
+ *
+ * Two decisions, side by side and equally weighted, for the same reason
+ * the credential panel puts verify and reject together: neither should
+ * be the path of least resistance. `dismissed` puts held content back;
+ * `actioned` leaves it down.
+ */
+export function ReportDecision({ reportId, held }: { reportId: string; held: boolean }): JSX.Element {
+  const [state, action] = useFormState<AdminActionState, FormData>(resolveReportAction, {});
+  const [claimState, claimAction] = useFormState<AdminActionState, FormData>(claimReportAction, {});
+
+  if (state.done) {
+    return (
+      <p className="mt-md text-small text-ink-muted">
+        Recorded: {state.done}
+        {state.done === 'dismissed' && held ? ' — the content is public again.' : '.'}
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-lg flex flex-col gap-md">
+      <ErrorNote code={state.error?.code ?? claimState.error?.code} message={state.error?.message ?? claimState.error?.message} />
+
+      {!claimState.done && (
+        <form action={claimAction}>
+          <input type="hidden" name="reportId" value={reportId} />
+          <Submit label="I am reviewing this" busy="Claiming…" variant="secondary" />
+        </form>
+      )}
+
+      <form action={action} className="flex flex-col gap-md">
+        <input type="hidden" name="reportId" value={reportId} />
+        <label className="flex flex-col gap-xs">
+          <span className="text-small text-ink-muted">What you decided, and why</span>
+          <textarea name="note" rows={3} className={input} required />
+        </label>
+        <div className="flex flex-wrap gap-md">
+          <button
+            type="submit"
+            name="decision"
+            value="actioned"
+            className="min-h-[48px] rounded-md bg-correction px-lg text-white"
+          >
+            Uphold — it stays down
+          </button>
+          <button
+            type="submit"
+            name="decision"
+            value="dismissed"
+            className="min-h-[48px] rounded-md border border-rule px-lg"
+          >
+            Dismiss{held ? ' — put it back' : ''}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

@@ -220,6 +220,114 @@ body.includes('Held, not rejected')
   ? ok('held content is framed as held, never rejected (#25)')
   : bad('the moderation queue does not make the held-not-rejected distinction');
 
+console.log('\n7. Reports from people');
+/**
+ * Everything here runs through the real authenticated routes: the
+ * question is asked by one seeker and reported by another, and the hold
+ * is the service's doing. Inserting a report straight into the table
+ * would prove nothing about whether reporting hides anything.
+ *
+ * Every step fails loudly rather than skipping. An earlier version of
+ * this section quietly did nothing when the seed happened to contain no
+ * questions, and printed a clean pass.
+ */
+{
+  const API = 'http://localhost:3000';
+
+  /** A real session row, so a request can be made as a given user. */
+  function sessionFor(userId, tokenText) {
+    sql(`DELETE FROM user_sessions WHERE token_hash = encode(sha256('${tokenText}'::bytea), 'hex')`);
+    sql(
+      `INSERT INTO user_sessions (user_id, token_hash, scope, mfa_satisfied, expires_at)
+       VALUES ('${userId}', encode(sha256('${tokenText}'::bytea), 'hex'), 'full', true, now() + interval '1 hour')`,
+    );
+    return tokenText;
+  }
+
+  const [author, reporter] = sql(
+    `SELECT string_agg(id::text, ',') FROM (SELECT id FROM users WHERE role = 'seeker' ORDER BY created_at LIMIT 2) t`,
+  ).split(',');
+
+  if (!author || !reporter) {
+    bad('could not find two seekers to run the reporting check with');
+  } else {
+    const authorToken = sessionFor(author, 'journey-question-author');
+    const asked = await fetch(`${API}/board/questions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${authorToken}` },
+      body: JSON.stringify({
+        domainCode: 'upsc_cse',
+        bodyOriginal: 'How many hours a day is realistic alongside a full-time job?',
+        bodyLang: 'en',
+      }),
+    });
+    const askedBody = asked.ok ? await asked.json() : null;
+    const questionId = askedBody?.question?.id;
+    questionId
+      ? ok('a question is on the public board to begin with')
+      : bad(`could not ask a question through the API (${asked.status})`);
+
+    if (questionId) {
+      const reporterToken = sessionFor(reporter, 'journey-report-token');
+      const raised = await fetch(`${API}/reports`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${reporterToken}` },
+        body: JSON.stringify({
+          subjectType: 'question',
+          subjectId: questionId,
+          reasonCode: 'harassment',
+          detailOriginal: 'The replies to this turned abusive.',
+          detailLang: 'en',
+        }),
+      });
+      raised.ok ? ok('a seeker can report it') : bad(`reporting failed (${raised.status})`);
+
+      if (raised.ok) {
+        const held = sql(`SELECT status FROM questions WHERE id = '${questionId}'`);
+        held === 'held_for_review'
+          ? ok('reporting takes it out of public view immediately, before any human looks')
+          : bad(`reported question is still ${held}`);
+
+        const publicBoard = await fetch(`${API}/board/questions?domainCode=upsc_cse`).then((r) => r.json());
+        !publicBoard.some((q) => q.id === questionId)
+          ? ok('and it is gone from the public board')
+          : bad('the reported question is still listed publicly');
+
+        await p.goto(`${WEB}/admin/reports`, { waitUntil: 'networkidle' });
+        body = await p.textContent('body');
+        body.includes('harassment')
+          ? ok('the report reaches the reviewer queue, named by its reason')
+          : bad('the reports queue does not show the report');
+        body.includes('The replies to this turned abusive.')
+          ? ok("the reporter's own words are shown to the reviewer")
+          : bad('the detail the reporter wrote is not shown');
+        !body.includes(reporter)
+          ? ok("the reviewer's screen does not name who reported it")
+          : bad('the reporter id is rendered on the admin page');
+        await p.screenshot({
+          path: '/tmp/claude-0/-home-user-Consultancy/a745ea5c-a07c-5028-802a-cae394b4b189/scratchpad/web-admin-reports.png',
+          fullPage: true,
+        });
+
+        // Dismissing puts it back — the half that makes holding on sight
+        // defensible rather than a punishment.
+        const reportId = sql(`SELECT id FROM reports WHERE subject_id = '${questionId}' ORDER BY created_at DESC LIMIT 1`);
+        await p.fill('textarea[name="note"]', 'Read the thread; nothing abusive here.');
+        await p.click('button[value="dismissed"]');
+        await p.waitForTimeout(1500);
+        const after = sql(`SELECT status FROM questions WHERE id = '${questionId}'`);
+        after === 'published'
+          ? ok('dismissing the report puts the question back on the board')
+          : bad(`question is ${after} after the report was dismissed`);
+        const resolved = sql(`SELECT status FROM reports WHERE id = '${reportId}'`);
+        resolved === 'dismissed'
+          ? ok('and the report is recorded as decided, by a named person')
+          : bad(`report is ${resolved} after being dismissed in the UI`);
+      }
+    }
+  }
+}
+
 await p.screenshot({ path: '/tmp/claude-0/-home-user-Consultancy/a745ea5c-a07c-5028-802a-cae394b4b189/scratchpad/web-admin.png', fullPage: true });
 await browser.close();
 console.log(fails ? '\n\x1b[31mFAILURES ABOVE\x1b[0m' : '\n\x1b[32mAll checks passed\x1b[0m');

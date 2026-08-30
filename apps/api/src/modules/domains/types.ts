@@ -85,6 +85,28 @@ export interface FamilyPolicy {
   disputeTiers?: DisputeTier[];
 }
 
+/**
+ * A reason a person can give for reporting something.
+ *
+ * Declared by the FAMILY, not by core: CLAUDE.md gives the family
+ * ownership of safety policy, and a music-instruction family's list of
+ * things worth reporting is not an exam family's. Making these an enum
+ * in core would mean a migration to open a family — exactly what hard
+ * rule #4 forbids.
+ */
+export interface ReportReasonInput {
+  code: string;
+  labels: LabelMap;
+  /**
+   * This reason means "I am worried about this person", not "this person
+   * did something wrong". A report carrying it is answered with the
+   * family's support resources and routed ahead of the queue (#25), and
+   * it never holds content — holding someone's post because a stranger
+   * was worried about them is a punishment for being unwell.
+   */
+  isWelfareConcern?: boolean;
+}
+
 export interface SupportResource {
   label: string;
   value: string;
@@ -114,6 +136,8 @@ export interface FamilyManifestInput {
   /** Optional: a family with none gets a single overall rating and nothing more. */
   reviewDimensions?: ReviewDimensionInput[];
   policy: FamilyPolicy;
+  /** Optional: a family with none has no reporting reasons, and the report endpoint refuses everything. */
+  reportReasons?: ReportReasonInput[];
   supportResources: SupportResource[];
   theme: ThemeTokens;
 }
@@ -184,6 +208,8 @@ export interface ResolvedFamily {
   skills: SkillInput[];
   credentialTypes: CredentialTypeInput[];
   policy: FamilyPolicy;
+  /** What a person may report something for. Family data — core names none of them. */
+  reportReasons: ReportReasonInput[];
   supportResources: SupportResource[];
   theme: ThemeTokens;
 }

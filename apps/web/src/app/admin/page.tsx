@@ -100,6 +100,7 @@ export default async function AdminPage(): Promise<JSX.Element> {
             ['/admin/credentials', 'Credentials awaiting review'],
             ['/admin/disputes', 'Disputes to adjudicate'],
             ['/admin/moderation', 'Held for review'],
+            ['/admin/reports', 'Reports from people'],
           ].map(([href, label]) => (
             <Link
               key={href}

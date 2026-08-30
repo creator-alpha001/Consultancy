@@ -125,6 +125,17 @@ export class BoardController {
   }
 
   /**
+   * One question and its answers. Public, like the list — and held
+   * content (whether the classifier held it or a report did) is not in
+   * either.
+   */
+  @Get('questions/:id')
+  @Public()
+  async getQuestion(@Param('id') id: string): Promise<unknown> {
+    return this.questions.getWithAnswers(id);
+  }
+
+  /**
    * A flagged question is HELD, never rejected, and a distress flag comes
    * back with the family's real helpline numbers (#25). The caller gets
    * `supportResources` in that case — the UI must show them rather than a

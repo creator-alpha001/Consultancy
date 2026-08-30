@@ -212,6 +212,29 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     }
   }
 
+  // Family-declared, because the family owns safety policy. Validated
+  // like every other pack list: a bad reason code fails the publish, not
+  // the report that later cites it.
+  const reportReasons = v.array(m.reportReasons, 'reportReasons', (item, p) => {
+    const r = (item ?? {}) as Record<string, unknown>;
+    const rcode = v.string(r.code, `${p}.code`);
+    const labels = v.labelMap(r.labels, `${p}.labels`);
+    if (!rcode || !labels) return undefined;
+    if (r.isWelfareConcern !== undefined && typeof r.isWelfareConcern !== 'boolean') {
+      v.fail(`${p}.isWelfareConcern`, 'must be a boolean when present');
+    }
+    return {
+      code: rcode,
+      labels,
+      ...(r.isWelfareConcern === true ? { isWelfareConcern: true as const } : {}),
+    };
+  });
+  const reasonCodes = new Set<string>();
+  reportReasons.forEach((r, i) => {
+    if (reasonCodes.has(r.code)) v.fail(`reportReasons[${i}].code`, `duplicate reason code "${r.code}"`);
+    reasonCodes.add(r.code);
+  });
+
   const supportResources = v.array(m.supportResources, 'supportResources', (item, p) => {
     const r = (item ?? {}) as Record<string, unknown>;
     const label = v.string(r.label, `${p}.label`);
@@ -245,6 +268,7 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     credentialTypes,
     reviewDimensions,
     policy: policyRaw as unknown as FamilyManifestInput['policy'],
+    reportReasons,
     supportResources,
     theme: { signature: themeSignature!, tokens: themeRaw.tokens as Record<string, string> },
   };

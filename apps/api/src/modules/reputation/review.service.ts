@@ -203,7 +203,10 @@ export class ReviewService {
 
   async listForEngagement(engagementId: string): Promise<ReviewRow[]> {
     const res = await this.pool.query<ReviewDbRow>(
-      `SELECT * FROM reviews WHERE engagement_id = $1 ORDER BY created_at ASC`,
+      `SELECT r.* FROM reviews r
+        WHERE r.engagement_id = $1
+          AND NOT EXISTS (SELECT 1 FROM content_holds h WHERE h.subject_type = 'review' AND h.subject_id = r.id)
+        ORDER BY r.created_at ASC`,
       [engagementId],
     );
     return res.rows.map(mapReview);
@@ -229,6 +232,7 @@ export class ReviewService {
          FROM reviews r
          LEFT JOIN review_replies rr ON rr.review_id = r.id
         WHERE r.subject_id = $1
+          AND NOT EXISTS (SELECT 1 FROM content_holds h WHERE h.subject_type = 'review' AND h.subject_id = r.id)
         ORDER BY r.created_at DESC
         LIMIT $2`,
       [subjectId, limit],
@@ -278,6 +282,7 @@ export class ReviewService {
          JOIN engagements e ON e.id = r.engagement_id
          LEFT JOIN review_replies rr ON rr.review_id = r.id
         WHERE r.subject_id = $1 AND r.direction = 'seeker_on_provider'
+          AND NOT EXISTS (SELECT 1 FROM content_holds h WHERE h.subject_type = 'review' AND h.subject_id = r.id)
         ORDER BY r.created_at DESC
         LIMIT $2`,
       [providerId, limit],

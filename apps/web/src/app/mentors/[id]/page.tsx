@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
+import { ReportControl } from '@/components/report-control';
 import { Avatar, Card, EmptyState, PageTitle, Rating, Section, TierChip } from '@/components/ui';
+import { apiPublic } from '@/lib/api';
 import { getProvider } from '@/lib/engagements';
 import { getDomain, label } from '@/lib/pack';
 import { languageName } from '@/lib/words';
@@ -36,7 +38,15 @@ export default async function MentorProfile({
   if (!provider) notFound();
 
   const domainCode = searchParams.domain ?? 'upsc_cse';
-  const [actor, domain] = await Promise.all([currentUser(), getDomain(domainCode).catch(() => null)]);
+  const [actor, domain, reportReasons] = await Promise.all([
+    currentUser(),
+    getDomain(domainCode).catch(() => null),
+    // Pack data, resolved on the server: the reasons a person may give
+    // are the family's, and no client code names one.
+    apiPublic<Array<{ code: string; labels: Record<string, string>; isWelfareConcern: boolean }>>(
+      `/report-reasons?domainCode=${domainCode}`,
+    ).catch(() => []),
+  ]);
   const language = searchParams.language ?? domain?.defaultLanguage ?? 'en';
   const reviews = (provider.reviews ?? []) as ReviewRow[];
 
@@ -130,6 +140,17 @@ export default async function MentorProfile({
           Every review comes from an engagement that actually completed.
         </p>
       </Section>
+
+      {actor && (
+        <ReportControl
+          subjectType="user"
+          subjectId={provider.providerId}
+          domainCode={domainCode}
+          reasons={reportReasons}
+          what={(label(domain?.labels.provider, language) || 'person').toLowerCase()}
+          lang={language}
+        />
+      )}
     </PackShell>
   );
 }

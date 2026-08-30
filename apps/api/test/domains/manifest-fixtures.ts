@@ -85,6 +85,11 @@ export function familyManifestV1(): unknown {
         { tier: 3, code: 'appeal_panel', responseHours: 240, final: true },
       ],
     },
+    reportReasons: [
+      { code: 'harassment', labels: { en: 'Harassment or abuse' } },
+      { code: 'spam', labels: { en: 'Spam or advertising' } },
+      { code: 'welfare_concern', labels: { en: "I'm worried about this person" }, isWelfareConcern: true },
+    ],
     supportResources: [{ label: 'Tele-MANAS', value: '14416' }],
     theme: { signature: 'ruled_answer_sheet', tokens: { '--color-ink': '#1a1a2e' } },
   };

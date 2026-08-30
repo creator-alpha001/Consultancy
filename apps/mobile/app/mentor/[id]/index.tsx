@@ -382,6 +382,22 @@ export default function MentorProfile(): JSX.Element {
       {!p.paidWorkBlocked && (
         <Button label="Book" onPress={() => router.push(`/mentor/${p.providerId}/book`)} />
       )}
+
+      {/*
+        Quiet, and always there. A report control that only appears once
+        something has gone wrong is a control nobody can find at the
+        moment they need it.
+      */}
+      <View style={{ height: space.xl }} />
+      <Text
+        onPress={() =>
+          router.push(`/report?subjectType=user&subjectId=${p.providerId}&what=${encodeURIComponent(words.provider.toLowerCase())}`)
+        }
+        accessibilityRole="button"
+        style={[type.small, { color: C.inkMuted, textDecorationLine: 'underline', paddingVertical: space.md }]}
+      >
+        Report this {words.provider.toLowerCase()}
+      </Text>
     </Screen>
   );
 }

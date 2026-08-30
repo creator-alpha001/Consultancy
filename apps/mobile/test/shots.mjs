@@ -317,5 +317,33 @@ if ((await bookTarget.count()) > 0) {
   await shot('booking-slots');
 }
 
+console.log('\n8. Reporting');
+// Reached from the profile, not from a settings page: the control has to
+// be where the thing being reported is.
+await page.goBack();
+await page.waitForTimeout(1600);
+const reportLink = page.getByText(/^Report this /).first();
+if ((await reportLink.count()) > 0) {
+  ok('a profile offers a way to report the person');
+  await reportLink.click();
+  await page.waitForTimeout(1800);
+  body = await page.textContent('body');
+  // The reasons are the family's, fetched from the pack. Asserting on
+  // one of the seeded labels proves the fetch happened — a hardcoded
+  // list in the client would render without the API.
+  // The label renders in the app's current language, which on this
+  // domain is Hindi — so assert on the Hindi one. A client with a
+  // hardcoded English list would fail this, which is the point.
+  body.includes('उत्पीड़न या दुर्व्यवहार')
+    ? ok("the reasons come from the pack, in the app's language")
+    : bad('reporting reasons did not render: ' + body.slice(0, 200));
+  body.includes('never told who reported them')
+    ? ok('the screen says plainly that the reporter is not named')
+    : bad('the screen does not explain what happens to the reporter');
+  await shot('report');
+} else {
+  bad('no report control on the profile');
+}
+
 await browser.close();
 console.log(`\n${process.exitCode ? '\x1b[31mFAILURES ABOVE\x1b[0m' : '\x1b[32mAll checks passed\x1b[0m'}`);

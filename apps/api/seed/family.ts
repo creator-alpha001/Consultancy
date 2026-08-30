@@ -225,6 +225,26 @@ export function civilServicesExamsFamily(): FamilyManifestInput {
       ],
     },
 
+    // What a person can report something for. Family data (the family
+    // owns safety policy), so a second family declares its own list and
+    // core never learns these codes.
+    //
+    // Deliberately short. A long list of overlapping categories makes
+    // people give up before they finish reporting, and every extra
+    // option is another judgement the reporter has to make about
+    // something that just happened to them.
+    reportReasons: [
+      { code: 'harassment', labels: { en: 'Harassment or abuse', hi: 'उत्पीड़न या दुर्व्यवहार' } },
+      { code: 'off_platform_solicitation', labels: { en: 'Asked to move off the platform', hi: 'मंच से बाहर ले जाने का प्रयास' } },
+      { code: 'misrepresentation', labels: { en: 'False claims about themselves', hi: 'स्वयं के बारे में झूठे दावे' } },
+      { code: 'sexual_content', labels: { en: 'Sexual or explicit content', hi: 'यौन या अश्लील सामग्री' } },
+      { code: 'spam', labels: { en: 'Spam or advertising', hi: 'स्पैम या विज्ञापन' } },
+      // Not a complaint about the person — a worry FOR them. Answered
+      // with the helplines below and never used to hide their post.
+      { code: 'welfare_concern', labels: { en: "I'm worried about this person", hi: 'मुझे इस व्यक्ति की चिंता है' }, isWelfareConcern: true },
+      { code: 'other', labels: { en: 'Something else', hi: 'कुछ और' } },
+    ],
+
     // CLAUDE.md #25: a distress-flagged post is answered with these, not
     // with a rejection notice. Tele-MANAS is the Government of India's
     // national mental-health helpline.

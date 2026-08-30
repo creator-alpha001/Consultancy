@@ -126,6 +126,54 @@ export async function clearHeldAction(
   }
 }
 
+/**
+ * Working a report (D45).
+ *
+ * `actioned` leaves any hold in place — the content stays down.
+ * `dismissed` releases it, unless another live report is still holding
+ * the same thing. That release is what makes holding on first sight
+ * safe to do at all.
+ *
+ * A note is required either way, because a safety decision with no
+ * stated reason is not a record of anything — and this is the queue
+ * whose decisions get read back years later.
+ */
+export async function resolveReportAction(
+  _prev: AdminActionState,
+  form: FormData,
+): Promise<AdminActionState> {
+  const id = String(form.get('reportId') ?? '');
+  const decision = String(form.get('decision') ?? '');
+  const note = String(form.get('note') ?? '').trim();
+  if (note === '') {
+    return { error: { code: 'NOTE_REQUIRED', message: 'Say what you decided and why.' } };
+  }
+  try {
+    await apiAsUser(`/admin/reports/${id}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, note }),
+    });
+    revalidatePath('/admin/reports');
+    return { done: decision };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function claimReportAction(
+  _prev: AdminActionState,
+  form: FormData,
+): Promise<AdminActionState> {
+  const id = String(form.get('reportId') ?? '');
+  try {
+    await apiAsUser(`/admin/reports/${id}/claim`, { method: 'POST' });
+    revalidatePath('/admin/reports');
+    return { done: 'claimed' };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 export interface RelayState {
   error?: { code: string; message: string };
   result?: { claimed: number; dispatched: number; failed: number; deadLettered: number };

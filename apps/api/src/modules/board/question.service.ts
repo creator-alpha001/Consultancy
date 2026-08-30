@@ -148,6 +148,34 @@ export class QuestionService {
     return mapQuestion(res.rows[0]);
   }
 
+  /**
+   * One question and the answers to it.
+   *
+   * Held answers are filtered out here rather than at the client: a
+   * reported answer is out of public view the moment it is reported
+   * (D45), and a read path that decided that for itself would leak the
+   * held one the first time somebody wrote a second client.
+   */
+  async getWithAnswers(id: string): Promise<{ question: QuestionRow; answers: AnswerRow[] }> {
+    const question = await this.get(id);
+    const res = await this.pool.query<AnswerDbRow>(
+      `SELECT a.* FROM answers a
+        WHERE a.question_id = $1
+          AND NOT EXISTS (SELECT 1 FROM content_holds h WHERE h.subject_type = 'answer' AND h.subject_id = a.id)
+        ORDER BY a.created_at ASC`,
+      [id],
+    );
+    return {
+      question,
+      answers: res.rows.map((row) => ({
+        id: row.id,
+        questionId: row.question_id,
+        providerId: row.provider_id,
+        body: row.body,
+      })),
+    };
+  }
+
   async answer(questionId: string, providerId: string, body: string): Promise<AnswerRow> {
     const res = await this.pool.query<AnswerDbRow>(
       `INSERT INTO answers (question_id, provider_id, body) VALUES ($1, $2, $3) RETURNING *`,
