@@ -49,6 +49,19 @@ export function credentialHasNoDocument(credentialId: string): AppError {
   });
 }
 
+/**
+ * A language no domain in this family serves. Carries the accepted set,
+ * because a client that guessed needs to be told what the pack offers
+ * rather than left to guess again.
+ */
+export function unknownWorkingLanguages(codes: string[], accepted: string[]): AppError {
+  return new AppError(
+    'UNKNOWN_WORKING_LANGUAGES',
+    `no domain in this family works in: ${codes.join(', ')}`,
+    { status: HttpStatus.BAD_REQUEST, detail: { codes, accepted } },
+  );
+}
+
 export function unknownVerifier(verifier: string): AppError {
   return new AppError(VerificationErrorCode.UNKNOWN_VERIFIER, `no verifier implementation for "${verifier}"`, {
     status: HttpStatus.INTERNAL_SERVER_ERROR,

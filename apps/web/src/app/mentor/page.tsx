@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
 import { Card, EmptyState, PageTitle, Section, Status, TierChip } from '@/components/ui';
+import { WorkingLanguages } from '@/components/working-languages';
 import { ReplyPanel } from '@/app/engagements/[id]/actions-panel';
 import { apiAsUser } from '@/lib/api';
 import { duration, listEngagements, rupees, searchBoard, when } from '@/lib/engagements';
@@ -53,6 +54,18 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
     searchBoard().catch(() => []),
     getDomain('upsc_cse').catch(() => null),
     apiAsUser<ReviewAboutMe[]>(`/users/${actor.id}/reviews`).catch(() => [] as ReviewAboutMe[]),
+  ]);
+
+  // Languages are loaded separately because a failure here must not
+  // blank the whole dashboard — and an empty list is a real, meaningful
+  // state (it means this provider appears in no search at all).
+  const [offerableLangs, myLangs] = await Promise.all([
+    apiAsUser<{ languages: string[] }>('/domains/upsc_cse/working-languages')
+      .then((r) => r.languages)
+      .catch(() => [] as string[]),
+    apiAsUser<Array<{ langCode: string; canEvaluate: boolean }>>('/me/languages').catch(
+      () => [] as Array<{ langCode: string; canEvaluate: boolean }>,
+    ),
   ]);
 
   const language = domain?.defaultLanguage ?? 'en';
@@ -269,6 +282,22 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
               </li>
             ))}
           </ul>
+        )}
+      </Section>
+
+      <Section title="Languages you work in">
+        {offerableLangs.length === 0 ? (
+          <EmptyState>
+            The language list did not load. Reload before assuming it is empty — with no languages set you
+            appear in no search.
+          </EmptyState>
+        ) : (
+          <WorkingLanguages
+            domainCode="upsc_cse"
+            offerable={offerableLangs}
+            current={myLangs}
+            displayLang={language}
+          />
         )}
       </Section>
     </PackShell>

@@ -233,6 +233,36 @@ if (await replyBox.count()) {
 }
 await mp.screenshot({ path: '/tmp/claude-0/-home-user-Consultancy/a745ea5c-a07c-5028-802a-cae394b4b189/scratchpad/web-mentor-reviews.png', fullPage: true });
 
+console.log('\nWorking languages');
+// #19 is a matching rule, and it only bites if a provider can actually
+// say what they work in. Nothing wrote provider_languages outside the
+// seed until this landed, so every provider's languages were whatever a
+// fixture said.
+{
+  await mp.goto(`${WEB}/mentor`, { waitUntil: 'networkidle' });
+  const dash = await mp.textContent('body');
+  dash.includes('Languages you work in')
+    ? ok('a mentor can see the languages they work in')
+    : bad('no working-language section on the mentor dashboard');
+  dash.includes('Separate from the language this page renders in')
+    ? ok('and it says plainly this is not the interface language')
+    : bad('the two meanings of "language" are not distinguished');
+
+  const boxes = await mp.locator('input[name="lang"]').count();
+  boxes > 0 ? ok(`${boxes} language(s) offered, from the pack`) : bad('no languages offered to choose from');
+
+  if (boxes > 0) {
+    await mp.locator('input[name="lang"]').first().check();
+    await mp.locator('button:has-text("Save languages")').click();
+    await mp.waitForTimeout(2000);
+    const after = await mp.textContent('body');
+    /Saved/.test(after)
+      ? ok('saving a working language reports what was stored')
+      : bad('saving working languages did not confirm: ' + after.slice(0, 160));
+  }
+  await mp.screenshot({ path: '/tmp/claude-0/-home-user-Consultancy/a745ea5c-a07c-5028-802a-cae394b4b189/scratchpad/web-mentor-languages.png', fullPage: true });
+}
+
 await p.screenshot({ path: '/tmp/claude-0/-home-user-Consultancy/a745ea5c-a07c-5028-802a-cae394b4b189/scratchpad/web-credentials.png', fullPage: true });
 await b.close();
 console.log(fails ? '\n\x1b[31mFAILURES\x1b[0m' : '\n\x1b[32mAll checks passed\x1b[0m');
