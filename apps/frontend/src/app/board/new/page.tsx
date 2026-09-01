@@ -1,7 +1,7 @@
 import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, Field, PageHead, Panel, Select, TextArea } from '@/components/ui';
 import { preview } from '@/lib/preview';
-import { t, tl, languageName } from '@/lib/pack';
+import { FAMILIES, t, tl, languageName, allLanguages } from '@/lib/pack';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,13 @@ export const dynamic = 'force-dynamic';
  */
 export default function NewRequestPage(): JSX.Element {
   const { fam, lang } = preview('seeker');
-  const domain = fam.domains[0];
+  /*
+   * Step one asks for the FIELD before anything else, and the options
+   * below it come from whichever is chosen. Nothing here is exam-shaped,
+   * or shaped like any other single field.
+   */
+  const field = FAMILIES[0];
+  const domain = field?.domains[0];
 
   return (
     <AppShell fam={fam} lang={lang} role="seeker" current="/board">
@@ -48,12 +54,18 @@ export default function NewRequestPage(): JSX.Element {
           <Panel title="What it is about">
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
-                label={t(fam.label, lang)}
-                name="domain"
-                options={fam.domains.map((d) => ({ value: d.code, label: t(d.label, lang) }))}
+                label="Field"
+                name="family"
+                options={FAMILIES.map((f) => ({ value: f.code, label: t(f.label, lang) }))}
+                hint="Everything below changes with this — the areas, the languages, and what the people here call things."
               />
               <Select
-                label={t(fam.labels.category, lang)}
+                label="Area"
+                name="domain"
+                options={(field?.domains ?? []).map((d) => ({ value: d.code, label: t(d.label, lang) }))}
+              />
+              <Select
+                label={t(field?.labels.category, lang) || 'Category'}
                 name="category"
                 options={(domain?.categories ?? []).map((c) => ({ value: c.code, label: t(c.label, lang) }))}
               />
@@ -66,13 +78,14 @@ export default function NewRequestPage(): JSX.Element {
               <Select
                 label="Language you want to work in"
                 name="language"
-                options={(domain?.languages ?? ['en']).map((l) => ({ value: l, label: languageName(l, lang) }))}
-                hint="Only people who actually work in this language will see your post."
+                options={(domain?.languages ?? allLanguages()).map((l) => ({ value: l, label: languageName(l, lang) }))}
+                hint="Only people who actually work in this language will see your post. Write the rest of this in it too — nobody is expecting English."
               />
               <Select
                 label="How you would like to work"
                 name="type"
-                options={fam.engagementTypes.map((e) => ({ value: e.code, label: t(e.label, lang) }))}
+                options={(field?.engagementTypes ?? fam.engagementTypes).map((e) => ({ value: e.code, label: t(e.label, lang) }))}
+                hint="The options differ by field. Some fields barely use video; some are photographs and a voice note."
               />
             </div>
           </Panel>
@@ -82,7 +95,7 @@ export default function NewRequestPage(): JSX.Element {
               label="One line, as you would say it to a friend"
               name="title"
               required
-              placeholder="Four GS-II scripts marked before the weekend"
+              placeholder="Leaves yellowing on three acres of cotton — pest, or water?"
             />
             <TextArea
               label="The detail"
@@ -91,7 +104,7 @@ export default function NewRequestPage(): JSX.Element {
               required
               className="mt-4"
               placeholder="What you have tried, what keeps going wrong, and what would make this worth it for you."
-              hint="What you have already tried is the most useful sentence here — it stops people pitching you the obvious."
+              hint="What you have already tried is the most useful sentence here — it stops people pitching you the obvious. Write it in your own language."
             />
           </Panel>
 
@@ -104,7 +117,7 @@ export default function NewRequestPage(): JSX.Element {
                 placeholder="1800"
                 hint={
                   domain
-                    ? `Most work in this ${tl(fam.labels.category, lang)} lands between ₹${domain.priceBand.minPaise / 100} and ₹${domain.priceBand.maxPaise / 100}.`
+                    ? `Most work in this area lands between ₹${domain.priceBand.minPaise / 100} and ₹${domain.priceBand.maxPaise / 100}.`
                     : undefined
                 }
               />
@@ -145,8 +158,9 @@ export default function NewRequestPage(): JSX.Element {
           */}
           <Panel title="Some things we cannot host">
             <p className="text-small text-ink-muted">
-              Medical, legal and investment advice need licences we do not gate for yet, so posts asking for them are
-              held and you are pointed somewhere that can actually help.
+              Medical diagnosis, mental-health therapy, legal advice and investment advice need licences we do not
+              gate for yet — whichever field you post under. Posts asking for them are held, and you are pointed
+              somewhere that can actually help.
             </p>
             <Divider className="my-4" />
             <p className="text-small">

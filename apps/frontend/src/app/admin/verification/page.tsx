@@ -1,6 +1,6 @@
 import { AppShell } from '@/components/shell';
-import { Button, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
-import { preview } from '@/lib/preview';
+import { Button, Card, Chip, Divider, Eyebrow, FieldChip, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
+import { preview, contextFor } from '@/lib/preview';
 import { t } from '@/lib/pack';
 import { listCredentialQueue } from '@/lib/data';
 import { ago, until } from '@/lib/format';
@@ -23,12 +23,19 @@ export default async function VerificationQueuePage(): Promise<JSX.Element> {
   const { fam, lang } = preview('admin');
   const queue = await listCredentialQueue();
   const selected = queue[0];
+  /*
+   * A reviewer works one queue across every field, so each row has to
+   * carry its own field's credential vocabulary and tier names. "Result
+   * verified" and "Membership verified" are the same tier; calling both
+   * of them T2 to the reviewer would be accurate and useless.
+   */
+  const selectedFam = selected ? contextFor(selected.family) : fam;
 
   return (
     <AppShell fam={fam} lang={lang} role="admin" current="/admin/verification">
       <PageHead
         title="Verification"
-        sub={`${queue.length} waiting · 48 hour target · ordered by how close each is to breaching`}
+        sub={`${queue.length} waiting, across every field · 48 hour target · ordered by how close each is to breaching`}
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
@@ -46,6 +53,10 @@ export default async function VerificationQueuePage(): Promise<JSX.Element> {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-lead font-semibold">{c.provider.displayName}</span>
+                        <FieldChip
+                          label={t(contextFor(c.family).label, lang)}
+                          colour={contextFor(c.family).theme.brand}
+                        />
                         <Chip
                           tone={worst === 'fail' ? 'danger' : worst === 'attention' ? 'caution' : 'verified'}
                         >
@@ -59,7 +70,7 @@ export default async function VerificationQueuePage(): Promise<JSX.Element> {
                       <p className="mt-1.5 text-body">{c.claim}</p>
                       <p className="mt-1 text-small text-ink-muted">
                         For the skill <span className="font-medium text-ink">{c.skillCode.replace(/_/g, ' ')}</span> ·{' '}
-                        {t(fam.credentialTypes.find((x) => x.code === c.credentialType)?.label, lang) ||
+                        {t(contextFor(c.family).credentialTypes.find((x) => x.code === c.credentialType)?.label, lang) ||
                           c.credentialType}{' '}
                         · <span className="figure">{c.documentCount} documents</span> · submitted {ago(c.submittedAt)}
                       </p>
@@ -120,7 +131,7 @@ export default async function VerificationQueuePage(): Promise<JSX.Element> {
                       type="button"
                       className="rounded-pill border border-line px-3 py-1.5 text-caption font-medium hover:border-brand hover:bg-brand-soft"
                     >
-                      {t(fam.tierLabels[tier], lang)}
+                      {t(selectedFam.tierLabels[tier], lang)}
                     </button>
                   ))}
                 </div>

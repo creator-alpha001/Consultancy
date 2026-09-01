@@ -28,7 +28,7 @@ export default function KitPage(): JSX.Element {
       <PageHead
         eyebrow="Design system"
         title="Everything the interface is built from"
-        sub="These are the real components. Switch family in the header and this page repaints, because nothing below names a colour."
+        sub="These are the real components — the same ones every screen imports. Nothing below names a colour or a field."
       />
 
       <div className="space-y-8">
@@ -59,18 +59,18 @@ export default function KitPage(): JSX.Element {
 
           <Divider className="my-5" />
 
-          <Eyebrow>The same components, three families</Eyebrow>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <Eyebrow>The same components, {FAMILIES.length} fields</Eyebrow>
+          <p className="mt-1.5 max-w-reading text-small text-ink-muted">
+            The platform's own accent is above. A field's accent applies inside that field and nowhere else — it may
+            colour its own pages, never repaint the product.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {FAMILIES.map((f) => (
-              <a
-                key={f.code}
-                href={`/switch?family=${f.code}&next=/kit`}
-                className="rounded-md border border-line p-4 hover:border-line-strong"
-              >
+              <a key={f.code} href={`/fields/${f.code}`} className="rounded-md border border-line p-4 hover:border-line-strong">
                 <span aria-hidden="true" className="block h-1.5 w-full rounded-pill" style={{ background: f.theme.brand }} />
                 <p className="mt-3 text-body font-semibold">{f.label.en}</p>
                 <p className="mt-1 text-caption text-ink-muted">
-                  {f.labels.seeker.en} · {f.labels.provider.en} · {f.labels.agenda.en}
+                  {f.labels.seeker.en} · {f.labels.provider.en} · {f.labels.agenda.en} · {f.labels.assessment.en}
                 </p>
               </a>
             ))}

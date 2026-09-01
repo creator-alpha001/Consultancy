@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { FAMILY_COOKIE, LANG_COOKIE } from '@/lib/preview';
-import { FAMILIES } from '@/lib/pack';
+import { LANG_COOKIE, ROLE_COOKIE } from '@/lib/preview';
 
 /**
- * Switches the previewed family or language and returns to where the
- * user was. Goes away with src/lib/preview.ts when the API is connected.
+ * Switches the previewed language or role and returns where the user
+ * was. Goes away with src/lib/preview.ts when the API is connected —
+ * both come from the session there.
  *
- * `next` is validated as a same-origin path rather than trusted, because
- * an open redirect is an open redirect even in a preview build.
+ * `next` is validated as a same-origin path rather than trusted. An open
+ * redirect is an open redirect even in a preview build.
  */
 export function GET(req: NextRequest): NextResponse {
   const { searchParams } = new URL(req.url);
@@ -16,13 +16,13 @@ export function GET(req: NextRequest): NextResponse {
 
   const res = NextResponse.redirect(new URL(next, req.url));
 
-  const fam = searchParams.get('family');
-  if (fam && FAMILIES.some((f) => f.code === fam)) {
-    res.cookies.set(FAMILY_COOKIE, fam, { path: '/', sameSite: 'lax' });
-  }
   const lang = searchParams.get('lang');
-  if (lang === 'en' || lang === 'hi') {
+  if (lang && /^[a-z]{2}$/.test(lang)) {
     res.cookies.set(LANG_COOKIE, lang, { path: '/', sameSite: 'lax' });
+  }
+  const role = searchParams.get('role');
+  if (role === 'seeker' || role === 'provider' || role === 'admin') {
+    res.cookies.set(ROLE_COOKIE, role, { path: '/', sameSite: 'lax' });
   }
   return res;
 }

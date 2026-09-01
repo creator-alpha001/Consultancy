@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import type { ProviderSummary } from '@/lib/types';
-import type { FamilyPack, Lang } from '@/lib/pack';
-import { t } from '@/lib/pack';
+import type { Lang } from '@/lib/pack';
+import { family, t } from '@/lib/pack';
 import { money } from '@/lib/format';
-import { Avatar, Chip, LanguageChip, Rating, TierChip } from './ui';
+import { Avatar, Chip, FieldChip, LanguageChip, Rating, TierChip } from './ui';
 
 /**
  * A provider in a list.
@@ -14,15 +14,13 @@ import { Avatar, Chip, LanguageChip, Rating, TierChip } from './ui';
  * price floor. What is *not* on it: any comparison against another
  * provider, and any sort-by-price affordance.
  */
-export function ProviderCard({
-  provider,
-  fam,
-  lang = 'en',
-}: {
-  provider: ProviderSummary;
-  fam: FamilyPack;
-  lang?: Lang;
-}): JSX.Element {
+export function ProviderCard({ provider, lang = 'en' }: { provider: ProviderSummary; lang?: Lang }): JSX.Element {
+  /*
+   * The family comes from the RECORD, not from a page-level setting.
+   * That is what lets one list hold an agronomist and an exam evaluator
+   * and label each with its own field and its own tier names.
+   */
+  const fam = family(provider.family);
   const top = provider.verifiedSkills[0];
   return (
     <li>
@@ -37,6 +35,9 @@ export function ProviderCard({
               <h3 className="text-lead font-semibold group-hover:text-brand">{provider.displayName}</h3>
               <Rating value={provider.rating.mean} count={provider.rating.count} />
               {provider.isNew && <Chip tone="info">New here</Chip>}
+            </div>
+            <div className="mt-1.5">
+              <FieldChip label={t(fam.label, lang)} colour={fam.theme.brand} />
             </div>
             <p className="mt-1.5 line-clamp-2 text-body text-ink-muted">{provider.headline.original}</p>
 

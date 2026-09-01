@@ -27,10 +27,16 @@ export default async function AdminHome(): Promise<JSX.Element> {
     listSafetyQueue(),
   ]);
 
+  /*
+   * Keyed by the item's own id, not by its label. Two distress reports
+   * in the same queue produce the same label, and React silently drops
+   * one of them when the key collides — which on THIS screen means a
+   * breaching safety item disappearing from the list.
+   */
   const breaching = [
-    ...credentials.map((c) => ({ due: c.slaDueAt, where: 'Verification', href: '/admin/verification', what: c.provider.displayName })),
-    ...disputes.map((d) => ({ due: d.slaDueAt, where: 'Disputes', href: '/admin/disputes', what: d.reference })),
-    ...safety.map((s) => ({ due: s.slaDueAt, where: 'Safety', href: '/admin/safety', what: s.kind.replace('_', ' ') })),
+    ...credentials.map((c) => ({ id: c.id, due: c.slaDueAt, where: 'Verification', href: '/admin/verification', what: c.provider.displayName })),
+    ...disputes.map((d) => ({ id: d.id, due: d.slaDueAt, where: 'Disputes', href: '/admin/disputes', what: d.reference })),
+    ...safety.map((s) => ({ id: s.id, due: s.slaDueAt, where: 'Safety', href: '/admin/safety', what: s.kind.replace('_', ' ') })),
   ]
     .sort((a, b) => a.due.localeCompare(b.due))
     .slice(0, 6);
@@ -55,7 +61,7 @@ export default async function AdminHome(): Promise<JSX.Element> {
         <Panel title="Breaching soonest" note="Across every queue.">
           <ul className="divide-y divide-line">
             {breaching.map((b) => (
-              <li key={`${b.where}-${b.what}`}>
+              <li key={b.id}>
                 <Link
                   href={b.href}
                   className="flex flex-wrap items-center justify-between gap-3 py-3.5 hover:text-brand"

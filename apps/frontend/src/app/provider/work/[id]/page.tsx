@@ -3,7 +3,7 @@ import { AppShell } from '@/components/shell';
 import { Button, ButtonLink, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
 import { EscrowRail } from '@/components/escrow';
 import { GoalsContract } from '@/components/goals';
-import { preview } from '@/lib/preview';
+import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel } from '@/lib/pack';
 import { getEngagement, getAssessmentTemplate } from '@/lib/data';
 import { until, dateLong } from '@/lib/format';
@@ -23,9 +23,10 @@ export const dynamic = 'force-dynamic';
  * meaningful to score, and the delivery is the written work itself.
  */
 export default async function ProviderWorkDetail({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('provider');
+  const { lang } = preview('provider');
   const e = await getEngagement(params.id);
   if (!e) notFound();
+  const fam = contextFor(e.family);
   const template = await getAssessmentTemplate(e.category);
 
   return (

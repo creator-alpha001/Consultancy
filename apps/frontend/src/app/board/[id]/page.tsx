@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import {
-  Avatar, Button, ButtonLink, Card, Chip, Divider, Eyebrow, LanguageChip, PageHead, Panel, Rating, SlaClock, TierChip,
+  Avatar, Button, ButtonLink, Card, Chip, Divider, Eyebrow, FieldChip, LanguageChip, PageHead, Panel, Rating, SlaClock, TierChip,
 } from '@/components/ui';
-import { preview } from '@/lib/preview';
+import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel, languageName } from '@/lib/pack';
 import { getBoardRequest, listProposals } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
@@ -28,9 +28,10 @@ export const dynamic = 'force-dynamic';
  * horizontal scroll to compare is worse than no comparison at all.
  */
 export default async function BoardRequestPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { lang } = preview('seeker');
   const [request, proposals] = await Promise.all([getBoardRequest(params.id), listProposals(params.id)]);
   if (!request) notFound();
+  const fam = contextFor(request.family);
 
   return (
     <AppShell fam={fam} lang={lang} role="seeker" current="/board">
@@ -42,6 +43,7 @@ export default async function BoardRequestPage({ params }: { params: { id: strin
       />
 
       <div className="mb-6 flex flex-wrap gap-2">
+        <FieldChip label={t(fam.label, lang)} colour={fam.theme.brand} />
         <Chip tone="neutral">{categoryLabel(fam, request.domain, request.category, lang)}</Chip>
         <Chip tone="neutral">{languageName(request.language, lang)}</Chip>
         <Chip tone="neutral">Budget {money(request.budget)}</Chip>
@@ -85,7 +87,8 @@ export default async function BoardRequestPage({ params }: { params: { id: strin
                           {top && (
                             <>
                               <Chip tone="brand">{top.skillLabelKey}</Chip>
-                              <TierChip tierLabel={t(fam.tierLabels[top.tier], lang)} />
+                              {/* Tier names are the PROPOSER's field's, not the request's. */}
+                              <TierChip tierLabel={t(contextFor(p.provider.family).tierLabels[top.tier], lang)} />
                             </>
                           )}
                           <LanguageChip languages={p.provider.languages} />

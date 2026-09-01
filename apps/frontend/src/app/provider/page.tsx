@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { AppShell } from '@/components/shell';
 import { ButtonLink, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, Stat, StatusChip } from '@/components/ui';
 import { EscrowLine } from '@/components/escrow';
-import { preview } from '@/lib/preview';
-import { t, tl, categoryLabel } from '@/lib/pack';
+import { preview, contextFor } from '@/lib/preview';
+import { t, tl, plural, categoryLabel } from '@/lib/pack';
 import { listEngagements, listBoard } from '@/lib/data';
 import { dateTime, money, until, ago } from '@/lib/format';
 
@@ -68,13 +68,13 @@ export default async function ProviderHome(): Promise<JSX.Element> {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="figure text-caption text-ink-muted">{e.reference}</span>
-                          <Chip tone="neutral">{categoryLabel(fam, e.domain, e.category, lang)}</Chip>
+                          <Chip tone="neutral">{categoryLabel(contextFor(e.family), e.domain, e.category, lang)}</Chip>
                           <Chip tone="neutral">{e.language.toUpperCase()}</Chip>
                         </div>
                         <p className="mt-1.5 text-body font-medium">{e.seeker.displayName}</p>
                         <p className="figure mt-0.5 text-small text-ink-muted">
                           {e.agenda?.items.filter((i) => i.addressed).length ?? 0} of {e.agenda?.items.length ?? 0}{' '}
-                          {tl(fam.labels.agenda, lang)} marked
+                          {plural(contextFor(e.family).labels.agendaItem, lang)} marked
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -101,7 +101,7 @@ export default async function ProviderHome(): Promise<JSX.Element> {
                     <div>
                       <p className="figure text-body font-medium">{dateTime(e.scheduledAt)}</p>
                       <p className="mt-0.5 text-small text-ink-muted">
-                        {e.seeker.displayName} · {categoryLabel(fam, e.domain, e.category, lang)} ·{' '}
+                        {e.seeker.displayName} · {categoryLabel(contextFor(e.family), e.domain, e.category, lang)} ·{' '}
                         {e.language.toUpperCase()}
                       </p>
                     </div>
@@ -134,8 +134,8 @@ export default async function ProviderHome(): Promise<JSX.Element> {
                   <div className="min-w-0">
                     <p className="text-body font-medium">{r.title.original}</p>
                     <p className="mt-0.5 text-small text-ink-muted">
-                      {categoryLabel(fam, r.domain, r.category, lang)} · {r.language.toUpperCase()} · posted{' '}
-                      {ago(r.postedAt)} · <span className="figure">{r.proposalCount} replies</span>
+                      {categoryLabel(contextFor(r.family), r.domain, r.category, lang)} · {r.language.toUpperCase()} ·
+                      posted {ago(r.postedAt)} · <span className="figure">{r.proposalCount} replies</span>
                     </p>
                   </div>
                   <span className="figure flex-none text-small font-semibold">{money(r.budget)}</span>

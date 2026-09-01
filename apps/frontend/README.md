@@ -1,7 +1,13 @@
 # @sankalp/frontend — the redesigned web client
 
 An alternative frontend for Sankalp, covering all three products — seeker,
-provider and operations — in one Next.js app.
+provider and operations — across **six fields**, in one Next.js app.
+
+Sankalp is a marketplace for guidance in **any** field. Competitive exams
+are the first family we open, not what the product is. Six ship in the
+mock source — competitive exams, higher education, agriculture,
+accountancy and tax, careers, and music — and every screen below is the
+same code rendering all of them.
 
 It runs on a **mock data source** and needs no database, no API and no
 environment variables. That is deliberate: the design was meant to be
@@ -23,7 +29,7 @@ screens import, so the reference cannot drift from the product.
 
 | Surface | Routes |
 |---|---|
-| Public & seeker | `/` · `/providers` · `/providers/[id]` · `/board` · `/board/[id]` · `/board/new` · `/engagements` · `/engagements/[id]` · `/engagements/[id]/agenda` · `/engagements/[id]/complete` · `/sessions` · `/sessions/[id]` · `/money` · `/progress` |
+| Public & seeker | `/` · `/fields` · `/fields/[code]` · `/providers` · `/providers/[id]` · `/board` · `/board/[id]` · `/board/new` · `/engagements` · `/engagements/[id]` · `/engagements/[id]/agenda` · `/engagements/[id]/complete` · `/sessions` · `/sessions/[id]` · `/money` · `/progress` |
 | Provider | `/provider` · `/provider/requests` · `/provider/work` · `/provider/work/[id]` · `/provider/earnings` · `/provider/standing` |
 | Operations | `/admin` · `/admin/verification` · `/admin/disputes` · `/admin/disputes/[id]` · `/admin/safety` · `/admin/money` · `/admin/config` |
 | System | `/kit` |
@@ -55,6 +61,51 @@ Two files are scaffolding for the unconnected build and should be deleted
 when the API is connected: `src/lib/preview.ts` and `src/app/switch/`.
 They hold the previewed family, language and role, which in the real app
 come from the session and the user's enrolments.
+
+---
+
+## The three-tier model, and why it is visible
+
+`src/lib/pack.ts` holds **platform → family → domain**.
+
+- The **platform** base owns the neutral vocabulary (`Client`, `Expert`,
+  `Engagement`, `Goals`) and the neutral accent. It is what renders on
+  any screen that is not inside one field — the landing page,
+  cross-field search, a person's own list of work.
+- A **family** overrides the vocabulary, the engagement types, the
+  credential types, the tier names, the helplines and the accent.
+- A **domain** under it is thin: a category tree, its languages, a price
+  band, a season note.
+
+Two consequences you can see in the running app:
+
+**Discovery sits above the taxonomy.** `/` and `/providers` return every
+field at once — an agronomist beside an exam evaluator beside a tax
+practitioner. A field is a *filter*, never a mode. This matters beyond
+presentation: with a global "current family", every list is implicitly
+filtered to it, and a seeker with an exam, a university application and
+a tax question cannot see them in one place. `listEngagements` returns
+all three, and `/engagements` renders each row in its own field's words
+— "goals", "milestones", "deliverables".
+
+**A record carries its own family.** Screens call `contextFor(record.family)`
+rather than reading a page-level setting, which is why one component
+renders `Result verified` on an evaluator and `Membership verified` on a
+tax practitioner, and why the agriculture pages put photo diagnosis and
+voice notes ahead of video while nothing in the interface assumes video
+is the flagship.
+
+Adding a field is an entry in `FAMILIES`. Not a code change, not a
+migration, not a separate build.
+
+### Language is not an afterthought
+
+`withArticle()` and `plural()` exist because `a ${word}` and `${word}s`
+are English rules. Gluing them onto a pack label produces *"How a
+agronomist"* and *"2 मेंटरs"* — both of which this app rendered before
+they were added. Languages without articles get the bare noun; only
+English takes the `s`. Eleven languages are declared across the six
+families and the search filter offers all of them.
 
 ---
 
@@ -115,5 +166,22 @@ detection anywhere.
 
 Every route was rendered in Chromium at 1280px and 360px and asserted on:
 no horizontal overflow at either width, and no console or page errors.
-The capture script is `docs/screens/redesign/` plus the note in
-`TRACKER.md`; three real defects it caught are recorded there.
+Screenshots are in `docs/screens/redesign/` (64 of them).
+
+Defects that check caught, all fixed:
+
+- timestamps rendered in the server's timezone rather than a named IANA
+  zone — the bug the timestamptz-plus-zone convention exists to prevent
+- money formatted as `₹382.5`, which is not a sum of money and does not
+  align in a column
+- the escrow rail, correct at 1280px and collapsed at 360px where the
+  labels squeezed the connectors to nothing
+- React hoisting `<title>` out of an SVG, breaking hydration on
+  `/progress` — found only after the check was hardened to look for
+  console errors, since a screenshot of an error page has no horizontal
+  overflow either
+- `<p>` nested inside `<p>` (an `Eyebrow` inside a paragraph), which the
+  browser silently repairs into a tree that no longer matches the
+  server's
+- duplicate React keys on the operations overview, which silently
+  dropped a breaching safety item from the list

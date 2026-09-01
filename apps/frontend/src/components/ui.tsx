@@ -110,9 +110,18 @@ export function PageHead({
   );
 }
 
-/** The small uppercase label that sits above a heading or a figure. */
+/**
+ * The small uppercase label that sits above a heading or a figure.
+ *
+ * A <span> with `block`, not a <p>. It gets used inside <p>, <dt> and
+ * <legend>, and a <p> nested in a <p> is invalid HTML — the browser
+ * silently closes the outer one, the server-rendered tree and the client
+ * tree stop matching, and hydration fails. A span is valid in all three.
+ */
 export function Eyebrow({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="text-micro font-semibold uppercase tracking-[0.09em] text-ink-muted">{children}</p>;
+  return (
+    <span className="block text-micro font-semibold uppercase tracking-[0.09em] text-ink-muted">{children}</span>
+  );
 }
 
 export function Divider({ className = '' }: { className?: string }): JSX.Element {
@@ -345,6 +354,24 @@ export function Chip({
     >
       {icon}
       {children}
+    </span>
+  );
+}
+
+/**
+ * Which field a person or a piece of work belongs to.
+ *
+ * On every card, everywhere, because discovery spans all of them: a list
+ * that mixes an agronomist, a tax practitioner and an exam evaluator has
+ * to say which is which, and the family's own accent colour is the
+ * fastest way to carry it. The dot is never the only signal — the name
+ * is always beside it.
+ */
+export function FieldChip({ label, colour }: { label: string; colour: string }): JSX.Element {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-2.5 py-1 text-caption font-medium text-ink-muted">
+      <span aria-hidden="true" className="h-2 w-2 flex-none rounded-full" style={{ background: colour }} />
+      {label}
     </span>
   );
 }

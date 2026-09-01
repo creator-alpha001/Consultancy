@@ -1,6 +1,6 @@
 import { AppShell } from '@/components/shell';
-import { Button, Card, Chip, Divider, Eyebrow, Field, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
-import { preview } from '@/lib/preview';
+import { Button, Card, Chip, Divider, Eyebrow, Field, FieldChip, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
+import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel, languageName } from '@/lib/pack';
 import { listBoard } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
@@ -33,14 +33,17 @@ export default async function ProviderRequestsPage(): Promise<JSX.Element> {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <ul className="grid gap-3">
-          {board.map((r) => (
+          {board.map((r) => {
+            const rf = contextFor(r.family);
+            return (
             <li key={r.id}>
               <Card className={`p-5 ${r.id === selected?.id ? 'border-brand ring-1 ring-brand' : ''}`} interactive>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="figure text-caption text-ink-muted">{r.reference}</span>
-                      <Chip tone="neutral">{categoryLabel(fam, r.domain, r.category, lang)}</Chip>
+                      <FieldChip label={t(rf.label, lang)} colour={rf.theme.brand} />
+                      <Chip tone="neutral">{categoryLabel(rf, r.domain, r.category, lang)}</Chip>
                       <Chip tone="neutral">{languageName(r.language, lang)}</Chip>
                     </div>
                     <h2 className="mt-2 text-lead font-semibold">{r.title.original}</h2>
@@ -71,15 +74,16 @@ export default async function ProviderRequestsPage(): Promise<JSX.Element> {
                   considering a request, never public.
                 */}
                 <div className="mt-3 rounded-md bg-surface-sunk p-3">
-                  <Eyebrow>About this {tl(fam.labels.seeker, lang)}</Eyebrow>
+                  <Eyebrow>About this {tl(rf.labels.seeker, lang)}</Eyebrow>
                   <p className="mt-1 text-small text-ink-muted">
                     4 completed · came back to the same person twice · no disputes raised · answers questions within a
-                    day. Rated by other {tl(fam.labels.provider, lang)}s as prepared and clear.
+                    day. Rated by others here as prepared and clear.
                   </p>
                 </div>
               </Card>
             </li>
-          ))}
+            );
+          })}
         </ul>
 
         {/* ------------------------------------------------- composer */}

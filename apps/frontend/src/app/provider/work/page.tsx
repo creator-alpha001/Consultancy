@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { AppShell } from '@/components/shell';
 import { ButtonLink, Card, Chip, EmptyState, PageHead, SlaClock, StatusChip } from '@/components/ui';
 import { EscrowLine } from '@/components/escrow';
-import { preview } from '@/lib/preview';
-import { tl, categoryLabel } from '@/lib/pack';
+import { preview, contextFor } from '@/lib/preview';
+import { t, tl, plural, categoryLabel } from '@/lib/pack';
 import { listEngagements } from '@/lib/data';
 import { money, until, dateTime } from '@/lib/format';
 
@@ -21,7 +21,9 @@ export default async function ProviderWorkPage(): Promise<JSX.Element> {
         <EmptyState title="Nothing on">Requests you win appear here.</EmptyState>
       ) : (
         <ul className="grid gap-3">
-          {work.map((e) => (
+          {work.map((e) => {
+            const ef = contextFor(e.family);
+            return (
             <li key={e.id}>
               <Link
                 href={`/provider/work/${e.id}`}
@@ -32,13 +34,13 @@ export default async function ProviderWorkPage(): Promise<JSX.Element> {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="figure text-caption text-ink-muted">{e.reference}</span>
                       <StatusChip status={e.status} />
-                      <Chip tone="neutral">{categoryLabel(fam, e.domain, e.category, lang)}</Chip>
+                      <Chip tone="neutral">{categoryLabel(ef, e.domain, e.category, lang)}</Chip>
                       <Chip tone="neutral">{e.language.toUpperCase()}</Chip>
                     </div>
                     <p className="mt-1.5 text-lead font-semibold">{e.seeker.displayName}</p>
                     <p className="figure mt-0.5 text-small text-ink-muted">
                       {e.agenda?.items.filter((i) => i.addressed).length ?? 0} of {e.agenda?.items.length ?? 0}{' '}
-                      {tl(fam.labels.agenda, lang)} marked
+                      {plural(ef.labels.agendaItem, lang)} marked
                       {e.scheduledAt ? ` · ${dateTime(e.scheduledAt)}` : ''}
                     </p>
                   </div>
@@ -50,7 +52,8 @@ export default async function ProviderWorkPage(): Promise<JSX.Element> {
                 </div>
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </AppShell>

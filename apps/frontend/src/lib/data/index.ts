@@ -36,7 +36,16 @@ export async function getViewer(role: Role): Promise<Viewer> {
   return mock.ACTORS[role] as Viewer;
 }
 
+/**
+ * Search, across every family by default.
+ *
+ * Passing no family is the normal case, not a wildcard escape hatch: a
+ * person looking for help does not start by picking a taxonomy branch,
+ * and a search that forces them to is a search that only works for
+ * people who already know the vocabulary.
+ */
 export async function listProviders(filter: {
+  family?: string;
   domain?: string;
   category?: string;
   language?: string;
@@ -44,6 +53,7 @@ export async function listProviders(filter: {
   query?: string;
 } = {}): Promise<ProviderSummary[]> {
   let out = mock.PROVIDERS;
+  if (filter.family) out = out.filter((p) => p.family === filter.family);
   if (filter.domain) out = out.filter((p) => p.domains.includes(filter.domain as string));
   if (filter.category) out = out.filter((p) => p.categories.includes(filter.category as string));
   if (filter.language) out = out.filter((p) => p.languages.includes(filter.language as string));
@@ -105,6 +115,11 @@ export async function getProvider(id: string): Promise<ProviderProfile | null> {
 export async function listEngagements(role: Role): Promise<Engagement[]> {
   if (role === 'provider') return mock.ENGAGEMENTS.filter((e) => e.provider?.id === 'prv_1');
   if (role === 'admin') return mock.ENGAGEMENTS;
+  /*
+   * A seeker's list spans families — exams, a university application and
+   * a tax question sit in the same list because they are all things one
+   * person currently has in flight. Never filter this to one field.
+   */
   return mock.ENGAGEMENTS.filter((e) => e.seeker.id === 'usr_seeker_1');
 }
 
@@ -125,10 +140,34 @@ export async function getAssessmentTemplate(category: string): Promise<Assessmen
   return mock.ASSESSMENT_TEMPLATES[category] ?? null;
 }
 
-export async function listBoard(filter: { domain?: string; language?: string } = {}): Promise<BoardRequest[]> {
+export async function listBoard(
+  filter: { family?: string; domain?: string; language?: string } = {},
+): Promise<BoardRequest[]> {
   let out = mock.BOARD.filter((b) => b.status === 'open');
+  if (filter.family) out = out.filter((b) => b.family === filter.family);
   if (filter.domain) out = out.filter((b) => b.domain === filter.domain);
   if (filter.language) out = out.filter((b) => b.language === filter.language);
+  return out;
+}
+
+/**
+ * How many people and open requests each family currently has.
+ *
+ * Used by the landing page and the field catalogue. It counts rather
+ * than hardcodes, so a family with nothing in it yet shows as empty
+ * instead of being quietly dressed up.
+ */
+export async function familyCounts(): Promise<Record<string, { providers: number; open: number }>> {
+  const out: Record<string, { providers: number; open: number }> = {};
+  for (const p of mock.PROVIDERS) {
+    out[p.family] = out[p.family] ?? { providers: 0, open: 0 };
+    (out[p.family] as { providers: number }).providers += 1;
+  }
+  for (const b of mock.BOARD) {
+    if (b.status !== 'open') continue;
+    out[b.family] = out[b.family] ?? { providers: 0, open: 0 };
+    (out[b.family] as { open: number }).open += 1;
+  }
   return out;
 }
 

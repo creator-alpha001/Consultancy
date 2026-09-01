@@ -1,33 +1,52 @@
 import { cookies } from 'next/headers';
-import { DEFAULT_FAMILY, family, type FamilyPack, type Lang } from './pack';
+import { family, type FamilyPack, type Lang } from './pack';
 import type { Role } from './types';
 
 /**
- * Preview state — which family, language and role the shell is rendering.
+ * Who is looking, and in what language.
  *
- * This exists ONLY because the app is not yet wired to the API. In the
- * connected app, family and language come from the signed-in user's
- * enrolments and role comes from the session, and this whole module is
- * replaced by a read of the session. It is deliberately isolated in one
- * file so that removing it is a deletion, not a refactor.
+ * Note what is NOT here any more: a "current family". The product is not
+ * scoped to one field. A screen showing a specific engagement, board
+ * request or provider resolves the family FROM THAT RECORD — see
+ * `contextFor` below — and a screen showing several at once (the landing
+ * page, search, a person's own list) renders the platform's own neutral
+ * vocabulary and accent.
  *
- * It is also the fastest way to demonstrate the central architectural
- * claim to a person rather than to a document: switch the family in the
- * header and every noun, category, credential type and accent in the
- * product changes, with no component aware that anything happened.
+ * That is the difference between a marketplace for guidance and a
+ * marketplace for one vertical, and it is structural rather than
+ * cosmetic: with a global family, every list is implicitly filtered to
+ * it, and a seeker with an exam, a university application and a tax
+ * question cannot see them in one place.
+ *
+ * The role and language cookies are scaffolding for the unconnected
+ * build — in the real app both come from the session — and go with
+ * src/app/switch/.
  */
-export const FAMILY_COOKIE = 'sankalp_preview_family';
-export const LANG_COOKIE = 'sankalp_preview_lang';
+export const LANG_COOKIE = 'sankalp_lang';
+export const ROLE_COOKIE = 'sankalp_role';
 
-export interface Preview {
+export interface Viewer {
+  /** The platform pack. Neutral vocabulary; no field's costume. */
   fam: FamilyPack;
   lang: Lang;
   role: Role;
 }
 
-export function preview(role: Role = 'seeker'): Preview {
+export function preview(role: Role = 'seeker'): Viewer {
   const jar = cookies();
-  const famCode = jar.get(FAMILY_COOKIE)?.value ?? DEFAULT_FAMILY;
-  const lang = (jar.get(LANG_COOKIE)?.value === 'hi' ? 'hi' : 'en') as Lang;
-  return { fam: family(famCode), lang, role };
+  const raw = jar.get(LANG_COOKIE)?.value;
+  const lang = (raw && /^[a-z]{2}$/.test(raw) ? raw : 'en') as Lang;
+  return { fam: family('platform'), lang, role };
+}
+
+/**
+ * The pack for one record's field.
+ *
+ * Call this on any screen showing a specific piece of work: it is what
+ * makes an agronomist's engagement say "Consultation" and "Field note"
+ * while an evaluator's says "Task" and "Evaluation" — same components,
+ * same list, different vocabulary and accent.
+ */
+export function contextFor(familyCode: string | undefined | null): FamilyPack {
+  return family(familyCode);
 }

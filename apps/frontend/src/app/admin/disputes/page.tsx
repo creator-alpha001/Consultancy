@@ -28,7 +28,7 @@ export default async function DisputesPage(): Promise<JSX.Element> {
 
   return (
     <AppShell fam={fam} lang={lang} role="admin" current="/admin/disputes">
-      <PageHead title="Disputes" sub={`${disputes.length} open. Every ruling is written, cites evidence, and is appealable once.`} />
+      <PageHead title="Disputes" sub={`${disputes.length} open, across every field. Every ruling is written, cites evidence, and is appealable once.`} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <ul className="grid gap-3">

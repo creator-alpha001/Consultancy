@@ -7,8 +7,8 @@ import {
 import { EscrowRail } from '@/components/escrow';
 import { GoalsContract, OriginalLanguageNote } from '@/components/goals';
 import { RubricBars } from '@/components/charts';
-import { preview } from '@/lib/preview';
-import { t, tl, categoryLabel } from '@/lib/pack';
+import { preview, contextFor } from '@/lib/preview';
+import { t, tl, plural, categoryLabel } from '@/lib/pack';
 import { getEngagement, getAssessment, getAssessmentTemplate } from '@/lib/data';
 import { dateTime, until } from '@/lib/format';
 
@@ -26,9 +26,11 @@ export const dynamic = 'force-dynamic';
  * legal — a greyed-out control is a question the user cannot answer.
  */
 export default async function EngagementPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { lang } = preview('seeker');
   const e = await getEngagement(params.id);
   if (!e) notFound();
+  /* The field is the engagement's, so this screen speaks its language. */
+  const fam = contextFor(e.family);
 
   const [assessment, template] = await Promise.all([
     getAssessment(e.id),
@@ -42,7 +44,7 @@ export default async function EngagementPage({ params }: { params: { id: string 
         eyebrow={
           <span className="flex items-center gap-2">
             <Link href="/engagements" className="hover:underline">
-              My {tl(fam.labels.engagement, lang)}s
+              My work
             </Link>
             <span aria-hidden="true">/</span>
             <span className="figure">{e.reference}</span>
@@ -178,7 +180,7 @@ function ActionPanel({
     return (
       <Panel tone="caution" title="Your turn">
         <p className="text-body">
-          Read what came back, then confirm the {tl(fam.labels.agenda, lang)} were met. If you do nothing, the money
+          Read what came back, then confirm the {plural(fam.labels.agendaItem, lang)} were met. If you do nothing, the money
           releases on its own — you will be reminded twice first.
         </p>
         {e.escrow.releasesOn && (
@@ -242,7 +244,7 @@ function ActionPanel({
       <Panel tone="danger" title="Under dispute">
         <p className="text-body">
           The money is frozen until this is ruled on. You will get a written decision citing the specific{' '}
-          {tl(fam.labels.agenda, lang)} in question.
+          {plural(fam.labels.agendaItem, lang)} in question.
         </p>
         <div className="mt-4">
           <ButtonLink href="/disputes/dsp_1" tone="secondary" full>

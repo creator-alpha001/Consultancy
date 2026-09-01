@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import { Button, ButtonLink, Divider, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { GoalsContract } from '@/components/goals';
-import { preview } from '@/lib/preview';
-import { t, tl } from '@/lib/pack';
+import { preview, contextFor } from '@/lib/preview';
+import { t, tl, plural } from '@/lib/pack';
 import { getEngagement } from '@/lib/data';
 import { money, until } from '@/lib/format';
 
@@ -21,9 +21,10 @@ export const dynamic = 'force-dynamic';
  * The button names the consequence and the amount.
  */
 export default async function CompletePage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { lang } = preview('seeker');
   const e = await getEngagement(params.id);
   if (!e || !e.agenda) notFound();
+  const fam = contextFor(e.family);
 
   const unaddressed = e.agenda.items.filter((i) => !i.addressed);
 
@@ -31,7 +32,7 @@ export default async function CompletePage({ params }: { params: { id: string } 
     <AppShell fam={fam} lang={lang} role="seeker" current="/engagements">
       <PageHead
         eyebrow={<span className="figure">{e.reference}</span>}
-        title={`Were the ${tl(fam.labels.agenda, lang)} met?`}
+        title={`Were the ${plural(fam.labels.agendaItem, lang)} met?`}
         sub="Tick what was done. This is the same list you both locked — nothing has been reworded."
       />
 

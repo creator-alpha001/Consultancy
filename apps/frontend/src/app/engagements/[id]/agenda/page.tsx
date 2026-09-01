@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import { Button, ButtonLink, Card, Divider, Eyebrow, GlyphLock, PageHead, Panel, TextArea } from '@/components/ui';
-import { preview } from '@/lib/preview';
+import { preview, contextFor } from '@/lib/preview';
 import { t, tl, languageName } from '@/lib/pack';
 import { getEngagement } from '@/lib/data';
 
@@ -26,9 +26,10 @@ export const dynamic = 'force-dynamic';
  * change is a change order producing a new version, never an overwrite.
  */
 export default async function AgendaPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { lang } = preview('seeker');
   const e = await getEngagement(params.id);
   if (!e) notFound();
+  const fam = contextFor(e.family);
   const agenda = e.agenda;
   const locked = agenda?.state === 'locked';
 

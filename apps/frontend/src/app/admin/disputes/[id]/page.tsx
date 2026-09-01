@@ -3,7 +3,7 @@ import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
 import { GoalsContract } from '@/components/goals';
 import { EscrowRail } from '@/components/escrow';
-import { preview } from '@/lib/preview';
+import { preview, contextFor } from '@/lib/preview';
 import { t, tl } from '@/lib/pack';
 import { getDispute, getEngagement } from '@/lib/data';
 import { money, until, dateTime } from '@/lib/format';
@@ -27,10 +27,17 @@ export const dynamic = 'force-dynamic';
  * button and their name goes on the ruling.
  */
 export default async function DisputeDetailPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('admin');
+  const { lang } = preview('admin');
   const dispute = await getDispute(params.id);
   if (!dispute) notFound();
   const engagement = await getEngagement(dispute.engagementId);
+  /*
+   * The reviewer reads this in the vocabulary the two parties used, not
+   * in ours. "The grower says" and "the agronomist says" is what the
+   * locked agenda called them, and renaming them for the console would
+   * quietly edit the evidence.
+   */
+  const fam = contextFor(engagement?.family);
 
   return (
     <AppShell fam={fam} lang={lang} role="admin" current="/admin/disputes">
@@ -61,20 +68,21 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
           <div className="grid gap-4 md:grid-cols-2">
             <Panel title={`The ${tl(fam.labels.seeker, lang)} says`}>
               <p className="text-body">
-                &ldquo;Six scripts came back marked, which was most of it. The written note on what is holding my
-                score down never arrived, and that was the thing I actually paid for.&rdquo;
+                &ldquo;ती कीड कोणती हे तिने सांगितलं, ते बरोबर आहे. पण मी विचारलं होतं की कोणतं औषध, किती
+                प्रमाणात — ते लिहून मिळालं नाही. दुकानात मी काय दाखवू?&rdquo;
               </p>
               <p className="mt-3 text-caption text-ink-muted">
-                Submitted 28 Aug · 4 completed before this · no previous disputes
+                Submitted 29 Aug · 6 completed before this · no previous disputes · working in Marathi
               </p>
             </Panel>
             <Panel title={`The ${tl(fam.labels.provider, lang)} says`}>
               <p className="text-body">
-                &ldquo;The pattern note is inside the per-script remarks rather than as a separate page. I accept it is
-                not where they expected to find it. I am happy to write it up separately.&rdquo;
+                &ldquo;I identified the pest from the photographs and I stand by that. I will not put a dose in writing
+                without seeing the field — the label rate depends on the stage of the crop and I would be guessing. I
+                offered a call to work it out and had no reply.&rdquo;
               </p>
               <p className="mt-3 text-caption text-ink-muted">
-                Submitted 29 Aug · 37 completed · 1 previous dispute, ruled in their favour
+                Submitted 30 Aug · 1,840 completed · 2 previous disputes, both ruled in their favour
               </p>
             </Panel>
           </div>
@@ -82,11 +90,11 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
           <Panel title="Evidence" note="Everything the ruling may cite. Anything not here was not considered.">
             <ul className="divide-y divide-line text-small">
               {[
-                ['Locked agenda, version 1', 'Hashed 22 Aug, 14:00. Identical copies held by both.', 'Above'],
-                ['Delivered files', '6 marked scripts, opened by the seeker on 26 Aug.', 'Open'],
-                ['Message thread', '11 messages. No off-platform contact attempts detected.', 'Open'],
-                ['Recording', 'Not applicable — this was a document review.', '—'],
-                ['Attendance log', 'Not applicable.', '—'],
+                ['Locked agenda, version 1', 'Hashed 28 Aug, 14:00. Identical copies held by both, in Marathi.', 'Above'],
+                ['Delivered work', 'Identification note with two annotated photographs, opened 28 Aug.', 'Open'],
+                ['Message thread', '9 messages. A call was offered on 28 Aug and not answered.', 'Open'],
+                ['Rubric', 'None — photo diagnosis has no assessment template.', '—'],
+                ['Recording', 'Not applicable — no session was held.', '—'],
               ].map(([what, detail, action]) => (
                 <li key={what} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                   <span className="min-w-0">
@@ -112,9 +120,10 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
           */}
           <Panel tone="caution" title="Automated coverage summary">
             <p className="text-small">
-              Comparing the delivered files against the locked list, goal 1 is substantively addressed across all six
-              scripts. Goal 2 asked for &ldquo;at least a page&rdquo; as a written note; no separate document was
-              delivered, though the per-script remarks total roughly 900 words on recurring weaknesses.
+              Comparing the delivered work against the locked list, goal 1 — identify the pest — is addressed, with a
+              named organism and stated reasoning. Goal 2 asked for a product, a dose and an interval &ldquo;in
+              writing, so I can show it at the shop&rdquo;; the delivered note names a product class and no dose. The
+              refusal is stated and reasoned rather than omitted.
             </p>
             <p className="mt-3 text-caption text-ink-muted">
               A suggestion for you to accept or reject. It has not moved anything and it cannot. You are ruling, not

@@ -67,6 +67,13 @@ export interface VerifiedSkill {
 export interface ProviderSummary {
   id: string;
   displayName: string;
+  /**
+   * The family this person is verified in. Carried on the record rather
+   * than derived, because discovery spans every family and a screen
+   * showing an agronomist beside an exam evaluator has to know which
+   * vocabulary and accent each one belongs to.
+   */
+  family: string;
   headline: LocalisedText;
   languages: string[];
   domains: string[];
@@ -137,6 +144,7 @@ export interface Engagement {
   reference: string;
   type: EngagementType;
   status: EngagementStatus;
+  family: string;
   domain: string;
   category: string;
   language: string;
@@ -192,6 +200,7 @@ export interface BoardRequest {
   reference: string;
   title: LocalisedText;
   detail: LocalisedText;
+  family: string;
   domain: string;
   category: string;
   language: string;
@@ -253,6 +262,7 @@ export interface Dispute {
 export interface CredentialSubmission {
   id: string;
   provider: { id: string; displayName: string };
+  family: string;
   credentialType: string;
   claim: string;
   submittedAt: string;

@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import {
-  Avatar, ButtonLink, Card, Chip, Divider, Eyebrow, GlyphCheckSeal, LanguageChip, Panel, Rating, TierChip,
+  Avatar, ButtonLink, Card, Chip, Divider, Eyebrow, FieldChip, GlyphCheckSeal, LanguageChip, Panel, Rating, TierChip,
 } from '@/components/ui';
 import { RatingDistribution } from '@/components/charts';
-import { preview } from '@/lib/preview';
+import { preview, contextFor } from '@/lib/preview';
 import { t, tl } from '@/lib/pack';
 import { getProvider } from '@/lib/data';
 import { dateLong, money, percent } from '@/lib/format';
@@ -24,9 +24,15 @@ export const dynamic = 'force-dynamic';
  * for the person, because tier is per skill (CLAUDE.md #5).
  */
 export default async function ProviderProfilePage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { lang } = preview('seeker');
   const p = await getProvider(params.id);
   if (!p) notFound();
+  /*
+   * The vocabulary and the tier names come from the PERSON'S field, not
+   * from a page setting — so this same component says "Result verified"
+   * on an evaluator and "Practice verified" on a tax practitioner.
+   */
+  const fam = contextFor(p.family);
 
   return (
     <AppShell fam={fam} lang={lang} role="seeker" current="/providers">
@@ -43,6 +49,7 @@ export default async function ProviderProfilePage({ params }: { params: { id: st
                 </div>
                 <p className="mt-2 max-w-reading text-lead text-ink-muted">{p.headline.original}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <FieldChip label={t(fam.label, lang)} colour={fam.theme.brand} />
                   <LanguageChip languages={p.languages} />
                   {p.domains.map((d) => {
                     const dom = fam.domains.find((x) => x.code === d);

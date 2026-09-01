@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { FAMILIES, t, type FamilyPack, type Lang } from '@/lib/pack';
+import { FAMILIES, t, withArticle, type FamilyPack, type Lang } from '@/lib/pack';
 import { themeStyle } from '@/lib/theme';
 import type { Role } from '@/lib/types';
 import { Avatar, Chip } from './ui';
@@ -100,9 +100,8 @@ export function AppShell({
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2 md:ml-0">
-            <FamilySwitcher fam={fam} dark={dark} />
-            <Avatar name={role === 'admin' ? 'Ops' : role === 'provider' ? 'D M' : 'A R'} size="sm" />
+          <div className="ml-auto flex items-center gap-1 md:ml-0">
+            <RoleMenu role={role} dark={dark} />
           </div>
         </div>
 
@@ -166,10 +165,16 @@ function navFor(role: Role, fam: FamilyPack, lang: Lang): NavItem[] {
       { href: '/admin/config', label: 'Config' },
     ];
   }
+  /*
+   * Platform vocabulary, because this navigation is above every field.
+   * "Find an expert" — not "find a mentor", which would be true only for
+   * one of six families and would tell a grower this is not for them.
+   */
   return [
-    { href: '/providers', label: `Find a ${t(fam.labels.provider, lang).toLowerCase()}` },
+    { href: '/fields', label: 'Fields' },
+    { href: '/providers', label: `Find ${withArticle(fam.labels.provider, lang)}` },
     { href: '/board', label: 'Board' },
-    { href: '/engagements', label: `My ${t(fam.labels.engagement, lang).toLowerCase()}s` },
+    { href: '/engagements', label: 'My work' },
     { href: '/sessions', label: 'Sessions' },
     { href: '/progress', label: 'Progress' },
     { href: '/money', label: 'Money' },
@@ -193,11 +198,13 @@ function Mark({ dark }: { dark: boolean }): JSX.Element {
 }
 
 /**
- * Switches the previewed family. This control is scaffolding for the
- * unconnected build — but what it demonstrates is not: the same code
- * renders three different products.
+ * The field menu.
+ *
+ * This is navigation, not a theme preview. Every field listed is a
+ * family pack, and entering one narrows discovery to it — it does not
+ * repaint the whole product, because the product is not any one of them.
  */
-function FamilySwitcher({ fam, dark }: { fam: FamilyPack; dark: boolean }): JSX.Element {
+function FieldMenu({ dark }: { dark: boolean }): JSX.Element {
   return (
     <div className="group relative">
       <button
@@ -207,34 +214,77 @@ function FamilySwitcher({ fam, dark }: { fam: FamilyPack; dark: boolean }): JSX.
         }`}
         aria-haspopup="true"
       >
-        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: fam.theme.brand }} />
-        <span className="hidden sm:inline">{fam.label.en}</span>
+        <span className="hidden sm:inline">Fields</span>
+        <span className="sm:hidden">Fields</span>
         <span aria-hidden="true">▾</span>
       </button>
-      <div className="invisible absolute right-0 top-full z-40 w-72 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+      <div className="invisible absolute right-0 top-full z-40 w-80 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
         <div className="rounded-lg border border-line bg-surface p-2 text-ink shadow-e3">
           <p className="px-2 py-1.5 text-caption text-ink-muted">
-            The same code, three families. Nothing below is a different build.
+            {FAMILIES.length} fields, {FAMILIES.reduce((n, f) => n + f.domains.length, 0)} areas. Each is a manifest,
+            not a build.
           </p>
           {FAMILIES.map((f) => (
-            <a
+            <Link
               key={f.code}
-              href={`/switch?family=${f.code}`}
-              className={`flex items-start gap-2.5 rounded-md px-2 py-2 text-small hover:bg-surface-sunk ${
-                f.code === fam.code ? 'bg-surface-sunk' : ''
-              }`}
+              href={`/fields/${f.code}`}
+              className="flex items-start gap-2.5 rounded-md px-2 py-2 text-small hover:bg-surface-sunk"
             >
               <span
                 aria-hidden="true"
                 className="mt-1 h-2.5 w-2.5 flex-none rounded-full"
                 style={{ background: f.theme.brand }}
               />
-              <span>
+              <span className="min-w-0">
                 <span className="block font-medium">{f.label.en}</span>
-                <span className="block text-caption text-ink-muted">
-                  {f.labels.seeker.en} · {f.labels.provider.en} · {f.labels.agenda.en}
+                <span className="block truncate text-caption text-ink-muted">
+                  {f.domains.map((d) => d.label.en).join(' · ')}
                 </span>
               </span>
+            </Link>
+          ))}
+          <Link href="/fields" className="mt-1 block rounded-md px-2 py-2 text-small font-medium text-brand hover:bg-surface-sunk">
+            See all fields
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Switches which of the three products is being viewed. Scaffolding for
+ * the unconnected build — role comes from the session in the real app.
+ */
+function RoleMenu({ role, dark }: { role: Role; dark: boolean }): JSX.Element {
+  const options: Array<[Role, string, string]> = [
+    ['seeker', 'Client view', 'Someone looking for help'],
+    ['provider', 'Expert view', 'Someone giving it'],
+    ['admin', 'Operations', 'Verification, disputes, safety, money'],
+  ];
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        className={`flex h-9 items-center gap-1.5 rounded-md px-2.5 text-small font-medium ${
+          dark ? 'text-[#b3bdd4] hover:bg-[#1e2a48]' : 'text-ink-muted hover:bg-surface-sunk'
+        }`}
+        aria-haspopup="true"
+      >
+        <Avatar name={role === 'admin' ? 'Ops' : role === 'provider' ? 'D M' : 'A R'} size="sm" />
+        <span aria-hidden="true">▾</span>
+      </button>
+      <div className="invisible absolute right-0 top-full z-40 w-72 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+        <div className="rounded-lg border border-line bg-surface p-2 text-ink shadow-e3">
+          <p className="px-2 py-1.5 text-caption text-ink-muted">Preview build — switch product</p>
+          {options.map(([code, label, blurb]) => (
+            <a
+              key={code}
+              href={`/switch?role=${code}&next=${code === 'seeker' ? '/' : code === 'provider' ? '/provider' : '/admin'}`}
+              className={`block rounded-md px-2 py-2 text-small hover:bg-surface-sunk ${role === code ? 'bg-surface-sunk' : ''}`}
+            >
+              <span className="block font-medium">{label}</span>
+              <span className="block text-caption text-ink-muted">{blurb}</span>
             </a>
           ))}
         </div>
@@ -291,7 +341,9 @@ function Footer({ fam, lang, role }: { fam: FamilyPack; lang: Lang; role: Role }
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-line pt-5 text-caption text-ink-muted">
-          <span>{t(fam.label, lang)}</span>
+          <span>
+            {FAMILIES.length} fields · {FAMILIES.reduce((n, f) => n + f.domains.length, 0)} areas
+          </span>
           <span aria-hidden="true">·</span>
           <a href={`/switch?lang=${lang === 'en' ? 'hi' : 'en'}`} className="hover:text-ink hover:underline">
             {lang === 'en' ? 'हिन्दी में देखें' : 'View in English'}

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { AppShell } from '@/components/shell';
-import { ButtonLink, Chip, Eyebrow, PageHead, Panel, SlaClock } from '@/components/ui';
-import { preview } from '@/lib/preview';
+import { ButtonLink, Chip, Eyebrow, FieldChip, PageHead, Panel, SlaClock } from '@/components/ui';
+import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel, languageName } from '@/lib/pack';
 import { listBoard } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
@@ -29,13 +29,16 @@ export default async function BoardPage(): Promise<JSX.Element> {
     <AppShell fam={fam} lang={lang} role="seeker" current="/board">
       <PageHead
         title="The board"
-        sub={`People describing what they need in their own words. If you can help, say how — up to five ${tl(fam.labels.provider, lang)}s reply and the person chooses.`}
+        sub="People describing what they need in their own words, in every field and every language here. If you can help, say how — up to five reply and the person chooses."
         action={<ButtonLink href="/board/new">Describe what you need</ButtonLink>}
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <ul className="grid gap-4">
-          {requests.map((r) => (
+          {requests.map((r) => {
+            /* Vocabulary and colour come from the request's own field. */
+            const rf = contextFor(r.family);
+            return (
             <li key={r.id}>
               <Link
                 href={`/board/${r.id}`}
@@ -45,7 +48,8 @@ export default async function BoardPage(): Promise<JSX.Element> {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="figure text-caption text-ink-muted">{r.reference}</span>
-                      <Chip tone="neutral">{categoryLabel(fam, r.domain, r.category, lang)}</Chip>
+                      <FieldChip label={t(rf.label, lang)} colour={rf.theme.brand} />
+                      <Chip tone="neutral">{categoryLabel(rf, r.domain, r.category, lang)}</Chip>
                       <Chip tone="neutral">{languageName(r.language, lang)}</Chip>
                     </div>
                     <h2 className="mt-2 text-lead font-semibold">{r.title.original}</h2>
@@ -69,7 +73,8 @@ export default async function BoardPage(): Promise<JSX.Element> {
                 </div>
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -77,7 +82,7 @@ export default async function BoardPage(): Promise<JSX.Element> {
             <ol className="space-y-3 text-small">
               {[
                 ['You describe it', 'In your own words, in your own language. No category to guess at.'],
-                ['Matching people are told', `Only ${tl(fam.labels.provider, lang)}s verified for that skill and working in that language.`],
+                ['Matching people are told', 'Only people verified for that skill, working in that language.'],
                 ['Up to five reply', 'A short pitch and a price. Capped at five so you are not reading forty.'],
                 ['You choose', 'Nothing is charged until you award it. Then it goes into escrow.'],
               ].map(([h, b], i) => (

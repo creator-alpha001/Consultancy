@@ -34,7 +34,12 @@ export function SessionRoom({
 }: {
   session: SessionRecord;
   agenda: Agenda | null;
-  labels: { agenda: string; agendaItem: string; provider: string };
+  /*
+   * Already resolved and already pluralised by the caller, which has the
+   * pack and the language. Appending an "s" here would produce "लक्ष्यs"
+   * on a Hindi engagement.
+   */
+  labels: { agenda: string; agendaItem: string; agendaItems: string; provider: string };
 }): JSX.Element {
   const [consent, setConsent] = useState<boolean | null>(null);
   const [joined, setJoined] = useState(false);
@@ -248,8 +253,7 @@ export function SessionRoom({
                 <div className="mt-4 rounded-md border border-caution-line bg-caution-soft p-3">
                   <p className="text-small">
                     <span className="font-medium">
-                      {total - done} {total - done === 1 ? labels.agendaItem.toLowerCase() : `${labels.agendaItem.toLowerCase()}s`}{' '}
-                      not covered yet.
+                      {total - done} {total - done === 1 ? labels.agendaItem : labels.agendaItems} not covered yet.
                     </span>{' '}
                     Say so now while there is time — extending costs less than a dispute does.
                   </p>
