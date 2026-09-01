@@ -66,8 +66,9 @@ workspace, so its dependencies install in this directory.
 
 ## What is here
 
-26 routes. `/kit` renders the design system from the same components the
-screens import, so the reference cannot drift from the product.
+28 page routes across six fields. `/kit` renders the design system from
+the same components the screens import, so the reference cannot drift
+from the product.
 
 | Surface | Routes |
 |---|---|
@@ -158,12 +159,11 @@ custom property. `tailwind.config.ts` replaces Tailwind's default palette
 entirely and maps utilities to **token roles, not hues** — there is no
 `indigo-600` in this app and no hex value in any component.
 
-That is what makes the family switcher in the header real rather than a
-demo: a family pack overrides `--brand` and its four relatives at runtime
-and every button, chip and chart follows, with no component aware that
-anything happened. Three families ship in the mock source
-(`src/lib/pack.ts`) so the claim "the core is domain-agnostic" is visible
-in the running product instead of only asserted in a document.
+That is what makes a field's accent real rather than a demo: a family
+pack overrides `--brand` and its four relatives, and every button, chip
+and chart follows with no component aware anything happened. A field
+colours its own pages — see `/fields/agriculture` beside
+`/fields/accountancy_tax` — and never repaints the platform around it.
 
 Colour is assigned by job:
 
