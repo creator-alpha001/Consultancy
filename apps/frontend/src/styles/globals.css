@@ -1,0 +1,159 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource/noto-sans-devanagari/400.css';
+@import '@fontsource/noto-sans-devanagari/500.css';
+@import '@fontsource/noto-sans-devanagari/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * The token layer.
+ *
+ * Every colour, radius and shadow in the app is one of these custom
+ * properties. Nothing downstream ever writes a hex value, which is what
+ * lets a family pack repaint the product at runtime (CLAUDE.md #7) —
+ * `themeVars()` in src/lib/theme.ts emits an override for the handful of
+ * tokens a family is allowed to touch, and the rest hold.
+ *
+ * The base palette is deliberately domain-neutral. It is not the exam
+ * family's ruled paper and red ink; that is one family's costume, and
+ * the core does not get to wear it.
+ *
+ * Contrast: every foreground token below clears 4.5:1 against both
+ * --canvas and --surface. --ink-faint is the exception and is used only
+ * for decoration that is never the sole carrier of meaning.
+ */
+:root {
+  /* Ground and surfaces */
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --surface-sunk: #f1f3f7;
+  --surface-raised: #ffffff;
+  --overlay: rgba(15, 23, 42, 0.45);
+
+  /* Ink */
+  --ink: #0f172a;
+  --ink-muted: #51607a;
+  --ink-faint: #8592a9;
+  --ink-inverse: #ffffff;
+
+  /* Lines */
+  --line: #e4e8ef;
+  --line-strong: #cfd6e2;
+
+  /* Brand — the one token a family is most likely to override */
+  --brand: #4338ca;
+  --brand-hover: #372fae;
+  --brand-ink: #ffffff;
+  --brand-soft: #eef1fe;
+  --brand-soft-ink: #3730a3;
+  --brand-line: #c7ccfa;
+
+  /* Verification. Green means *verified*, never generically "good". */
+  --verified: #0f7a52;
+  --verified-soft: #e9f6f0;
+  --verified-line: #b6ded0;
+
+  /* Caution — deadlines, SLAs, money awaiting an action */
+  --caution: #a05a00;
+  --caution-soft: #fdf4e7;
+  --caution-line: #f0dcbb;
+
+  /* Destructive and dispute. Present, never inviting. */
+  --danger: #c0334a;
+  --danger-soft: #fdf0f2;
+  --danger-line: #f3ccd4;
+
+  /* Neutral informational */
+  --info: #35618e;
+  --info-soft: #eef4fa;
+  --info-line: #c6d9ea;
+
+  /* Radii */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /*
+   * Elevation. Two-layer shadows tinted with the ink hue rather than
+   * pure black — a black shadow on a cool grey ground reads as dirt.
+   */
+  --e-1: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --e-2: 0 2px 4px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --e-3: 0 8px 16px rgba(15, 23, 42, 0.07), 0 16px 40px rgba(15, 23, 42, 0.09);
+  --e-focus: 0 0 0 3px rgba(67, 56, 202, 0.18);
+}
+
+/*
+ * The provider surface inverts to a dark header (design addendum §2:
+ * two roles, two surfaces). It is a scope, not a separate theme — the
+ * same components render inside it.
+ */
+.surface-dark {
+  --surface: #16203a;
+  --surface-sunk: #1e2a48;
+  --ink: #f4f6fb;
+  --ink-muted: #a9b5cd;
+  --ink-faint: #7c89a4;
+  --line: #2c3a5c;
+  --line-strong: #3b4b70;
+  --surface-raised: #1e2a48;
+  --brand-soft: #26315a;
+  --brand-soft-ink: #c3c8ff;
+  --brand-line: #3b4680;
+}
+
+html {
+  font-family: 'Inter Variable', 'Inter', 'Noto Sans Devanagari', ui-sans-serif, system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  font-feature-settings: 'cv05' 1, 'ss01' 1;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Anything that is a *record* — money, a reference, a countdown, a
+ * score — is set in tabular figures so columns of it line up and a
+ * changing number does not make the row twitch.
+ */
+.figure {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Focus must always be visible. Never remove without replacing. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The only animation in the system: the escrow rail's held-state pulse. */
+@keyframes escrow-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.escrow-pulse { animation: escrow-pulse 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hide scrollbars on horizontal rails without losing the ability to scroll. */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

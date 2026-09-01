@@ -1,0 +1,276 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { AppShell } from '@/components/shell';
+import {
+  Avatar, Button, ButtonLink, Card, Chip, Divider, Eyebrow, GlyphArrow, PageHead, Panel, SlaClock, StatusChip,
+} from '@/components/ui';
+import { EscrowRail } from '@/components/escrow';
+import { GoalsContract, OriginalLanguageNote } from '@/components/goals';
+import { RubricBars } from '@/components/charts';
+import { preview } from '@/lib/preview';
+import { t, tl, categoryLabel } from '@/lib/pack';
+import { getEngagement, getAssessment, getAssessmentTemplate } from '@/lib/data';
+import { dateTime, until } from '@/lib/format';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * The engagement — the screen a seeker lives on.
+ *
+ * Three things are always visible without scrolling on a phone: what was
+ * agreed, where the money is, and what the next action is. Everything
+ * else is below them.
+ *
+ * The action panel offers only what the lifecycle actually permits right
+ * now. It does not render a disabled button for a transition that is not
+ * legal — a greyed-out control is a question the user cannot answer.
+ */
+export default async function EngagementPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
+  const { fam, lang } = preview('seeker');
+  const e = await getEngagement(params.id);
+  if (!e) notFound();
+
+  const [assessment, template] = await Promise.all([
+    getAssessment(e.id),
+    getAssessmentTemplate(e.category),
+  ]);
+  const type = fam.engagementTypes.find((x) => x.code === e.type);
+
+  return (
+    <AppShell fam={fam} lang={lang} role="seeker" current="/engagements">
+      <PageHead
+        eyebrow={
+          <span className="flex items-center gap-2">
+            <Link href="/engagements" className="hover:underline">
+              My {tl(fam.labels.engagement, lang)}s
+            </Link>
+            <span aria-hidden="true">/</span>
+            <span className="figure">{e.reference}</span>
+          </span>
+        }
+        title={`${type ? t(type.label, lang) : e.type} · ${categoryLabel(fam, e.domain, e.category, lang)}`}
+        sub={`with ${e.provider?.displayName ?? '—'}`}
+        action={<StatusChip status={e.status} />}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="min-w-0 space-y-6">
+          {/* What was agreed. First, always. */}
+          {e.agenda && (
+            <div>
+              <GoalsContract
+                agenda={e.agenda}
+                labels={{ agenda: t(fam.labels.agenda, lang), agendaItem: t(fam.labels.agendaItem, lang) }}
+              />
+              <div className="mt-2">
+                <OriginalLanguageNote language={e.agenda.language} />
+              </div>
+            </div>
+          )}
+
+          {/* The returned work, if there is any. */}
+          {assessment && template && (
+            <Panel
+              title={t(fam.labels.assessment, lang)}
+              note={`Marked against the ${template.dimensions.length} dimensions this ${tl(fam.labels.category, lang)} uses. The same ones every time, so the trend means something.`}
+            >
+              <RubricBars dimensions={template.dimensions} scores={assessment.scores} />
+              {assessment.remarks && (
+                <>
+                  <Divider className="my-5" />
+                  <Eyebrow>Remarks</Eyebrow>
+                  <p className="mt-2 max-w-reading whitespace-pre-line text-body">{assessment.remarks.original}</p>
+                </>
+              )}
+              <p className="mt-4 border-t border-line pt-3 text-caption text-ink-muted">
+                These dimensions are set by the platform, not by your {tl(fam.labels.provider, lang)}. That is the
+                only way a score from one person means the same as a score from another.
+              </p>
+            </Panel>
+          )}
+
+          {/* No template is a legitimate state, not an error. */}
+          {!template && e.status === 'assessed' && (
+            <Panel title="Delivered">
+              <p className="max-w-reading text-body text-ink-muted">
+                This {tl(fam.labels.category, lang)} has no rubric — there is nothing meaningful to score against, so
+                the delivery is the written work itself.
+              </p>
+            </Panel>
+          )}
+
+          <Panel
+            title="Messages"
+            action={<ButtonLink href={`/engagements/${e.id}/messages`} tone="secondary" size="sm">Open thread</ButtonLink>}
+            note="Kept as evidence. Phone numbers and email addresses are masked, in both directions."
+          >
+            {e.unreadMessages > 0 ? (
+              <p className="text-body">
+                <Chip tone="brand">{e.unreadMessages} unread</Chip>{' '}
+                <span className="ml-2 text-ink-muted">from {e.provider?.displayName}</span>
+              </p>
+            ) : (
+              <p className="text-body text-ink-muted">Nothing new.</p>
+            )}
+          </Panel>
+        </div>
+
+        {/* ------------------------------------------------ side rail */}
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <EscrowRail escrow={e.escrow} audience="seeker" />
+
+          <ActionPanel e={e} fam={fam} lang={lang} />
+
+          <Card className="p-5">
+            <Eyebrow>Working with</Eyebrow>
+            <div className="mt-3 flex items-center gap-3">
+              <Avatar name={e.provider?.displayName ?? '—'} />
+              <div className="min-w-0">
+                <p className="text-body font-medium">{e.provider?.displayName}</p>
+                <Link
+                  href={`/providers/${e.provider?.id}`}
+                  className="text-small text-brand hover:underline"
+                >
+                  See profile
+                </Link>
+              </div>
+            </div>
+            <Divider className="my-4" />
+            <dl className="space-y-2 text-small">
+              <Line label="Agreed" value={dateTime(e.createdAt)} />
+              <Line label="Language" value={e.language.toUpperCase()} />
+              {e.dueAt && <Line label="Due" value={dateTime(e.dueAt)} />}
+              {e.scheduledAt && <Line label="Scheduled" value={dateTime(e.scheduledAt)} />}
+            </dl>
+          </Card>
+        </aside>
+      </div>
+    </AppShell>
+  );
+}
+
+function Line({ label, value }: { label: string; value: string }): JSX.Element {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="figure font-medium">{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * What can be done, right now, given the lifecycle state.
+ *
+ * Every button names its consequence — "Confirm the goals and release
+ * ₹425", not "Submit" — and keeps that name through the flow, so the
+ * action that says *release* produces a state that says *released*.
+ */
+function ActionPanel({
+  e,
+  fam,
+  lang,
+}: {
+  e: NonNullable<Awaited<ReturnType<typeof getEngagement>>>;
+  fam: ReturnType<typeof preview>['fam'];
+  lang: ReturnType<typeof preview>['lang'];
+}): JSX.Element | null {
+  if (e.status === 'assessed' || e.status === 'delivered') {
+    return (
+      <Panel tone="caution" title="Your turn">
+        <p className="text-body">
+          Read what came back, then confirm the {tl(fam.labels.agenda, lang)} were met. If you do nothing, the money
+          releases on its own — you will be reminded twice first.
+        </p>
+        {e.escrow.releasesOn && (
+          <p className="mt-3">
+            <SlaClock text={until(e.escrow.releasesOn)} />
+          </p>
+        )}
+        <div className="mt-4 space-y-2">
+          <ButtonLink href={`/engagements/${e.id}/complete`} full size="lg">
+            Confirm and release
+          </ButtonLink>
+          <ButtonLink href={`/engagements/${e.id}/revision`} tone="secondary" full>
+            Ask for a revision
+          </ButtonLink>
+          {/*
+            Destructive is reachable, not inviting: outlined, never a
+            filled red button that reads as the obvious next step.
+          */}
+          <ButtonLink href={`/engagements/${e.id}/dispute`} tone="destructive" full>
+            Raise a dispute
+          </ButtonLink>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (e.status === 'agreed' && e.scheduledAt) {
+    return (
+      <Panel tone="brand" title="Session booked">
+        <p className="figure text-lead font-semibold">{dateTime(e.scheduledAt)}</p>
+        <p className="mt-2 text-small text-ink-muted">
+          You will be asked about recording at the start. Either of you may say no and the session still runs.
+        </p>
+        <div className="mt-4">
+          <ButtonLink href="/sessions/ses_1" full size="lg">
+            Join <GlyphArrow />
+          </ButtonLink>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (e.status === 'working') {
+    return (
+      <Panel title="Under way">
+        <p className="text-body text-ink-muted">
+          Nothing needed from you. {e.provider?.displayName?.split(' ')[0]} has until{' '}
+          <span className="font-medium text-ink">{dateTime(e.dueAt)}</span>.
+        </p>
+        <div className="mt-4">
+          <ButtonLink href={`/engagements/${e.id}/messages`} tone="secondary" full>
+            Send a message
+          </ButtonLink>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (e.status === 'disputed') {
+    return (
+      <Panel tone="danger" title="Under dispute">
+        <p className="text-body">
+          The money is frozen until this is ruled on. You will get a written decision citing the specific{' '}
+          {tl(fam.labels.agenda, lang)} in question.
+        </p>
+        <div className="mt-4">
+          <ButtonLink href="/disputes/dsp_1" tone="secondary" full>
+            See the case
+          </ButtonLink>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (e.status === 'completed') {
+    return (
+      <Panel tone="verified" title="Finished">
+        <p className="text-body">Released and paid. The record, the remarks and your action items stay here.</p>
+        <div className="mt-4 space-y-2">
+          <ButtonLink href={`/engagements/${e.id}/review`} full>
+            Leave a review
+          </ButtonLink>
+          <ButtonLink href={`/book/${e.provider?.id}`} tone="secondary" full>
+            Work with {e.provider?.displayName?.split(' ')[0]} again
+          </ButtonLink>
+        </div>
+        <p className="mt-3 text-caption text-ink-muted">
+          Our fee drops on repeat work with the same person. The third time is cheaper than the first.
+        </p>
+      </Panel>
+    );
+  }
+
+  return null;
+}
