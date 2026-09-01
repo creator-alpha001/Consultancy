@@ -20,6 +20,37 @@ npm run dev        # http://localhost:3002
 
 Other scripts: `npm run build`, `npm run typecheck`.
 
+### If it will not start
+
+**`EADDRINUSE ... :::3002`** — something is already listening on 3002,
+almost always an earlier `next dev` whose terminal was closed without
+Ctrl+C. Closing the window does not stop the Node process.
+
+```powershell
+# Windows (PowerShell) — find it, then stop it
+Get-NetTCPConnection -LocalPort 3002 -State Listen |
+  Select-Object OwningProcess, @{n='Name';e={(Get-Process -Id $_.OwningProcess).ProcessName}}
+Stop-Process -Id <PID> -Force
+```
+
+```bash
+# macOS / Linux
+lsof -ti :3002 | xargs kill -9
+```
+
+Or just use another port — nothing depends on 3002:
+`npx next dev -p 4000`.
+
+**Why 3002 at all:** `apps/api` uses 3000 and `apps/web` uses 3001, so
+all three run side by side and this app can be compared against the old
+one without stopping either.
+
+**Other things that stop it starting:** running `npm run dev` from the
+repo root (there is no `dev` script there — you must be in
+`apps/frontend`); Node older than 18.17; or `npm install` having been run
+at the root instead of here. This is a plain npm project, not a
+workspace, so its dependencies install in this directory.
+
 ---
 
 ## What is here
