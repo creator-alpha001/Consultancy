@@ -39,7 +39,18 @@ lsof -ti :3002 | xargs kill -9
 ```
 
 Or just use another port — nothing depends on 3002:
-`npx next dev -p 4000`.
+
+```bash
+npm run dev -- -p 4000
+```
+
+**Do not use `npx next dev`.** When npx cannot resolve the local binary
+it silently downloads the newest Next instead of using the 14.2.15 this
+app is pinned to, and Next 15 made `cookies()` async — so the app starts
+under Next 16 and dies on the first request with `jar.get is not a
+function`. The version in the corner of the error overlay is the fastest
+way to spot it: if it does not say 14.2.15, you are not running this
+app's Next. `npm run dev` always uses the local one.
 
 **Why 3002 at all:** `apps/api` uses 3000 and `apps/web` uses 3001, so
 all three run side by side and this app can be compared against the old
