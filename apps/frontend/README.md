@@ -66,7 +66,7 @@ workspace, so its dependencies install in this directory.
 
 ## What is here
 
-28 page routes across six fields. `/kit` renders the design system from
+30 page routes across six fields. `/kit` renders the design system from
 the same components the screens import, so the reference cannot drift
 from the product.
 
