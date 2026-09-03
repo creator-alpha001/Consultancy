@@ -2,9 +2,12 @@ import * as mock from './mock';
 import { api, apiListOrEmpty, apiOrNull } from '../api';
 import {
   toEngagement, toProviderProfile, toProviderSummary, categoryIdFor,
-  toLedgerLine, toCredentialSubmission, toDispute, toSafetyItem,
+  toLedgerLine, toCredentialSubmission, toDispute, toSafetyItem, toBoardRequest, toProposal,
+  toSessionRecord,
   type ApiEngagement, type ApiMoney, type ApiProgress, type ApiProviderCard, type ApiProviderProfile,
-  type ApiCredentialQueueItem, type ApiDisputeQueueItem, type ApiReport, type Reconciliation,
+  type ApiBoardPost, type ApiCredentialQueueItem, type ApiDisputeQueueItem, type ApiProposal,
+  type ApiSession,
+  type ApiReport, type Reconciliation,
 } from './adapt';
 import type {
   Actor, Assessment, AssessmentTemplate, BoardRequest, CredentialSubmission, Dispute,
@@ -159,61 +162,115 @@ export async function getAssessmentTemplate(category: string): Promise<Assessmen
 export async function listBoard(
   filter: { family?: string; domain?: string; language?: string } = {},
 ): Promise<BoardRequest[]> {
-  let out = mock.BOARD.filter((b) => b.status === 'open');
-  if (filter.family) out = out.filter((b) => b.family === filter.family);
-  if (filter.domain) out = out.filter((b) => b.domain === filter.domain);
-  if (filter.language) out = out.filter((b) => b.language === filter.language);
-  return out;
+  /*
+   * CONNECTED. The API scopes this to what the caller may see — a
+   * seeker's own domains, or everything a provider is verified for —
+   * so there is no "whose?" parameter here and none on the route.
+   */
+  const params = new URLSearchParams();
+  if (filter.domain) params.set('domainCode', filter.domain);
+  if (filter.language) params.set('language', filter.language);
+  const qs = params.toString();
+
+  const rows = await apiListOrEmpty<ApiBoardPost>(`/board/posts${qs ? `?${qs}` : ''}`);
+  const out = rows.map(toBoardRequest);
+  // Family is not a server-side filter; it is resolved from the domain.
+  return filter.family ? out.filter((r) => r.family === filter.family) : out;
 }
 
-/**
- * How many people and open requests each family currently has.
- *
- * Used by the landing page and the field catalogue. It counts rather
- * than hardcodes, so a family with nothing in it yet shows as empty
- * instead of being quietly dressed up.
- */
 export async function familyCounts(): Promise<Record<string, { providers: number; open: number }>> {
-  const out: Record<string, { providers: number; open: number }> = {};
-  for (const p of mock.PROVIDERS) {
-    out[p.family] = out[p.family] ?? { providers: 0, open: 0 };
-    (out[p.family] as { providers: number }).providers += 1;
-  }
-  for (const b of mock.BOARD) {
-    if (b.status !== 'open') continue;
-    out[b.family] = out[b.family] ?? { providers: 0, open: 0 };
-    (out[b.family] as { open: number }).open += 1;
-  }
-  return out;
+  /*
+   * CONNECTED. Two real counts per family: how many people are here,
+   * and how much work is open. Both come from the same endpoints the
+   * screens themselves read, so the number on the landing page cannot
+   * disagree with the list behind it.
+   */
+  const [providers, board] = await Promise.all([
+    apiListOrEmpty<ApiProviderCard>('/providers'),
+    apiListOrEmpty<ApiBoardPost>('/board/posts'),
+  ]);
+
+  const counts: Record<string, { providers: number; open: number }> = {};
+  const bump = (family: string | null | undefined, key: 'providers' | 'open'): void => {
+    const code = family ?? 'platform';
+    counts[code] = counts[code] ?? { providers: 0, open: 0 };
+    counts[code][key] += 1;
+  };
+  for (const p of providers) bump(p.familyCode, 'providers');
+  for (const b of board) bump(b.familyCode, 'open');
+  return counts;
 }
 
 export async function getBoardRequest(id: string): Promise<BoardRequest | null> {
-  return mock.BOARD.find((b) => b.id === id) ?? null;
-}
-
-export async function listProposals(requestId: string): Promise<Proposal[]> {
-  return mock.PROPOSALS.filter((p) => p.requestId === requestId);
-}
-
-export async function getProposal(id: string): Promise<Proposal | null> {
-  return mock.PROPOSALS.find((p) => p.id === id) ?? null;
-}
-
-export async function listSessions(): Promise<SessionRecord[]> {
-  return mock.SESSIONS;
-}
-
-export async function getSession(id: string): Promise<SessionRecord | null> {
-  return mock.SESSIONS.find((s) => s.id === id) ?? null;
+  /* CONNECTED. */
+  const post = await apiOrNull<ApiBoardPost>(`/board/posts/${encodeURIComponent(id)}`);
+  return post ? toBoardRequest(post) : null;
 }
 
 /**
- * The session actually booked for a given engagement — never a fixed
- * id. A screen that hardcodes a session id to say "Join" is correct for
- * exactly one engagement in the mock set and wrong for every other one.
+ * The replies to one post, each with the person who wrote it.
+ *
+ * Capped at five by the product, so fetching each provider's card is a
+ * handful of calls rather than a fan-out — and it reuses the one
+ * projection the rest of the app uses instead of the board module
+ * inventing a second shape for "a provider".
+ *
+ * Never ordered by price, here or on the screen (#15).
  */
+export async function listProposals(requestId: string): Promise<Proposal[]> {
+  const rows = await apiListOrEmpty<ApiProposal>(
+    `/board/posts/${encodeURIComponent(requestId)}/proposals`,
+  );
+  const cards = await Promise.all(
+    rows.map((r) => apiOrNull<ApiProviderCard>(`/providers/${encodeURIComponent(r.providerId)}`)),
+  );
+  return rows.flatMap((r, i) => {
+    const card = cards[i];
+    // A proposal whose provider cannot be read is dropped rather than
+    // rendered against a blank person.
+    return card ? [toProposal(r, toProviderSummary(card))] : [];
+  });
+}
+
+export async function getProposal(id: string): Promise<Proposal | null> {
+  /*
+   * There is no endpoint for one proposal, so it is found in its post's
+   * list. The caller always knows the post — the only route that asks
+   * for a proposal is nested under one.
+   */
+  const posts = await apiListOrEmpty<ApiBoardPost>('/board/posts');
+  for (const post of posts) {
+    const found = (await listProposals(post.id)).find((p) => p.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
+export async function listSessions(): Promise<SessionRecord[]> {
+  /*
+   * CONNECTED. Scoped by the API to sessions the caller is a
+   * participant in — there is no "whose?" parameter, and the
+   * counterpart is named from the caller's own side.
+   */
+  const rows = await apiListOrEmpty<ApiSession>('/sessions');
+  return rows.map(toSessionRecord);
+}
+
+export async function getSession(id: string): Promise<SessionRecord | null> {
+  /*
+   * The detail route returns a different, fuller shape than the list —
+   * consents and transcript as separate blocks. Rather than map a
+   * second shape, the session is found in the caller's own list, which
+   * is already enriched and already access-scoped. A session the caller
+   * is not party to is simply not in it, which is the right answer.
+   */
+  const all = await listSessions();
+  return all.find((s) => s.id === id) ?? null;
+}
+
 export async function getSessionByEngagement(engagementId: string): Promise<SessionRecord | null> {
-  return mock.SESSIONS.find((s) => s.engagementId === engagementId) ?? null;
+  const all = await listSessions();
+  return all.find((s) => s.engagementId === engagementId) ?? null;
 }
 
 export async function listLedger(): Promise<LedgerLine[]> {

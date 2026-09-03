@@ -12,6 +12,7 @@ import { SessionRoomService } from './session-room.service';
 import { SessionService } from './session.service';
 import { TranscriptService } from './transcript.service';
 import { SessionRow } from './types';
+import { SessionViewService } from './session-view.service';
 
 /**
  * Booking and the live session over HTTP.
@@ -31,6 +32,7 @@ export class SessionsController {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(SessionViewService) private readonly views: SessionViewService,
     @Inject(AvailabilityService) private readonly availability: AvailabilityService,
     @Inject(SessionRoomService) private readonly inRoom: SessionRoomService,
     @Inject(SessionExtensionService) private readonly extensions: SessionExtensionService,
@@ -53,7 +55,20 @@ export class SessionsController {
         LIMIT 100`,
       [actor.userId],
     );
-    return res.rows;
+
+    /*
+     * Who it is with, whether both agreed to recording, and whether
+     * there is anything to read or watch — joined here rather than left
+     * to each client, and named from THIS caller's side.
+     */
+    const views = await this.views.viewsFor(
+      res.rows.map((r) => (r as { id: string }).id),
+      actor.userId,
+    );
+    return res.rows.map((r) => {
+      const row = r as { id: string };
+      return { ...row, ...(views.get(row.id) ?? {}) };
+    });
   }
 
   /**

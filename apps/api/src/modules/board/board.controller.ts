@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/commo
 import { CurrentActor, Public, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
 import { BoardPostService } from './board-post.service';
+import { BoardViewService } from './board-view.service';
 import { ProposalService } from './proposal.service';
 import { QuestionService } from './question.service';
 import { AskQuestionResult, BoardPostRow, ProposalRow, QuestionRow } from './types';
@@ -20,6 +21,7 @@ import { AskQuestionResult, BoardPostRow, ProposalRow, QuestionRow } from './typ
 export class BoardController {
   constructor(
     @Inject(BoardPostService) private readonly posts: BoardPostService,
+    @Inject(BoardViewService) private readonly views: BoardViewService,
     @Inject(ProposalService) private readonly proposals: ProposalService,
     @Inject(QuestionService) private readonly questions: QuestionService,
   ) {}
@@ -33,18 +35,23 @@ export class BoardController {
     @Query('domainCode') domainCode?: string,
     @Query('categoryId') categoryId?: string,
     @Query('language') language?: string,
-  ): Promise<BoardPostRow[]> {
-    return this.posts.searchOpen({
+  ): Promise<unknown[]> {
+    const rows = await this.posts.searchOpen({
       seekerId: actor.userId,
       domainCodes: domainCode ? [domainCode] : undefined,
       categoryId,
       language,
     });
+    // Who asked, when, which field, and how many have replied — the
+    // four things a board screen shows that the row itself cannot say.
+    const views = await this.views.viewsFor(rows.map((r) => r.id));
+    return rows.map((r) => ({ ...r, ...(views.get(r.id) ?? {}) }));
   }
 
   @Get('posts/:id')
-  async getPost(@Param('id') id: string): Promise<BoardPostRow> {
-    return this.posts.get(id);
+  async getPost(@Param('id') id: string): Promise<unknown> {
+    const [row, views] = await Promise.all([this.posts.get(id), this.views.viewsFor([id])]);
+    return { ...row, ...(views.get(id) ?? {}) };
   }
 
   @Post('posts')
@@ -84,8 +91,10 @@ export class BoardController {
 
   /** Recency order, never price (#15). The seeker choosing is the point. */
   @Get('posts/:id/proposals')
-  async listProposals(@Param('id') id: string): Promise<ProposalRow[]> {
-    return this.proposals.listForPost(id);
+  async listProposals(@Param('id') id: string): Promise<unknown[]> {
+    const rows = await this.proposals.listForPost(id);
+    const views = await this.views.proposalViewsFor(rows.map((r) => r.id));
+    return rows.map((r) => ({ ...r, ...(views.get(r.id) ?? {}) }));
   }
 
   @Post('posts/:id/proposals')

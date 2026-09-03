@@ -1,6 +1,6 @@
 import type {
-  CredentialSubmission, Dispute, Engagement, EscrowStage, LedgerLine, Money,
-  ProviderProfile, ProviderSummary, SafetyItem, VerificationTier,
+  BoardRequest, CredentialSubmission, Dispute, Engagement, EscrowStage, LedgerLine, Money,
+  Proposal, ProviderProfile, ProviderSummary, SafetyItem, SessionRecord, VerificationTier,
 } from '../types';
 import { allFamilies, domainByCode } from '../pack';
 
@@ -582,5 +582,172 @@ export function toSafetyItem(r: ApiReport): SafetyItem {
     source: `${r.subjectType} · ${r.reasonCode.replace(/_/g, ' ')}`,
     excerpt: r.detailOriginal ?? '',
     heldFromPublic: r.holdsContent,
+  };
+}
+
+
+/* ------------------------------------------------------------------ */
+/* The board                                                           */
+/* ------------------------------------------------------------------ */
+
+export interface ApiBoardPost {
+  id: string;
+  seekerId: string;
+  domainCode: string;
+  categoryId: string;
+  engagementType: string;
+  language: string;
+  currency: string;
+  budgetMinPaise: string;
+  budgetMaxPaise: string;
+  description: string;
+  status: string;
+  /* Added by BoardViewService. */
+  reference?: string;
+  postedAt?: string;
+  seeker?: { id: string; displayName: string };
+  familyCode?: string | null;
+  proposalCount?: number;
+}
+
+export interface ApiProposal {
+  id: string;
+  boardPostId: string;
+  providerId: string;
+  message: string;
+  proposedAmountPaise: string;
+  status: string;
+  submittedAt?: string;
+}
+
+/**
+ * A post carries one block of prose; the screens show a headline and a
+ * body. The first sentence becomes the headline.
+ *
+ * This is presentation of the person's own words, not invention — the
+ * full text is always kept as the detail, and nothing is written for
+ * them. A post with no sentence break is its own headline.
+ */
+function splitProse(text: string): { title: string; detail: string } {
+  const trimmed = text.trim();
+  const end = trimmed.search(/[.?!।]\s/);
+  if (end === -1 || end > 120) {
+    return { title: trimmed.slice(0, 120), detail: trimmed };
+  }
+  return { title: trimmed.slice(0, end + 1), detail: trimmed };
+}
+
+export function toBoardRequest(p: ApiBoardPost): BoardRequest {
+  const { title, detail } = splitProse(p.description);
+  return {
+    id: p.id,
+    reference: p.reference ?? '',
+    title: { original: title, originalLanguage: p.language },
+    detail: { original: detail, originalLanguage: p.language },
+    family: p.familyCode ?? 'platform',
+    domain: p.domainCode,
+    category: p.categoryId,
+    language: p.language,
+    /*
+     * A post states a RANGE. The screens have one figure, and the
+     * ceiling is the honest one to show a provider deciding whether to
+     * reply — the floor would read as the offer.
+     */
+    budget: paise(p.budgetMaxPaise, p.currency),
+    // No deadline column exists on a board post.
+    deadline: null,
+    postedAt: p.postedAt ?? '',
+    proposalCount: p.proposalCount ?? 0,
+    status: p.status as BoardRequest['status'],
+    seeker: p.seeker ?? { id: p.seekerId, displayName: '' },
+  };
+}
+
+/**
+ * A proposal, with the person who wrote it.
+ *
+ * The provider is fetched through the SAME projection search and the
+ * profile use, rather than the board module growing its own copy of
+ * "what a provider looks like" — that is how two answers to the same
+ * question start to disagree.
+ */
+export function toProposal(p: ApiProposal, provider: ProviderSummary): Proposal {
+  return {
+    id: p.id,
+    requestId: p.boardPostId,
+    provider,
+    pitch: { original: p.message, originalLanguage: 'en' },
+    price: paise(p.proposedAmountPaise) ?? { amountPaise: 0, currency: 'INR' },
+    // Nothing on a proposal states a turnaround. Zero renders as absent
+    // rather than as an invented promise the provider never made.
+    deliverInHours: 0,
+    submittedAt: p.submittedAt ?? '',
+  };
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Sessions                                                            */
+/* ------------------------------------------------------------------ */
+
+/** snake_case, because that is what the sessions route returns. */
+export interface ApiSession {
+  id: string;
+  engagement_id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  timezone: string;
+  mode: string;
+  status: string;
+  recording_active: boolean;
+  ended_at: string | null;
+  /* Added by SessionViewService. */
+  counterpart?: string;
+  durationMinutes?: number;
+  consent?: { seeker: boolean | null; provider: boolean | null };
+  recordingAvailable?: boolean;
+  transcriptAvailable?: boolean;
+}
+
+/**
+ * The database's session lifecycle is not the screens' vocabulary.
+ *
+ * `in_progress` is what a room being live is called in the table;
+ * `no_show` is what the screens call missed. Mapping here rather than
+ * teaching every component both vocabularies.
+ */
+const SESSION_STATUS: Record<string, SessionRecord['status']> = {
+  scheduled: 'scheduled',
+  in_progress: 'live',
+  completed: 'ended',
+  no_show: 'missed',
+  cancelled: 'missed',
+};
+
+export function toSessionRecord(s: ApiSession): SessionRecord {
+  return {
+    id: s.id,
+    engagementId: s.engagement_id,
+    scheduledAt: s.scheduled_start,
+    durationMinutes:
+      s.durationMinutes ??
+      Math.max(
+        0,
+        Math.round(
+          (new Date(s.scheduled_end).getTime() - new Date(s.scheduled_start).getTime()) / 60_000,
+        ),
+      ),
+    mode: (s.mode as SessionRecord['mode']) ?? 'video',
+    status: SESSION_STATUS[s.status] ?? 'scheduled',
+    counterpart: s.counterpart ?? '',
+    /*
+     * Three states, never two. `null` is "not asked yet" and `false` is
+     * a refusal that was recorded — collapsing them would erase the
+     * distinction CLAUDE.md #21 exists to keep, where a refusal shifts
+     * the evidentiary burden.
+     */
+    consent: s.consent ?? { seeker: null, provider: null },
+    recordingAvailable: s.recordingAvailable ?? false,
+    transcriptAvailable: s.transcriptAvailable ?? false,
   };
 }

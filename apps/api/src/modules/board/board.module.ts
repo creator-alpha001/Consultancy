@@ -5,6 +5,7 @@ import { SafetyModule } from '../safety/safety.module';
 import { VerificationModule } from '../verification/verification.module';
 import { BoardController } from './board.controller';
 import { BoardPostService } from './board-post.service';
+import { BoardViewService } from './board-view.service';
 import { ProposalService } from './proposal.service';
 import { QuestionService } from './question.service';
 
@@ -12,7 +13,7 @@ import { QuestionService } from './question.service';
 @Module({
   imports: [DomainsModule, EngagementsModule, SafetyModule, VerificationModule],
   controllers: [BoardController],
-  providers: [BoardPostService, ProposalService, QuestionService],
-  exports: [BoardPostService, ProposalService, QuestionService],
+  providers: [BoardViewService, BoardPostService, ProposalService, QuestionService],
+  exports: [BoardViewService, BoardPostService, ProposalService, QuestionService],
 })
 export class BoardModule {}

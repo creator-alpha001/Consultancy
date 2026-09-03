@@ -11,12 +11,14 @@ import { SessionRoomService } from './session-room.service';
 import { SessionService } from './session.service';
 import { SessionsController } from './sessions.controller';
 import { TranscriptService } from './transcript.service';
+import { SessionViewService } from './session-view.service';
 
 /** Booking, room, consent, recording, transcript. */
 @Module({
   imports: [AgendaModule, EngagementsModule, MoneyModule, DomainsModule],
   controllers: [SessionsController],
   providers: [
+    SessionViewService,
     SessionService,
     AvailabilityService,
     SessionRoomService,
@@ -25,6 +27,6 @@ import { TranscriptService } from './transcript.service';
     HundredMsSandboxRoomProvider,
     { provide: ROOM_PROVIDER, useExisting: HundredMsSandboxRoomProvider },
   ],
-  exports: [SessionService, AvailabilityService, SessionRoomService, SessionExtensionService, TranscriptService],
+  exports: [SessionViewService, SessionService, AvailabilityService, SessionRoomService, SessionExtensionService, TranscriptService],
 })
 export class SessionsModule {}
