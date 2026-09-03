@@ -12,6 +12,7 @@ import { DomainsModule } from '../../src/modules/domains/domains.module';
 import { FamilyManifestService } from '../../src/modules/domains/family-manifest.service';
 import { EngagementsModule } from '../../src/modules/engagements/engagements.module';
 import { EngagementsService } from '../../src/modules/engagements/engagements.service';
+import { EngagementViewService } from '../../src/modules/engagements/engagement-view.service';
 import { EscrowService } from '../../src/modules/money/escrow.service';
 import { MoneyModule } from '../../src/modules/money/money.module';
 import { domainManifestV1, familyManifestV1 } from '../domains/manifest-fixtures';
@@ -44,6 +45,7 @@ describe('response shapes the clients depend on', () => {
   let escrows: EscrowService;
   let submissions: SubmissionService;
   let evaluations: EvaluationService;
+  let engagementViews: EngagementViewService;
   let categoryId: string;
 
   beforeEach(async () => {
@@ -53,6 +55,7 @@ describe('response shapes the clients depend on', () => {
       engagements = app.get(EngagementsService);
       agendas = app.get(AgendaService);
       escrows = app.get(EscrowService);
+      engagementViews = app.get(EngagementViewService);
       submissions = app.get(SubmissionService);
       evaluations = app.get(EvaluationService);
       await app.get(FamilyManifestService).publish(familyManifestV1());
@@ -157,6 +160,50 @@ describe('response shapes the clients depend on', () => {
       'engagement',
     );
     expect('agreedPricePaise' in (engagement as Record<string, unknown>)).toBe(false);
+  });
+
+  /*
+   * apps/frontend renders an engagement as a view model: who it is with,
+   * what was agreed and where the money is, all on one screen. Those
+   * fields are joined by EngagementViewService and merged into both
+   * engagement routes. This is the same guard as the test above, for the
+   * half of the shape that is assembled rather than stored.
+   */
+  it('an engagement view carries what the engagement screens render', async () => {
+    const { seekerId, providerId } = await seedUsers(pool);
+    const engagement = await engagements.createDraft({
+      seekerId,
+      providerId,
+      domainCode: 'uppsc',
+      categoryId,
+      engagementType: 'document_review',
+      currency: 'INR',
+      amountPaise: 50_000n,
+      language: 'en',
+    });
+
+    const views = await engagementViews.viewsFor([engagement.id]);
+    const view = views.get(engagement.id);
+    expect(view).toBeDefined();
+
+    expectFields(
+      view as unknown as Record<string, unknown>,
+      ['id', 'reference', 'seeker', 'provider', 'familyCode', 'agenda', 'escrow', 'scheduledAt', 'unreadMessages'],
+      'engagement view',
+    );
+    // A party is an id AND a name — the screens print the name, and a
+    // bare uuid on an engagement header is the bug this join prevents.
+    expectFields(view?.seeker as unknown as Record<string, unknown>, ['id', 'displayName'], 'engagement view seeker');
+    expectFields(
+      view?.provider as unknown as Record<string, unknown>,
+      ['id', 'displayName'],
+      'engagement view provider',
+    );
+    // Derived from the id, so it can never disagree with it.
+    expect(view?.reference).toBe(`ENG-${engagement.id.replace(/-/g, '').slice(0, 6).toUpperCase()}`);
+    // A draft has neither yet, and null is the shape the screens handle.
+    expect(view?.agenda).toBeNull();
+    expect(view?.escrow).toBeNull();
   });
 
   it('an agenda carries what the lock screen renders', async () => {

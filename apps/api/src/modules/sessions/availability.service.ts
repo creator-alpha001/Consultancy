@@ -37,6 +37,15 @@ export const DEFAULT_BOOKING_POLICY: BookingPolicy = {
   slotMinutes: 60,
 };
 
+export interface AvailabilityException {
+  id: string;
+  onDate: string;
+  /** Null start AND end means the whole day is blocked. */
+  startMinute: number | null;
+  endMinute: number | null;
+  reason: string | null;
+}
+
 export interface Slot {
   start: Date;
   end: Date;
@@ -146,6 +155,52 @@ export class AvailabilityService {
       `INSERT INTO provider_availability_exceptions (provider_id, on_date, start_minute, end_minute, reason)
        VALUES ($1, $2::date, $3, $4, $5)`,
       [providerId, input.onDate, input.startMinute ?? null, input.endMinute ?? null, input.reason ?? null],
+    );
+  }
+
+  /**
+   * The blackout dates a provider has set.
+   *
+   * Past exceptions are excluded. A holiday last March is not something
+   * anyone needs to see, and a list that only grows becomes one nobody
+   * reads — which is how a stale blackout survives long enough to lose
+   * someone a booking.
+   */
+  async listExceptions(providerId: string): Promise<AvailabilityException[]> {
+    const res = await this.pool.query<{
+      id: string;
+      on_date: string;
+      start_minute: number | null;
+      end_minute: number | null;
+      reason: string | null;
+    }>(
+      `SELECT id, to_char(on_date, 'YYYY-MM-DD') AS on_date, start_minute, end_minute, reason
+         FROM provider_availability_exceptions
+        WHERE provider_id = $1 AND on_date >= current_date
+        ORDER BY on_date, start_minute NULLS FIRST`,
+      [providerId],
+    );
+    return res.rows.map((r) => ({
+      id: r.id,
+      onDate: r.on_date,
+      startMinute: r.start_minute,
+      endMinute: r.end_minute,
+      reason: r.reason,
+    }));
+  }
+
+  /**
+   * Undo a blackout.
+   *
+   * Scoped by provider in the WHERE clause, not checked first: a delete
+   * that matches no row for this caller removes nothing, which is the
+   * same outcome as a permission check and cannot be raced between the
+   * check and the delete.
+   */
+  async removeException(providerId: string, exceptionId: string): Promise<void> {
+    await this.pool.query(
+      `DELETE FROM provider_availability_exceptions WHERE id = $1 AND provider_id = $2`,
+      [exceptionId, providerId],
     );
   }
 

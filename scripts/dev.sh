@@ -186,7 +186,7 @@ deps() {
   # CI installs only what its job needs, so the mobile app's dependencies
   # (large, and irrelevant to the browser journeys) are not pulled in for
   # a run that will never build it.
-  for app in ${DEV_APPS:-api web mobile}; do
+  for app in ${DEV_APPS:-api frontend mobile}; do
     if [ -f "$ROOT/apps/$app/package.json" ] && [ ! -d "$ROOT/apps/$app/node_modules" ]; then
       bold "Installing $app dependencies"
       ( cd "$ROOT/apps/$app" && npm install --no-audit --no-fund >/dev/null ) \
@@ -218,14 +218,14 @@ start_web() {
   # Always rebuild before serving. Serving a stale .next while believing
   # you are testing a new build is the most expensive failure here — it
   # produces a confident, wrong answer.
-  bold "Building apps/web"
-  ( cd "$ROOT/apps/web" && npm run --silent build >/dev/null ) || die "web build failed"
+  bold "Building apps/frontend"
+  ( cd "$ROOT/apps/frontend" && npm run --silent build >/dev/null ) || die "frontend build failed"
   ok "web built"
 
   stop_bg web
-  ( cd "$ROOT/apps/web" && start_bg web "$RUN/web.log" \
+  ( cd "$ROOT/apps/frontend" && start_bg web "$RUN/web.log" \
       env API_BASE_URL="http://localhost:$API_PORT" npx next start -p "$WEB_PORT" )
-  wait_http "http://localhost:$WEB_PORT/mentors" 60 "web (:$WEB_PORT)" \
+  wait_http "http://localhost:$WEB_PORT/providers" 60 "web (:$WEB_PORT)" \
     || { tail -20 "$RUN/web.log" >&2; die "web did not become healthy"; }
 }
 
@@ -276,7 +276,7 @@ cmd_status() {
   pg_isready -h "$DB_HOST" -p "$DB_PORT" -q 2>/dev/null \
     && ok "postgres" || warn "postgres down"
   seeded && ok "$DEV_DB seeded" || warn "$DEV_DB not seeded"
-  for svc in "api:$API_PORT:/domains/upsc_cse" "web:$WEB_PORT:/mentors" "mobile:$MOBILE_PORT:/"; do
+  for svc in "api:$API_PORT:/domains/upsc_cse" "web:$WEB_PORT:/providers" "mobile:$MOBILE_PORT:/"; do
     IFS=: read -r name port path <<< "$svc"
     if curl -sf -o /dev/null "http://localhost:$port$path" 2>/dev/null; then
       ok "$name responding on :$port$(alive "$name" && echo " (pid $(pid_of "$name"))" || echo " (not ours)")"
@@ -296,7 +296,7 @@ cmd_test() {
   bold "Typechecks"
   ( cd "$ROOT/apps/api" && npm run --silent typecheck ) || die "api typecheck failed"
   ok "api"
-  ( cd "$ROOT/apps/web" && npm run --silent typecheck ) || die "web typecheck failed"
+  ( cd "$ROOT/apps/frontend" && npm run --silent typecheck ) || die "frontend typecheck failed"
   ok "web"
   if [ -d "$ROOT/apps/mobile/node_modules" ]; then
     ( cd "$ROOT/apps/mobile" && npx tsc --noEmit ) || die "mobile typecheck failed"
@@ -309,13 +309,18 @@ cmd_test() {
   ( cd "$ROOT/apps/api" && DATABASE_URL="$TEST_URL" npm test ) || die "api tests failed"
 
   bold "Browser journeys"
-  if curl -sf -o /dev/null "http://localhost:$WEB_PORT/mentors" 2>/dev/null; then
-    ( cd "$ROOT/apps/web" && node test/booking-journey.mjs ) || die "booking journey failed"
-    ( cd "$ROOT/apps/web" && node test/provider-journey.mjs ) || die "provider journey failed"
-    ( cd "$ROOT/apps/web" && node test/admin-journey.mjs ) || die "admin journey failed"
-    # M9: what a mid-range Android on a patchy network actually gets, and
-    # whether the pages work without sight or a mouse.
-    ( cd "$ROOT/apps/web" && node test/hardening.mjs ) || die "hardening checks failed"
+  if curl -sf -o /dev/null "http://localhost:$WEB_PORT/providers" 2>/dev/null; then
+    ( cd "$ROOT/apps/frontend" \
+        && WEB_ORIGIN="http://localhost:$WEB_PORT" API_BASE_URL="http://localhost:$API_PORT" \
+           node test/journey.mjs ) || die "journeys failed"
+    # M9: what a mid-range Android on a patchy network actually gets,
+    # whether the pages work without sight or a mouse, and whether they
+    # fit a 360px screen. Runs against the built app this script serves —
+    # never a dev server, which compiles on demand and blows the very
+    # budget being measured.
+    ( cd "$ROOT/apps/frontend" \
+        && WEB_ORIGIN="http://localhost:$WEB_PORT" \
+           node test/hardening.mjs ) || die "hardening checks failed"
   else
     warn "web not running — skipping the browser journeys (./scripts/dev.sh up first)"
   fi

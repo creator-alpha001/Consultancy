@@ -3,7 +3,16 @@ import { EscrowService } from './escrow.service';
 import { FeeScheduleService } from './fee-schedule.service';
 import { LedgerAccountsService } from './ledger-accounts.service';
 import { LedgerService } from './ledger.service';
-import { MoneyController } from './money.controller';
+import { AuditModule } from '../../common/audit/audit.module';
+import { EarningsService } from './earnings.service';
+import {
+  MoneyController,
+  PackagesController,
+  ProviderMoneyController,
+  SeekerMoneyController,
+} from './money.controller';
+import { PackageService } from './package.service';
+import { PayoutDestinationService } from './payout-destination.service';
 import { SettlementController } from './settlement.controller';
 import { PayoutDispatchService } from './payout-dispatch.service';
 import { SettlementService } from './settlement.service';
@@ -19,7 +28,14 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
  * the surface other modules are meant to call.
  */
 @Module({
-  controllers: [MoneyController, SettlementController],
+  imports: [AuditModule],
+  controllers: [
+    MoneyController,
+    ProviderMoneyController,
+    SeekerMoneyController,
+    PackagesController,
+    SettlementController,
+  ],
   providers: [
     LedgerAccountsService,
     LedgerService,
@@ -28,6 +44,9 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
     EscrowService,
     SettlementService,
     PayoutDispatchService,
+    EarningsService,
+    PayoutDestinationService,
+    PackageService,
     RazorpayRouteSandbox,
     CashfreeEasySplitSandbox,
     {
@@ -35,6 +54,6 @@ import { RazorpayRouteSandbox } from './pa/razorpay-route.sandbox';
       useExisting: process.env.MONEY_PA_PROVIDER === 'cashfree_easy_split' ? CashfreeEasySplitSandbox : RazorpayRouteSandbox,
     },
   ],
-  exports: [LedgerService, LedgerAccountsService, FeeScheduleService, OutboxService, EscrowService, SettlementService, PayoutDispatchService],
+  exports: [LedgerService, LedgerAccountsService, FeeScheduleService, OutboxService, EscrowService, SettlementService, PayoutDispatchService, PayoutDestinationService, EarningsService, PackageService],
 })
 export class MoneyModule {}

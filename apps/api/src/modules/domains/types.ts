@@ -127,6 +127,37 @@ export interface AgreementDocumentInput {
   text: LabelMap;
 }
 
+/**
+ * One thing a provider is taught before they can take paid work.
+ *
+ * Family data because safety policy is the family's (CLAUDE.md), and a
+ * music school's escalation path is not an exam family's. Core walks
+ * these, renders them and grades the questions without knowing what any
+ * of them say.
+ */
+export interface TrainingModuleInput {
+  code: string;
+  labels: LabelMap;
+  /**
+   * Blocking. A module a provider may skip is one they will skip, and
+   * the distress-escalation module is not optional (#25) — so the family
+   * decides, per module, rather than core assuming either way.
+   */
+  required?: boolean;
+  sections: Array<{ heading: LabelMap; body: LabelMap }>;
+  questions: Array<{
+    code: string;
+    prompt: LabelMap;
+    options: Array<{ code: string; labels: LabelMap }>;
+    /**
+     * The option code that is right. NEVER sent to a client — the server
+     * grades, because a quiz whose answers arrive in the page is a quiz
+     * that teaches nothing.
+     */
+    correct: string;
+  }>;
+}
+
 export interface SupportResource {
   label: string;
   value: string;
@@ -161,6 +192,8 @@ export interface FamilyManifestInput {
   /** What people are asked to agree to. A family with none cannot run a flow that requires one. */
   agreementDocuments?: AgreementDocumentInput[];
   supportResources: SupportResource[];
+  /** Optional: a family with none requires no training before paid work. */
+  trainingModules?: TrainingModuleInput[];
   theme: ThemeTokens;
 }
 
@@ -235,6 +268,7 @@ export interface ResolvedFamily {
   /** The agreement texts, by code. Core never contains the wording. */
   agreementDocuments: AgreementDocumentInput[];
   supportResources: SupportResource[];
+  trainingModules: TrainingModuleInput[];
   theme: ThemeTokens;
 }
 
@@ -256,4 +290,52 @@ export interface ResolvedDomain {
   theme: ThemeTokens;
   publiclyListed: boolean;
   minProvidersToList: number;
+}
+
+/**
+ * Catalogue projections — "what exists", as opposed to ResolvedDomain's
+ * "what does this one resolve to". Deliberately narrow: a listing carries
+ * only what a browse page renders, so listing the whole platform never
+ * loads every skill and rubric of every family.
+ */
+export interface DomainListing {
+  domainCode: string;
+  familyCode: string;
+  labels: { domain?: LabelMap };
+  languages: string[];
+  defaultLanguage: string;
+  priceBands: Record<string, [number, number]>;
+}
+
+export interface CatalogueFamily {
+  code: string;
+  labels: {
+    family?: LabelMap;
+    seeker?: LabelMap;
+    provider?: LabelMap;
+    engagement?: LabelMap;
+    category?: LabelMap;
+  };
+  theme?: ThemeTokens;
+  /** Only the domains the caller is allowed to see. Never empty in the public catalogue. */
+  domains: DomainListing[];
+}
+
+/**
+ * One domain as ops sees it, with the two numbers that decide whether it
+ * can be opened. `meetsSupplyFloor` is advisory — opening a domain is a
+ * human decision, and this only makes the supply half of it visible.
+ */
+export interface DomainReadiness {
+  familyCode: string;
+  familyStatus: string;
+  familyLabels: CatalogueFamily['labels'];
+  domainCode: string;
+  labels: { domain?: LabelMap };
+  languages: string[];
+  status: string;
+  publiclyListed: boolean;
+  providerCount: number;
+  minProvidersToList: number;
+  meetsSupplyFloor: boolean;
 }

@@ -217,6 +217,24 @@ export default function You(): JSX.Element {
 
       <View style={{ height: space.xl }} />
 
+      {/*
+        Progress lives here rather than in a sixth tab: five is already
+        the limit on a small phone, and a personal record is what someone
+        looks for under their own account. Seeker-only — a mentor's
+        progress is not a thing this platform measures.
+      */}
+      {me.role === 'seeker' && (
+        <Section title="Your own record">
+          <Card>
+            <Body>
+              How your marks have moved, and what your reviewers asked you to work on.
+            </Body>
+            <View style={{ height: space.md }} />
+            <Button label="Open your progress" variant="secondary" onPress={() => router.push('/progress')} />
+          </Card>
+        </Section>
+      )}
+
       <Section title="App language">
         <Row gap={space.sm} wrap>
           {(domain?.languages ?? ['en']).map((l) => (

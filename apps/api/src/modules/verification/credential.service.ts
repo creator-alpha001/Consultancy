@@ -17,6 +17,7 @@ import { AutomatedCheckResult, ProviderCredentialRow, ProviderCredentialStatus, 
 import { CredentialVerifier, VerifierInputField } from './verifiers/verifier.interface';
 import { DocumentReviewVerifier, SanctionDocumentVerifier } from './verifiers/manual-review.verifiers';
 import { PublicResultListVerifier } from './verifiers/public-result-list.verifier';
+import { displayNameFor } from '../../common/display-name';
 
 interface CredentialDbRow {
   id: string;
@@ -209,6 +210,149 @@ export class CredentialService {
         ORDER BY submitted_at ASC`,
     );
     return Promise.all(res.rows.map((row) => this.hydrate(row)));
+  }
+
+  /**
+   * The same queue, with what a review screen shows.
+   *
+   * Additive. Three of these were never projected even though the
+   * columns exist, and that absence is why a review screen could only
+   * have been built against fixtures:
+   *
+   *  - **`submittedAt`** — the column has always been there and this
+   *    query already orders by it; it just never reached the client.
+   *  - **`providerDisplayName`** — derived from the address, never the
+   *    address (#29/#30). A reviewer needs to tell two people apart, not
+   *    a route to email one.
+   *  - **`familyCode`** — a queue mixing families must say which each row
+   *    belongs to, or the tier names rendered against it are wrong.
+   *
+   * `verifier_data` is deliberately NOT widened. It points at the
+   * evidence, and a queue lists what is waiting; seeing a document goes
+   * through `/admin/credentials/:id/context`, which is the route that
+   * grants and audits that access (#29).
+   */
+  async listAwaitingReviewWithContext(): Promise<
+    Array<
+      ProviderCredentialRow & {
+        submittedAt: string;
+        providerDisplayName: string;
+        familyCode: string | null;
+        credentialTypeCode: string | null;
+        credentialTypeLabels: Record<string, string> | null;
+      }
+    >
+  > {
+    const res = await this.pool.query<
+      CredentialDbRow & {
+        submitted_at: Date;
+        provider_email: string;
+        family_code: string | null;
+        credential_type_code: string | null;
+        credential_type_labels: Record<string, string> | null;
+      }
+    >(
+      `SELECT pc.*,
+              u.email   AS provider_email,
+              d.family_code,
+              ct.code   AS credential_type_code,
+              ct.labels AS credential_type_labels
+         FROM provider_credentials pc
+         JOIN users u ON u.id = pc.provider_id
+         LEFT JOIN domains d ON d.code = pc.domain_code
+         LEFT JOIN credential_types ct ON ct.id = pc.credential_type_id
+        WHERE pc.status IN ('submitted', 'under_review')
+        ORDER BY pc.submitted_at ASC`,
+    );
+
+    return Promise.all(
+      res.rows.map(async (row) => ({
+        ...(await this.hydrate(row)),
+        submittedAt: row.submitted_at.toISOString(),
+        providerDisplayName: displayNameFor(row.provider_email),
+        familyCode: row.family_code,
+        credentialTypeCode: row.credential_type_code,
+        credentialTypeLabels: row.credential_type_labels,
+      })),
+    );
+  }
+
+
+  /**
+   * What a reviewer should know before deciding.
+   *
+   * NOT document forensics. SPEC-PLATFORM §8.3 asks for metadata
+   * analysis, template matching and reverse image search, and none of
+   * that exists — building it needs services this platform does not have,
+   * and pretending otherwise on a review screen would be worse than
+   * admitting the gap.
+   *
+   * What a reviewer CAN have is context, and it is the half that catches
+   * the common case anyway: someone submitting the same claim repeatedly
+   * after a rejection, or a person with one accepted credential quietly
+   * adding a stronger one. A reviewer looking at a document in isolation
+   * cannot see either.
+   *
+   * `waitingHours` is here because the 48-hour SLA is a promise nobody
+   * could keep track of: the queue was ordered by submission and showed
+   * no ages, so "how late is this" had no answer on screen.
+   */
+  async reviewContext(credentialId: string): Promise<{
+    waitingHours: number;
+    providerHistory: Array<{
+      credentialTypeCode: string;
+      status: string;
+      decidedAt: Date | null;
+      note: string | null;
+    }>;
+    sameTypeRejectedBefore: number;
+    hasDocument: boolean;
+  }> {
+    const base = await this.pool.query<{
+      provider_id: string;
+      credential_type_id: string;
+      submitted_at: Date;
+      verifier_data: Record<string, unknown> | null;
+    }>(
+      `SELECT provider_id, credential_type_id, submitted_at, verifier_data
+         FROM provider_credentials WHERE id = $1`,
+      [credentialId],
+    );
+    const row = base.rows[0];
+    if (!row) throw credentialNotFound(credentialId);
+
+    const history = await this.pool.query<{
+      code: string;
+      status: string;
+      reviewed_at: Date | null;
+      decision_note: string;
+      is_same_type: boolean;
+    }>(
+      `SELECT ct.code, pc.status::text, pc.reviewed_at, pc.decision_note,
+              (pc.credential_type_id = $2) AS is_same_type
+         FROM provider_credentials pc
+         JOIN credential_types ct ON ct.id = pc.credential_type_id
+        WHERE pc.provider_id = $1 AND pc.id <> $3
+        ORDER BY pc.submitted_at DESC`,
+      [row.provider_id, row.credential_type_id, credentialId],
+    );
+
+    const attachmentId = row.verifier_data?.attachmentId;
+
+    return {
+      waitingHours: Math.floor((Date.now() - row.submitted_at.getTime()) / 3_600_000),
+      providerHistory: history.rows.map((h) => ({
+        credentialTypeCode: h.code,
+        status: h.status,
+        decidedAt: h.reviewed_at,
+        note: h.decision_note || null,
+      })),
+      // The signal worth surfacing: a claim already refused once and sent
+      // back in unchanged.
+      sameTypeRejectedBefore: history.rows.filter((h) => h.is_same_type && h.status === 'rejected')
+        .length,
+      hasDocument: typeof attachmentId === 'string' && attachmentId.length > 0,
+    };
   }
 
   /** Advisory only — always leaves the credential at 'under_review' for a human, whatever the result. */

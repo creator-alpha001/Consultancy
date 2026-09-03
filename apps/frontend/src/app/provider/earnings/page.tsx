@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
  * own take-home does not trust the number they arrive at.
  */
 export default async function ProviderEarningsPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('provider');
+  const { fam, lang } = await preview('provider');
   const [work, ledger] = await Promise.all([listEngagements('provider'), listLedger()]);
 
   const clearing = work.filter((e) => e.escrow.stage !== 'released');

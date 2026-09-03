@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
  * should never discover the split after committing.
  */
 export default async function ProviderRequestsPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('provider');
+  const { fam, lang } = await preview('provider');
   const board = await listBoard();
   const selected = board[0];
 

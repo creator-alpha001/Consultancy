@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AppShell } from '@/components/shell';
 import { Chip, Eyebrow, PageHead, Panel, SlaClock, Stat } from '@/components/ui';
 import { preview } from '@/lib/preview';
+import { requireRole } from '@/lib/session';
 import { listCredentialQueue, listDisputes, listSafetyQueue } from '@/lib/data';
 import { until, money } from '@/lib/format';
 
@@ -20,7 +21,8 @@ export const dynamic = 'force-dynamic';
  * minutes left, and the screen should say so at a glance.
  */
 export default async function AdminHome(): Promise<JSX.Element> {
-  const { fam, lang } = preview('admin');
+  await requireRole('admin', '/admin');
+  const { fam, lang } = await preview('admin');
   const [credentials, disputes, safety] = await Promise.all([
     listCredentialQueue(),
     listDisputes(),

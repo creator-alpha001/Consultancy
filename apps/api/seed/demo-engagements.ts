@@ -26,6 +26,9 @@ import { PasswordService } from '../src/modules/identity/password.service';
 import { DisputeService } from '../src/modules/disputes/dispute.service';
 import { EscrowService } from '../src/modules/money/escrow.service';
 import { ReviewService } from '../src/modules/reputation/review.service';
+import { BoardPostService } from '../src/modules/board/board-post.service';
+import { ProposalService } from '../src/modules/board/proposal.service';
+import { SessionService } from '../src/modules/sessions/session.service';
 
 const DOMAIN = 'upsc_cse';
 
@@ -100,6 +103,9 @@ async function main(): Promise<void> {
   const reviews = app.get(ReviewService);
   const disputes = app.get(DisputeService);
   const passwords = app.get(PasswordService);
+  const boardPosts = app.get(BoardPostService);
+  const proposals = app.get(ProposalService);
+  const sessions = app.get(SessionService);
 
   // Rates come from fee_schedule_at(ts) and are never hardcoded (#8), so
   // one has to exist before any escrow can be released. A dev database
@@ -303,6 +309,104 @@ async function main(): Promise<void> {
       ],
     });
     console.log('added one completed engagement with an unanswered review');
+  }
+
+  // ── One booked session, and one open board post ─────────────────────
+  // Both screens existed with nothing to render: /sessions/[id] is the
+  // room where consent is taken and the timer runs, and /board/[id] holds
+  // the proposals and the accept decision. A seeded database that reaches
+  // neither leaves the two of them unjudgeable — and it is how the board
+  // list came to have no link to the post detail at all, with nobody
+  // noticing.
+  const sessionCount = await pool.query<{ n: string }>(`SELECT count(*)::text AS n FROM sessions`);
+  if (sessionCount.rows[0].n === '0') {
+    const providerId = await userId('asha.rathore@demo.local', 'provider');
+    const seekerId = await userId('priya.nair@demo.local', 'seeker');
+    const amountPaise = 60_000n;
+
+    const e = await engagements.createDraft({
+      seekerId,
+      providerId,
+      domainCode: DOMAIN,
+      categoryId,
+      engagementType: 'live_session',
+      currency: 'INR',
+      amountPaise,
+      language: 'en',
+    });
+    await engagements.agree(e.id);
+    const agenda = await agendas.createDraft({
+      engagementId: e.id,
+      originalLang: 'en',
+      expectedDeliverable: 'A plan for the next four weeks of answer practice',
+      successCriteria: 'I leave with a written weekly schedule I have agreed to',
+      items: [
+        { labelLang: 'en', labelText: "Look at last month's answers together" },
+        { labelLang: 'en', labelText: 'Agree what to practise weekly' },
+      ],
+    });
+    await agendas.lock(agenda.id);
+    await escrows.hold({
+      engagementId: e.id,
+      seekerId,
+      providerId,
+      currency: 'INR',
+      amountPaise,
+      idempotencyKey: `demo-hold:${e.id}`,
+    });
+
+    // Tomorrow, not now: a session in the past renders as history and
+    // never shows the consent step, which is the part that matters (#21).
+    const start = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const end = new Date(start.getTime() + 45 * 60 * 1000);
+    // The provider has no availability rules in a fresh database, so the
+    // check is off here — the same allowance the service documents for a
+    // session the provider arranges themselves. Never from an HTTP route.
+    const session = await sessions.schedule({
+      engagementId: e.id,
+      seekerId,
+      providerId,
+      scheduledStart: start,
+      scheduledEnd: end,
+      timezone: 'Asia/Kolkata',
+      enforceAvailability: false,
+    });
+    console.log(`booked one session for tomorrow (${session.id})`);
+  } else {
+    console.log(`${sessionCount.rows[0].n} session(s) already present — skipping`);
+  }
+
+  const postCount = await pool.query<{ n: string }>(
+    `SELECT count(*)::text AS n FROM board_posts WHERE status = 'open'`,
+  );
+  if (postCount.rows[0].n === '0') {
+    const seekerId = await userId('priya.nair@demo.local', 'seeker');
+    const providerId = await userId('meera.banerjee@demo.local', 'provider');
+    const post = await boardPosts.create({
+      seekerId,
+      domainCode: DOMAIN,
+      categoryId,
+      engagementType: 'document_review',
+      language: 'en',
+      currency: 'INR',
+      budgetMinPaise: 60_000n,
+      budgetMaxPaise: 120_000n,
+      description:
+        "Four answers from last week's test. I want to know whether the problem is what I know or how I am writing it down.",
+    });
+    // One proposal, left unaccepted — the accept decision is the thing
+    // the detail screen exists for, and a post with none shows an empty
+    // panel that proves nothing.
+    await proposals.submit({
+      boardPostId: post.id,
+      providerId,
+      proposedAmountPaise: 95_000n,
+      message:
+        'I would mark all four against the same rubric so you can see the pattern rather than four separate opinions.',
+    });
+    console.log(`opened one board post with one proposal (${post.id})`);
+  } else {
+    console.log(`${postCount.rows[0].n} open board post(s) already present — skipping`);
   }
 
   // ── A password on the demo accounts ─────────────────────────────────

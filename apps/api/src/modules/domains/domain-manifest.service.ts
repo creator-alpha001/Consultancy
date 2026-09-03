@@ -26,6 +26,32 @@ export class DomainManifestService {
     @Inject(TaxonomyService) private readonly taxonomy: TaxonomyService,
   ) {}
 
+  /**
+   * The stored manifest, as published — the editable source document.
+   *
+   * `DomainLoaderService` deliberately never returns this: everything
+   * else in the app wants the RESOLVED domain, with the family's
+   * inheritance already applied, and handing a raw manifest to a screen
+   * that then re-implements resolution is how two answers to "what is
+   * this domain" start to disagree.
+   *
+   * The pack editor is the one caller that needs the source rather than
+   * the result, because the source is what it publishes back. It is
+   * admin-only for that reason and not because a manifest is secret —
+   * it is the same document `/domains/:code` is derived from.
+   */
+  async getRawManifest(code: string): Promise<Record<string, unknown>> {
+    const res = await this.pool.query<{ manifest: Record<string, unknown> }>(
+      `SELECT manifest FROM domains WHERE code = $1`,
+      [code],
+    );
+    const manifest = res.rows[0]?.manifest;
+    if (!manifest) {
+      throw new AppError('DOMAIN_NOT_FOUND', `no domain "${code}"`, { detail: { code } });
+    }
+    return manifest;
+  }
+
   async publish(rawManifest: unknown, publishedBy?: string): Promise<ResolvedDomain> {
     const manifest = validateDomainManifest(rawManifest);
 

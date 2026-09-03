@@ -3,7 +3,7 @@ import type { ProviderSummary } from '@/lib/types';
 import type { Lang } from '@/lib/pack';
 import { family, t } from '@/lib/pack';
 import { money } from '@/lib/format';
-import { Avatar, Chip, FieldChip, LanguageChip, Rating, TierChip } from './ui';
+import { Avatar, ButtonLink, Chip, Divider, FieldChip, LanguageChip, Rating, TierChip } from './ui';
 
 /**
  * A provider in a list.
@@ -23,11 +23,8 @@ export function ProviderCard({ provider, lang = 'en' }: { provider: ProviderSumm
   const fam = family(provider.family);
   const top = provider.verifiedSkills[0];
   return (
-    <li>
-      <Link
-        href={`/providers/${provider.id}`}
-        className="group block rounded-lg border border-line bg-surface p-5 shadow-e1 transition-shadow hover:shadow-e2"
-      >
+    <li className="group rounded-lg border border-line bg-surface p-5 shadow-e1 transition-shadow hover:shadow-e2">
+      <Link href={`/providers/${provider.id}`} className="block">
         <div className="flex gap-4">
           <Avatar name={provider.displayName} />
           <div className="min-w-0 flex-1">
@@ -94,6 +91,24 @@ export function ProviderCard({ provider, lang = 'en' }: { provider: ProviderSumm
           </div>
         </dl>
       </Link>
+
+      {/*
+        Two ways in, both from the list, not only after landing on the
+        profile. Booking straight to a service is the fast path for
+        someone who already knows what they want; the agenda link is for
+        someone who would rather describe the problem first and let the
+        provider propose the shape of it — both end at the same locked
+        agenda before anything is charged (CLAUDE.md's engagement rule).
+      */}
+      <Divider className="mt-4" />
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        <ButtonLink href={`/book/${provider.id}`} size="sm">
+          Book
+        </ButtonLink>
+        <ButtonLink href={`/providers/${provider.id}`} tone="secondary" size="sm">
+          View profile
+        </ButtonLink>
+      </div>
     </li>
   );
 }

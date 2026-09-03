@@ -204,6 +204,82 @@ export class DisputeService {
   }
 
   /**
+   * The same queue, with what a reviewer's screen actually shows.
+   *
+   * Additive: the flat fields are untouched and these sit beside them.
+   *
+   *  - **`slaDueAt`** comes from the FAMILY'S own ladder, never a
+   *    constant here. A family that answers a tier-1 dispute in 48h and
+   *    one that takes 120h are both correct, and the queue has to sort
+   *    each by its own clock (SPEC-PLATFORM.md §12).
+   *  - **`raisedByRole`** resolves the user id against the engagement's
+   *    two parties. A reviewer needs to know which side is complaining,
+   *    and a uuid does not tell them.
+   *  - **`amountPaise`** is what is frozen. It is the single most
+   *    important number on a dispute and the queue was missing it.
+   */
+  async listAwaitingRulingWithContext(): Promise<
+    Array<
+      DisputeRow & {
+        reference: string;
+        openedAt: string;
+        slaDueAt: string | null;
+        raisedByRole: 'seeker' | 'provider' | null;
+        amountPaise: string | null;
+        currency: string | null;
+      }
+    >
+  > {
+    const res = await this.pool.query<
+      DisputeDbRow & {
+        created_at: Date;
+        seeker_id: string;
+        provider_id: string;
+        escrow_amount_paise: string | null;
+        escrow_currency: string | null;
+      }
+    >(
+      `SELECT d.*, e.seeker_id, e.provider_id,
+              esc.amount_paise::text AS escrow_amount_paise,
+              esc.currency           AS escrow_currency
+         FROM disputes d
+         JOIN engagements e ON e.id = d.engagement_id
+         LEFT JOIN LATERAL (
+           SELECT amount_paise, currency
+             FROM escrows
+            WHERE engagement_id = d.engagement_id
+            ORDER BY created_at DESC
+            LIMIT 1
+         ) esc ON true
+        WHERE d.status IN ('open', 'appealed')
+        ORDER BY d.created_at ASC`,
+    );
+
+    return Promise.all(
+      res.rows.map(async (row) => {
+        const tiers = await this.tiersFor(row.engagement_id);
+        const ladder = tiers.find((t) => t.tier === row.tier);
+        return {
+          ...mapDispute(row),
+          reference: disputeReferenceFor(row.id),
+          openedAt: row.created_at.toISOString(),
+          slaDueAt: ladder
+            ? new Date(row.created_at.getTime() + ladder.responseHours * 3_600_000).toISOString()
+            : null,
+          raisedByRole:
+            row.raised_by === row.seeker_id
+              ? ('seeker' as const)
+              : row.raised_by === row.provider_id
+                ? ('provider' as const)
+                : null,
+          amountPaise: row.escrow_amount_paise,
+          currency: row.escrow_currency,
+        };
+      }),
+    );
+  }
+
+  /**
    * Records a human's ruling at the dispute's current tier. `ruledBy`
    * must be a human admin — a DB trigger checks the role, so no caller
    * (including one acting on an AI suggestion) can record a ruling with
@@ -401,4 +477,16 @@ export class DisputeService {
     await this.pool.query(`UPDATE disputes SET status = 'withdrawn' WHERE id = $1`, [dispute.id]);
     return this.get(dispute.id);
   }
+}
+
+/**
+ * `DSP-` plus the first six hex of the uuid.
+ *
+ * Derived, never stored, for the same reason and with the same caveat as
+ * an engagement's: it always agrees with the id, and it is not a
+ * sequence and not guaranteed unique. A guaranteed-unique case number is
+ * a column and a migration.
+ */
+export function disputeReferenceFor(id: string): string {
+  return `DSP-${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
 }

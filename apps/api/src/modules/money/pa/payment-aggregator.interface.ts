@@ -34,6 +34,34 @@ export interface TransferToProviderInput {
   idempotencyKey: string;
 }
 
+/**
+ * Registering where a provider's money goes.
+ *
+ * The full account number is an INPUT and never a stored field. It is
+ * passed straight through to the licensed aggregator, which returns a
+ * token; that token and the last four digits are all this platform keeps
+ * (CLAUDE.md #31). Nothing in `money/` may persist `accountNumber`, and
+ * nothing may log it.
+ */
+export interface RegisterPayoutDestinationInput {
+  providerId: string;
+  accountHolderName: string;
+  /** Never stored. Never logged. Exchanged for a beneficiary reference. */
+  accountNumber: string;
+  ifsc: string;
+}
+
+export interface PayoutDestinationResult {
+  beneficiaryRef: string;
+  /**
+   * Penny-drop outcome. `pending` is a real answer — a real aggregator
+   * verifies asynchronously, and a destination that is not yet proven
+   * must not look proven.
+   */
+  verification: 'verified' | 'pending' | 'failed';
+  note: string | null;
+}
+
 export interface RefundToSeekerInput {
   amountPaise: bigint;
   currency: string;
@@ -67,6 +95,8 @@ export interface PaWebhookEvent {
 export interface PaymentAggregator {
   readonly code: PaymentAggregatorCode;
   captureOrder(input: CaptureOrderInput): Promise<PaymentAggregatorResult>;
+  /** Exchanges an account number for a token. See the note on the input type. */
+  registerPayoutDestination(input: RegisterPayoutDestinationInput): Promise<PayoutDestinationResult>;
   transferToProvider(input: TransferToProviderInput): Promise<PaymentAggregatorResult>;
   refundToSeeker(input: RefundToSeekerInput): Promise<PaymentAggregatorResult>;
 

@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-08-30 · after paid session extensions and the agreements record
+Last updated: 2026-09-02 · journeys and hardening ported and passing; apps/web unreferenced but NOT deleted — it holds uncommitted work
 
 ---
 
@@ -108,6 +108,397 @@ spec is silent, ask rather than invent"), nothing was built for it — see
 D13. The bar itself doesn't mention waves, so the milestone's actual
 acceptance criterion is met; the debt is that one listed feature is
 unimplemented and unclarified, not faked.
+
+### apps/frontend — connecting to the API (in progress)
+
+The second web client (see the milestone table) was built against mock
+fixtures with an explicit seam at `src/lib/data/index.ts`. Wiring it to
+the real API is under way. **It is a partially connected app right now**
+and both halves are labelled in the source, deliberately: a seam where
+you can see which functions are real beats one where every screen
+silently mixes served and invented data.
+
+**Connected and verified against the running stack:**
+
+- **Auth.** `src/lib/api.ts` (server-side client, error envelope, an
+  `Idempotency-Key` pass-through), `src/lib/session.ts`, a real
+  `/login` page and `signIn`/`signOut` server actions. The session is an
+  httpOnly cookie the page's JavaScript cannot read. A provider or admin
+  answering `mfa_enrolment_required` is refused a session cookie rather
+  than treated as signed in (#32).
+- **The pack.** `src/lib/pack.ts` used to hold ~450 lines of six invented
+  families. It now holds only the platform base and the label helpers;
+  families come from `GET /catalogue` + `GET /families/:code` +
+  `GET /domains/:code/categories` through `src/lib/pack-source.ts`,
+  cached for 60s and warmed by `preview()` so the accessors can stay
+  synchronous inside render. Verified: the running app renders
+  "Civil Services Exams", "UPSC Civil Services" and "GST & indirect tax"
+  from Postgres. **This is what makes the domain-agnostic claim true in
+  this client** — before, publishing a family changed the database and
+  nothing else.
+- **Provider discovery.** `listProviders` and `getProvider` read the API.
+  Verified end to end: search, the language/family/domain/tier filters,
+  the empty state for a family with no supply, and a profile page.
+- **Engagements.** `listEngagements` and `getEngagement`, through a new
+  `EngagementViewService` on the API. Verified signed in against the
+  seeded database: the list, the detail, the agenda, the confirm screen,
+  messages and review all render real parties, a real locked agenda and
+  a real escrow split.
+- **Money.** `listLedger` reads `/me/money` — the caller's own movements,
+  not the platform's double-entry ledger, which no client is given.
+- **Progress.** `listProgress` reads `/me/progress`, flattened for the
+  chart. Dimension stays a CODE; its label comes from the template bound
+  to the category, never from the client (#3).
+- **The operations console.** All three queues plus reconciliation:
+  `listCredentialQueue`, `listDisputes`, `getDispute`, `listSafetyQueue`
+  and a new `getReconciliation`. Verified as a real admin against the
+  seeded database — the verification queue names A. Rathore and the
+  "Mains cleared" credential type from the manifest, the dispute queue
+  shows a real case with the amount frozen, and the money screen lists
+  the actual findings of the nightly three-way match.
+
+**Admin screens are now guarded** (`requireRole` in `src/lib/session.ts`,
+applied to all seven). Anonymous is sent to sign-in, a signed-in
+non-admin to the platform home, an admin through. The API was already
+the real control — every admin route is `@Roles('admin')` — so this is
+the second layer, not the first; an operations console that draws its
+whole chrome for a stranger invites mistakes even when its queries would
+return nothing.
+
+**There was no usable admin account.** The only rows with `role='admin'`
+were leftovers from journey runs (`probe-…@test.local`), and admins must
+hold a second factor (#32), so nobody could actually sign in to the
+console. There is now a documented demo admin, created the same way the
+CI admin journey does it (register, promote with SQL, enrol TOTP):
+`admin@demo.local` / `demo-password-not-a-secret`, TOTP secret
+`TZL2IIXPBEMMUVCCI2FN36OQOD2UM33E`. Local demo data only.
+
+**A regression this work introduced and then fixed.** Pointing
+`listLedger` at `/me/money` silently changed `/admin/money`, which called
+it: the finance console began showing *the signed-in operator's own*
+purchases as though they were platform figures. It now reads
+`/admin/reconciliation`. Two panels on that screen (a payout run and a
+ledger explorer) were hardcoded fiction; they now say they are not built,
+because no endpoint lists a payout batch and the platform ledger is
+deliberately unreachable from any client. **A finance screen showing
+plausible invented numbers is the most dangerous screen in the product**,
+which is why they were removed rather than left looking finished.
+
+**Not connected yet** — still answering from `./mock`, each marked in
+`src/lib/data/index.ts`: the board and proposals, sessions, assessments
+and their templates, and action items.
+
+Note that `getAssessmentTemplate` degrades correctly rather than lying:
+real category ids never match the mock's slugs, so it returns null and
+the screens render "this category has no rubric", which is a legitimate
+state the spec requires them to handle (#3) — not an error.
+
+**What the API gained for this** (the alternative was walking back the
+redesign's deliberate choices):
+
+- `GET /providers` no longer requires `categoryId`. Naming no filter is a
+  real cross-field discovery query, which is what the search screen was
+  designed around. The two paths differ in meaning, not just breadth:
+  with a category it is matching (hold EVERY skill the category maps to);
+  without one it is discovery (any skill in scope). They are separate
+  methods — `MatchingService.searchVerifiedProviders` and
+  `RankingService.rankProvidersAcrossSkills` — rather than a flag,
+  because a boolean that flips an intersection into a union would
+  eventually be passed by a caller who meant matching. Neither ordering
+  considers price (#15).
+- `ProviderCard` now carries `familyCode`, `domainCodes` and
+  `categoryIds`, derived through `category_skills` rather than stored, so
+  a cross-field list can say which field each result belongs to. This is
+  visible proof of the taxonomy working: one seeded provider's 14 skills
+  surface across 19 PCS domains from a single verification.
+- **`EngagementViewService`** joins the parties (with display names), the
+  live agenda and its items, the escrow with its fee split, and any
+  booked session's time — five queries regardless of how many
+  engagements are asked for. Both engagement routes merge it in
+  **additively**, so `apps/web` reading the flat row is unaffected. A new
+  entry in `test/contract/client-response-shapes.e2e.spec.ts` guards the
+  shape, which is the mechanism D44 exists to provide.
+- `displayNameFor` moved to `src/common/display-name.ts` so search and
+  engagements name the same person the same way. Its fallback was
+  `'Mentor'` — a family word in `src/modules/`, which the vocabulary rule
+  forbids outside `domains/`. It is now neutral.
+- **Both operations queues were enriched, additively.**
+  `DisputeService.listAwaitingRulingWithContext` adds the case reference,
+  when it opened, **an SLA computed from the FAMILY'S own ladder** rather
+  than a constant (a family answering a tier-1 case in 48h and one taking
+  120h are both correct), which side raised it, and the amount frozen —
+  the single most important number on a dispute, which the queue did not
+  carry at all. `CredentialService.listAwaitingReviewWithContext` adds
+  who submitted, when, the family, and the credential type's label.
+  `submitted_at` had always existed and the query already ordered by it;
+  it simply never reached a client. Neither widens `verifier_data`:
+  that is evidence, and seeing a document still goes through
+  `/admin/credentials/:id/context`, the route that grants and audits it
+  (#29).
+
+**Known gaps in the adapter** (`src/lib/data/adapt.ts`), each rendering
+as absent rather than as an invented figure: a provider has no free-text
+headline server-side (the adapter states their verified skills instead),
+no rating histogram, no median response time, no next-available slot, and
+`verifiedAt`/`issuerSummary` are only available on the profile, not the
+card.
+
+**Fields the screens want that nothing stores.** Each renders as absent
+rather than as an invented value, and each is a real decision:
+
+- **`reference`.** No column exists, on engagements or disputes — the
+  mock's "ENG-4471" and "DSP-311" were invented. It is now DERIVED from
+  the uuid (`ENG-` + first six hex), so it can never disagree with the
+  id, but it is not a sequence and is **not guaranteed unique**. If
+  support workflows ever need a guaranteed-unique business key that is a
+  column and a migration, not a wider slice of this hash.
+- **`dueAt`** — nothing carries a due date. Null; the screens omit the row.
+- **`unreadMessages`** — `session_messages` exist but no per-engagement
+  read state does. Zero, rather than a badge that means nothing.
+- **`releasesOn`** — no review-window column. The screens fall back to
+  "held until the goals are confirmed", which is true.
+- **Per-item `successCriteria`** — `success_criteria` is one field on the
+  agenda, not one per item. Items carry none rather than being given
+  words nobody wrote for them.
+- **A refunded escrow** maps to the rail's `released` stage (the escrow
+  is closed), so that rail reads "paid out to the provider" on a refunded
+  engagement. The status chip beside it says `refunded`. Minor display
+  inaccuracy, recorded rather than papered over.
+
+**Still to reconcile:** sessions come back in snake_case with none of the
+consent/transcript fields the screens show, and the board and
+assessment-template shapes have not been mapped yet.
+
+### The pack editor — categories are now editable
+
+`/admin/config/domains/[code]` edits a domain's category tree and
+publishes it. This is the screen behind the platform's central claim:
+everything else in the console decides on work that already exists, and
+this is the only place that changes what the platform *offers*.
+
+**Built on whole-manifest publish, and that turned out to be the right
+call rather than a compromise.** The question was whether to add
+per-category CRUD. Reading `TaxonomyService.syncCategories` settled it —
+the existing sync is already safe for editing:
+
+- categories are upserted **by slug**, so a category keeps its id across
+  a publish, and every engagement, board post and evaluation pointing at
+  it keeps pointing at it;
+- a category the new manifest omits is **deactivated, not deleted**, so
+  no foreign key breaks and nothing in flight is orphaned.
+
+**Verified end to end against the running stack**, which is the first
+time this claim has been demonstrated rather than asserted: renaming a
+category through the publish path changed the live taxonomy immediately —
+no restart, no migration — and `categories.id` was **identical before and
+after**. Restored afterwards, so the seed data is untouched.
+
+What the whole-document model genuinely risks is retiring something by
+omission, so the editor shows an added/retired diff and will not submit
+retirements that have not been ticked. The API is the real control on the
+other end (`validateDomainManifest` already refuses an empty tree); the
+client-side refusals are defence in depth and are described as such.
+
+Two smaller things the work required:
+
+- **`GET /admin/domains/:code/manifest`.** `DomainLoaderService`
+  deliberately never returns a raw manifest — everything else wants the
+  resolved domain — but an editor needs the source document it publishes
+  back. Admin-only because publishing is, not because a manifest is
+  secret.
+- **The version is bumped on every publish.**
+  `domain_manifest_versions` keys on (domain, version) and does nothing
+  on conflict, so republishing under the same version would change the
+  live manifest while recording no history of it. The editor bumps the
+  patch, which is what makes "who changed the platform, and what to"
+  answerable — the audit row names the publisher but not the content.
+  **This was a real hole in the publish path**, not just an editor
+  convenience.
+- **`invalidatePack()`** drops the frontend's 60s pack cache on publish.
+  Without it an admin publishes, lands back on the page, sees the old
+  labels, and concludes it failed.
+
+**Still not editable, and stated on the screen rather than implied:**
+skills, credential types, tier names and assessment templates live on the
+FAMILY and are shared by every domain under it, so editing one from a
+domain screen would silently change it for all of them. That needs a
+family-level editor. Creating a new domain or family from scratch also
+still means publishing a manifest through the API — the "Add a domain"
+and "Add a family" buttons were inert and have been replaced with a
+sentence saying so.
+
+### Can apps/web be deleted yet? — audited, and the answer was no
+
+Asked directly, and checked rather than assumed. **apps/frontend could
+not onboard a single person.** It had no `/register`, no `/mfa/enrol`,
+and nothing for a provider to submit a credential, set a price, offer
+hours or pass training. Every one of those APIs already existed; the UI
+simply did not. The effect was that the entire SUPPLY SIDE was
+unreachable — a provider could not come into existence, and the demo
+only worked because of seeded rows plus a script that enrolled the
+admin's TOTP over the API.
+
+Those screens now exist and are verified end to end:
+
+- **`/register`** and **`/mfa/enrol`**. A password-only login for a role
+  that must hold a second factor now hands over the enrolment ticket and
+  routes to enrolment, instead of showing an error with nowhere to go.
+  Proven: register → password-only login is refused a session → enrol →
+  wrong code refused → correct code issues one.
+- **`/provider/readiness`** — the onboarding spine, driven by
+  `/me/readiness` rather than by the client's own idea of "ready", so it
+  cannot disagree with matching. Blocking and non-blocking steps look
+  different, because a list where "add your bank details" looks as
+  urgent as "get verified" teaches people to ignore all of it.
+- **`/provider/credentials`**, **`/provider/services`**,
+  **`/provider/availability`**, **`/provider/training`**.
+- **`/admin/config`** gained the ops catalogue: every domain with its
+  real supply count against its floor, and an open/close control.
+
+Proven with a write, not just a read: passing the training quiz flipped
+`/me/readiness` from `bookable: false` to `true`.
+
+**Three real defects this work surfaced:**
+
+- **`/provider/standing` was calling `getProvider('prv_1')`** — a fixture
+  id. Against the real API that is not a provider, and the page 500'd.
+  It now reads the signed-in provider's own id.
+- **A malformed provider id crashed the API.** `id` went into a
+  `::uuid[]` cast, so `GET /providers/prv_1` threw `string_to_uuid` and
+  returned 500 — any caller could crash that endpoint by typing a bad
+  id. It is now a 404, as is a genuinely missing provider (it had been a
+  400, which made "not found" indistinguishable from "malformed" and is
+  why clients that correctly treat 404 as absent blew up instead).
+- **The training screen invented its own contract.** It offered "I have
+  read this" and posted an empty body; the API answered 201 and recorded
+  nothing, because a module is a QUIZ scored server-side. Exactly the
+  silent no-op D44 is about. It is now the real quiz, and the correct
+  option is never sent to the browser.
+
+**Note on 2FA:** a freshly registered *provider* still gets a session
+from a password alone. That is not a hole — `mfa_policy` has
+`provider = false`, set deliberately (migration 0039, at the repo
+owner's request, so seeded mentors can sign in during evaluation).
+Admin is `true` and is enforced. Switching providers back on is one
+UPDATE and the enrolment screen is now there to receive them.
+
+### apps/web is unreferenced — and deletion is BLOCKED by uncommitted work
+
+Everything that depended on it has been moved. Nothing outside
+`apps/web/` references it in code, CI, scripts or docs; what remains are
+comments and this file's own prose.
+
+**It has NOT been deleted, and should not be until this is resolved.**
+`git rm -r apps/web` refuses, correctly:
+
+    47 files changed, 2212 insertions(+), 615 deletions(-)
+
+`apps/web` carries substantial **uncommitted local modifications** that
+predate this work and exist nowhere in git history — the admin
+credentials screen, the engagement actions, the booking form, all four
+journey scripts and more. Deleting the directory would destroy them
+permanently; they are not recoverable from any commit, branch or stash.
+
+The safe order is: commit (or branch/stash) the current `apps/web` state
+first, so the work survives in history, and only then delete. After that
+the deletion is a normal, revertable commit.
+
+**The journeys are ported and passing.** `apps/frontend/test/` now has
+`journey.mjs` and `hardening.mjs` (plus the `browser.mjs` and `totp.mjs`
+harnesses), with `playwright` and `axe-core` added as devDependencies.
+
+- **`npm run journey`** — 21 assertions in a real browser across: a
+  visitor's discovery, the guards refusing a stranger, joining through
+  the form, 2FA being enforced where it is mandatory, a seeker's own
+  engagements and money, a provider's readiness/services/training, the
+  three ops queues and the pack editor, and finally a manifest publish
+  reaching the live taxonomy with the category's id intact.
+  Deliberately ONE file where apps/web had four: the old split was
+  booking / provider / admin / seeker and three of them shared the same
+  sign-in and fixtures, so most of what was duplicated was setup.
+  It asserts things a screenshot cannot — that a page rendered data
+  from Postgres rather than a fixture, that a guard really redirects,
+  and that a write comes back.
+- **`npm run hardening`** — the same Fast-3G profile, the same 4x CPU
+  slowdown, the same budget and the same axe WCAG 2.1 A/AA run as before.
+  The bar was moved, not lowered.
+
+**The hardening port immediately found three real defects**, which is
+the argument for having ported it rather than declaring the screens
+fine:
+
+- **A button with no accessible name** on every page — the account menu
+  held only an avatar and an aria-hidden chevron. `button-name`,
+  critical.
+- **Links distinguished by colour alone** on `/login` and `/register`,
+  underlined only on hover. `link-in-text-block`, serious — and they
+  were mine, added earlier in this same session.
+- **The keyboard walk under-reported by an order of magnitude.** It
+  keyed visited stops on tag+text, so two empty-text inputs collided and
+  it stopped after the first field: a whole form read as "1 stop". Now
+  keyed on the element, and the same pages report 42/26/39/5/7.
+
+All three are fixed, and hardening passes with zero WCAG violations and
+every route inside the 3G budget.
+
+**Tap targets at 360px — found by the port, and fixed.** The ported
+check reported every control on the app as under the floor: nav 35px,
+buttons 36px, filter pills 34px, footer links 19px. Two things were
+wrong, and the first hid the second:
+
+- **The check was measuring things that cannot be tapped.** The desktop
+  nav is `md:flex` and is display:none at 360px; the dropdown panels are
+  `invisible` but still laid out, so they have a height. It now asks
+  `checkVisibility` about opacity and visibility explicitly, and exempts
+  an inline link set inside a sentence — which WCAG 2.5.8 exempts by
+  name, and which the original `display !== 'inline'` test missed for a
+  link the design system had made inline-flex.
+- **The controls really were too small.** `BUTTON_SIZES.sm` was `h-9`,
+  the nav items `px-3 py-2`, the pills `min-h-[34px]`.
+
+The fix uses the design system's OWN token rather than a number:
+`tailwind.config.ts` already extends `minHeight` with
+`touch: '48px'`, commented "a hard floor, not a suggestion", matching
+`packages/design/tokens.json`'s `touchTarget: 48`. A first attempt used
+`min-h-11` and changed nothing visible — worth recording, because the
+build succeeded and the class simply did not exist in the generated CSS.
+Everything is now `min-h-touch`, verified as `min-height:48px` in the
+built stylesheet rather than assumed from the source.
+
+Hardening now passes whole: 3G budget, zero WCAG 2.1 A/AA violations,
+keyboard reachable with visible focus, and 360px fit with no overflow
+and no target under the floor.
+
+**Hardening must run against a production build.** Against `next dev` it
+times out — dev compiles on demand and under a 4x CPU slowdown that
+alone blows the budget the test exists to measure. `dev.sh` already
+builds before serving, so this only matters when running it by hand;
+`docs/RUNNING.md` now says so.
+
+**Decision: apps/frontend does NOT join the design-token pipeline.**
+`scripts/sync-tokens.mjs` exists so two clients cannot drift apart, and
+apps/frontend is not a copy of the client it replaced — it names colour
+by job rather than by hue, replaces Tailwind's palette rather than
+extending it, and holds no hex value in any component. Generating
+`generated-tokens.ts` into it would either be ignored or would flatten a
+deliberate redesign into the older system's names. The apps/web target
+is removed from the script (it would otherwise write into a directory
+that is going away) and the reasoning is written into the file.
+**Two token sources now exist — apps/frontend's own and
+packages/design's, the latter feeding only the paused apps/mobile.**
+Unifying them is a design decision, and it is recorded here as open
+rather than made quietly.
+
+**Repointed:** `ci.yml` (install, typecheck, build, Chromium, `DEV_APPS`,
+and one journeys step in place of four), `scripts/dev.sh` (build, serve,
+typecheck, journeys, hardening, and the `DEV_APPS` default),
+`docs/RUNNING.md` (ports, commands, the TOTP helper path).
+
+One local-only wrinkle: `node scripts/sync-tokens.mjs --check` reports
+the mobile file stale on a Windows checkout. The content is identical —
+it is CRLF against the script's LF. There is no `.gitattributes`, so a
+Linux CI checkout is LF and the check passes there. Not a real drift,
+and deliberately not "fixed" by committing a line-ending-only change.
 
 ### The frontend (apps/web) — what exists
 
@@ -494,6 +885,176 @@ loop rather than the parts.
 
 Where the build knowingly differs from a spec document, and why. If a
 future task is surprised by something, it should be recorded here.
+
+- **The chrome was hardcoded to `upsc_cse` in 32 places across 25 files
+  — fixed (2026-08-31).** Every page called `getDomain('upsc_cse')`
+  purely to theme its header, so a general consultation platform's
+  landing page, login page, admin console and money screen all wore one
+  exam family's name. This is hard rule #1 broken one layer above the
+  API: `/domains` could list Accountancy and the chrome would never say
+  so. Caught by the user looking at the running app, not by any test.
+
+  **Fixed with `lib/viewer-context.ts`**, one resolver every page now
+  calls instead of hardcoding a code. Resolution order: `?domain=` on
+  the URL, then the switcher cookie (checked against the viewer's own
+  domains — never trusted), then the viewer's own domains (primary
+  first — a seeker has MANY, #6), then **nothing**. Nothing renders the
+  platform's own neutral chrome ("Sankalp"), not a guessed first domain
+  — guessing is how the original bug happened.
+
+  Chosen per the user's explicit answer to "what should a domain-less
+  page's header say?": **follow the viewer's active domain**, not always
+  neutral. A signed-out visitor or a page with nothing to be about
+  (landing, login, admin) gets neutral chrome; a signed-in seeker or
+  mentor sees their own field.
+
+  **`GET /me/domains`** (`domains/my-domains.service.ts`) answers "which
+  domains is this person in?", which nothing exposed before. It differs
+  genuinely by role: a **seeker** declares theirs (`seeker_domains`,
+  falling back to whichever domains their engagements are actually in,
+  since the declaration step doesn't exist yet); a **provider**'s are
+  *derived* from verified skills through the category mapping — never
+  declared, because deriving it any other way would reintroduce the
+  global tier the taxonomy exists to prevent (#5); an **admin** is in
+  none.
+
+  **A field switcher and a language picker are now in the header**
+  (`components/header-controls.tsx`), both plain `<select>`s inside
+  forms that submit on change and work with JavaScript off — the
+  audience is mid-range Android on patchy networks, and a language
+  switcher that needs a hydrated bundle is one that fails exactly the
+  people who need a language other than English. The language picker
+  changes pack LABELS (domain/category names, credential types,
+  helplines) — **the app's own chrome is still English-only**; full
+  interface i18n was explicitly deferred (see the i18n entry below).
+
+  **Real gap found and closed while wiring this up, not just papered
+  over:** several pages (`/board`, `/mentor/credentials`, `/mentors`)
+  resolve to no domain for a brand-new account with nothing declared and
+  nothing booked yet — and a provider's domains can ONLY come from
+  verification, so a fresh provider had no domain and thus no route to
+  the credentials screen where verification begins. That was a genuine
+  dead end, not a display bug. Fixed by adding an explicit "pick a
+  field" prompt (linking to `/domains`) on each affected page, and by
+  adding a "Find someone here" / "Get verified here" button to
+  `/domains/[code]` itself — the page that names a field now leads
+  somewhere on it.
+
+  Also fixed in passing: `agreements/document` was queried by
+  `domainCode`, which registration had no domain to supply (nobody
+  registering is in one yet) — it now accepts `familyCode` too, which is
+  what the endpoint actually needed all along. Two grammar/hardcode bugs
+  on the landing page ("Find a expert", "Explore exams" on a
+  non-exam-only platform).
+
+- **Provider 2FA is TURNED OFF, at the user's request, and must go back
+  on before launch.** CLAUDE.md #32 makes 2FA mandatory for provider and
+  admin accounts. Rather than special-casing the rule in code, the role
+  set became data: `mfa_policy` (migration `0039_mfa_policy.sql`), read
+  by the trigger, which falls back to `role IN ('provider','admin')` when
+  a row is missing — so a lost row fails toward stricter, never laxer.
+  Admin 2FA is untouched and still mandatory.
+
+  Turn it back on with:
+
+  ```sql
+  UPDATE mfa_policy SET mandatory = true WHERE role = 'provider';
+  ```
+
+  Providers who signed up while it was off have no factor enrolled; they
+  are routed to enrolment on their next sign-in, not locked out.
+
+- **`test/mobile-fit.mjs` now walks the signed-in and detail screens, and
+  the ops console** (2026-08-31). It used to sweep five public pages,
+  which would have passed on the day the engagement screen broke. It now
+  signs in as a seeker, a mentor and a freshly-made admin (registered,
+  promoted in SQL, second factor enrolled — an admin cannot be seeded),
+  and follows real links rather than hardcoded ids.
+
+  What it found, all now fixed: three `Back to the engagement` links and
+  eight `text-sm text-accent underline` "open it" links were 20px-tall
+  targets — replaced by shared `BackLink` and `ActionLink` components in
+  `components/ui.tsx` so the ninth is right by default; the agenda
+  editor's inputs, its remove-goal ✕ and its add-a-goal button were all
+  under 44px; and `/admin/catalogue` dragged the whole page sideways.
+
+  **The table one is worth knowing.** `overflow-x-auto` on a wrapper is
+  NOT enough: a `<table>` with a `min-width` inside it still makes the
+  page horizontally scrollable in Chrome, even though the wrapper clips
+  the paint. Neither `overflow-x: clip` on the wrapper nor on `<main>`
+  stops it — only `contain: paint` does. That is now in `TableScroll`,
+  used by `/admin/catalogue`, `/money` and `/mentor/earnings`, which had
+  three copies of the same subtly-broken class string.
+
+- **The demo seed now reaches the session room and the board post**
+  (2026-08-31). `sessions` and `board_posts` were both empty, so
+  `/sessions/[id]` and `/board/[id]` had nothing to render and every
+  sweep skipped them. `demo-engagements.ts` now books one live session
+  for tomorrow (consent is only shown for a future session) and opens one
+  board post with one unaccepted proposal, both guarded per fixture.
+  `demo-fixtures.ts` publishes a `live_session` rate for all three
+  mentors — booking only offers engagement types a provider has priced,
+  so without one no mentor was bookable for live work at all.
+
+  This is how it was found that **the board list linked to nothing**: a
+  seeker could post a request, receive proposals, and have no route from
+  `/board` to the screen holding the accept decision. Fixed.
+
+- **Four browser suites were asserting things that are no longer true.**
+  All four now read the world instead of assuming it (2026-08-31):
+  - `journey.mjs` step 6 asserted the 18+ rule via a server error that
+    never arrived — the checkbox is `required`, so the browser blocked
+    submission and the server rule was never exercised. It now submits
+    with validation off, the way anyone bypassing the attribute would.
+  - `journey.mjs` step 7 clicked `form button[type=submit]`, which
+    matched the header's **sign-out** form. The step spent its life
+    logging the seeker out and waiting for a reply that was never coming.
+  - `journey.mjs`, `provider-journey.mjs` and `booking-journey.mjs` all
+    hardcoded "a provider is routed to 2FA enrolment". Provider 2FA is
+    currently **off** by an explicit decision, held in the `mfa_policy`
+    row for the role, so a correct configuration failed the suite. They
+    now read the policy and hold the app to whichever answer it gives —
+    and separately assert that admin 2FA is still mandatory (#32). Each
+    prints a loud reminder that provider 2FA is unenforced.
+  - `booking-journey.mjs` asserted a price BAND and a paise figure on the
+    booking screen. That is the old negotiable-price model; the current
+    one is a single price the provider publishes for a stated duration or
+    turnaround. It now asserts that, and **fails if a band reappears**.
+    `walkthrough.mjs` lost its "change the duration" shot for the same
+    reason — there is no duration to choose any more.
+
+- **`admin-journey.mjs` and `provider-journey.mjs` could not spawn their
+  fixtures on Windows** (2026-08-31). `execFileSync('npx', …)` is ENOENT
+  there (`npx.cmd`), and `npx.cmd` is EINVAL without a shell; and a
+  `file:` URL's `.pathname` is `/E:/…`, which is not a usable cwd. Both
+  now run ts-node's own entry point under `process.execPath`, which needs
+  no shell on any platform.
+
+- **`apps/mobile` is PAUSED. Do not extend it. Finish responsive web first.**
+  Decided with the user (2026-08-31). This restores the plan's own
+  sequencing, which the build had drifted from: SPEC/plan §19 puts the
+  native app in **Phase 2** and lists it under Phase 1's *"deliberately
+  excluded: … mobile app (web-responsive first)"*. A native app was built
+  in Phase 1 anyway, and by this date it had none of payment, file
+  upload, annotation, mentor services, packages, earnings, payout
+  details, availability, training or the seeker money screen — it fell
+  further behind with every slice, which is the worst of the three
+  options: two clients, neither finished.
+
+  **What this means in practice.** New work goes to `apps/web` only. The
+  native app stays in the repo and still builds; it is not deleted,
+  because the decision to resume it is a business one and deleting it
+  would make resuming expensive. Two screens were added to it on
+  2026-08-31 before the pause — the payment step and progress — because
+  the engagement screen said *"fund escrow to start"* and offered no way
+  to do so, which was a dead end rather than a missing feature.
+
+  **Before resuming it**, re-read this entry and check whether responsive
+  web has made a native app unnecessary. The reasons for web-first here
+  are specific: no install friction on a ₹10,000 Android, no Play Store
+  step between a search result and a booking, and provider profiles stay
+  indexable — which the plan (§18.1) calls a major free acquisition
+  channel.
 
 - **`apps/web` and `apps/mobile` keep separate component layers, deliberately.**
   Confirmed with the user (2026-08-29) after the web app was brought onto

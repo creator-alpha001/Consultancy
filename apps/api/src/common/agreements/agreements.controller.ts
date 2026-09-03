@@ -26,14 +26,22 @@ export class AgreementsController {
   @Get('agreements/document')
   @Public()
   async document(
-    @Query('domainCode') domainCode: string,
     @Query('code') code: string,
+    @Query('domainCode') domainCode?: string,
+    @Query('familyCode') familyCode?: string,
     @Query('lang') lang?: string,
   ): Promise<{ code: string; version: string; text: string; lang: string }> {
-    if (!domainCode) throw new BadRequestException('domainCode is required');
     if (!code) throw new BadRequestException('code is required');
-    const domain = await this.loader.getDomain(domainCode);
-    return this.agreements.documentFor(domain.familyCode, code, lang ?? 'en');
+    // Agreement documents are FAMILY data — `domainCode` was only ever a
+    // way to reach one. Registration happens before anybody is in a
+    // domain, so it could not ask for terms without naming an exam it
+    // had no reason to name; `familyCode` lets it ask the question it
+    // actually has. Either identifies the family; one is required.
+    if (!domainCode && !familyCode) {
+      throw new BadRequestException('domainCode or familyCode is required');
+    }
+    const resolved = familyCode ?? (await this.loader.getDomain(domainCode as string)).familyCode;
+    return this.agreements.documentFor(resolved, code, lang ?? 'en');
   }
 
   /** What the caller has agreed to. Scoped to them — there is no "whose?" parameter (#28). */

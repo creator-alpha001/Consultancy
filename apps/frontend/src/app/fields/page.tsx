@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { AppShell } from '@/components/shell';
 import { Chip, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { preview } from '@/lib/preview';
-import { FAMILIES, t, languageName } from '@/lib/pack';
+import { allFamilies, t, languageName } from '@/lib/pack';
 import { familyCounts } from '@/lib/data';
 import { money } from '@/lib/format';
 
@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
  * orders of magnitude apart — and that none of that difference is code.
  */
 export default async function FieldsPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { fam, lang } = await preview('seeker');
   const counts = await familyCounts();
 
   return (
@@ -29,7 +29,7 @@ export default async function FieldsPage(): Promise<JSX.Element> {
       />
 
       <div className="space-y-5">
-        {FAMILIES.map((f) => {
+        {allFamilies().map((f) => {
           const c = counts[f.code] ?? { providers: 0, open: 0 };
           return (
             <section key={f.code} className="rounded-lg border border-line bg-surface shadow-e1">
@@ -42,7 +42,7 @@ export default async function FieldsPage(): Promise<JSX.Element> {
                       style={{ background: f.theme.brand }}
                     />
                     <h2 className="text-heading font-semibold">
-                      <Link href={`/fields/${f.code}`} className="hover:text-brand hover:underline">
+                      <Link href={`/fields/${f.code}`} className="inline-flex min-h-touch items-center hover:text-brand hover:underline">
                         {t(f.label, lang)}
                       </Link>
                     </h2>

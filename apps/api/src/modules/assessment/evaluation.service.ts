@@ -3,13 +3,38 @@ import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { FamilyManifestService } from '../domains/family-manifest.service';
 import {
+  annotationAnchorIncomplete,
+  annotationNotFound,
   evaluationAlreadyReturned,
   evaluationHasNoTemplate,
   evaluationIncomplete,
   evaluationNotFound,
   unknownDimension,
 } from './errors';
-import { EvaluationRow, TemplateDimension } from './types';
+import { AnnotationRow, EvaluationRow, TemplateDimension } from './types';
+
+interface AnnotationDbRow {
+  id: string;
+  ordinal: number;
+  page: number;
+  /** numeric(6,5) arrives as a string from pg — never Number() it implicitly. */
+  anchor_x: string | null;
+  anchor_y: string | null;
+  body_text: string;
+  body_lang: string;
+}
+
+function mapAnnotation(row: AnnotationDbRow): AnnotationRow {
+  return {
+    id: row.id,
+    ordinal: Number(row.ordinal),
+    page: Number(row.page),
+    anchorX: row.anchor_x === null ? null : Number(row.anchor_x),
+    anchorY: row.anchor_y === null ? null : Number(row.anchor_y),
+    bodyText: row.body_text,
+    bodyLang: row.body_lang,
+  };
+}
 
 interface EvaluationDbRow {
   id: string;
@@ -109,6 +134,95 @@ export class EvaluationService {
     return this.hydrate(res.rows[0]);
   }
 
+
+  /**
+   * Place a remark on the work.
+   *
+   * The ordinal is assigned HERE, never accepted from the caller. It is
+   * what the seeker taps and what a dispute cites, so two clients racing
+   * must not both decide they are pin 4 — `MAX(ordinal) + 1` inside the
+   * statement, with the unique constraint as the backstop if two arrive
+   * at once.
+   *
+   * Whether the evaluation is still open is enforced by a trigger, not
+   * checked here: after the work is returned the remarks are a record of
+   * what the seeker read, and a service check is one forgotten call away
+   * from not holding. `mustBeOpen` runs anyway so the caller gets the
+   * typed error rather than the database's.
+   */
+  async addAnnotation(input: {
+    evaluationId: string;
+    page?: number;
+    anchorX?: number | null;
+    anchorY?: number | null;
+    bodyText: string;
+    bodyLang: string;
+  }): Promise<AnnotationRow> {
+    await this.mustBeOpen(input.evaluationId);
+
+    const hasX = input.anchorX !== undefined && input.anchorX !== null;
+    const hasY = input.anchorY !== undefined && input.anchorY !== null;
+    if (hasX !== hasY) throw annotationAnchorIncomplete();
+
+    const res = await this.pool.query<AnnotationDbRow>(
+      `INSERT INTO evaluation_annotations
+         (evaluation_id, ordinal, page, anchor_x, anchor_y, body_text, body_lang)
+       VALUES (
+         $1,
+         (SELECT COALESCE(MAX(ordinal), 0) + 1 FROM evaluation_annotations WHERE evaluation_id = $1),
+         $2, $3, $4, $5, $6
+       )
+       RETURNING *`,
+      [
+        input.evaluationId,
+        input.page ?? 1,
+        hasX ? input.anchorX : null,
+        hasY ? input.anchorY : null,
+        input.bodyText,
+        input.bodyLang,
+      ],
+    );
+    return mapAnnotation(res.rows[0]);
+  }
+
+  /**
+   * Remove a remark before the work goes back.
+   *
+   * Ordinals are deliberately NOT renumbered afterwards. A gap in the
+   * pins is honest — the alternative silently changes what "pin 4" refers
+   * to for anyone who already had the page open, and pin numbers are
+   * cited in disputes.
+   */
+  async removeAnnotation(annotationId: string): Promise<void> {
+    const owner = await this.pool.query<{ evaluation_id: string }>(
+      `SELECT evaluation_id FROM evaluation_annotations WHERE id = $1`,
+      [annotationId],
+    );
+    if (!owner.rows[0]) throw annotationNotFound(annotationId);
+    await this.mustBeOpen(owner.rows[0].evaluation_id);
+    await this.pool.query(`DELETE FROM evaluation_annotations WHERE id = $1`, [annotationId]);
+  }
+
+  /** Which evaluation a remark belongs to, so access is checked on the owner. */
+  async evaluationIdForAnnotation(annotationId: string): Promise<string> {
+    const res = await this.pool.query<{ evaluation_id: string }>(
+      `SELECT evaluation_id FROM evaluation_annotations WHERE id = $1`,
+      [annotationId],
+    );
+    if (!res.rows[0]) throw annotationNotFound(annotationId);
+    return res.rows[0].evaluation_id;
+  }
+
+  /** Who owns this evaluation — the controller's access check needs it. */
+  async providerOf(evaluationId: string): Promise<string> {
+    const res = await this.pool.query<{ provider_id: string }>(
+      `SELECT provider_id FROM evaluations WHERE id = $1`,
+      [evaluationId],
+    );
+    if (!res.rows[0]) throw evaluationNotFound(evaluationId);
+    return res.rows[0].provider_id;
+  }
+
   private async mustBeOpen(evaluationId: string): Promise<EvaluationDbRow> {
     const res = await this.pool.query<EvaluationDbRow>(`SELECT * FROM evaluations WHERE id = $1`, [evaluationId]);
     const evaluation = res.rows[0];
@@ -133,12 +247,16 @@ export class EvaluationService {
   }
 
   private async hydrate(row: EvaluationDbRow): Promise<EvaluationRow> {
-    const [scoresRes, dimensions] = await Promise.all([
+    const [scoresRes, dimensions, annotationsRes] = await Promise.all([
       this.pool.query<ScoreDbRow>(
         `SELECT dimension_code, score, comment FROM assessment_scores WHERE evaluation_id = $1`,
         [row.id],
       ),
       this.templateDimensions(row.template_id),
+      this.pool.query<AnnotationDbRow>(
+        `SELECT * FROM evaluation_annotations WHERE evaluation_id = $1 ORDER BY page, ordinal`,
+        [row.id],
+      ),
     ]);
     return {
       id: row.id,
@@ -151,6 +269,7 @@ export class EvaluationService {
       overallNote: row.overall_note,
       returnedAt: row.returned_at,
       scores: scoresRes.rows.map((r) => ({ dimensionCode: r.dimension_code, score: Number(r.score), comment: r.comment })),
+      annotations: annotationsRes.rows.map(mapAnnotation),
     };
   }
 }

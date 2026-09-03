@@ -44,6 +44,17 @@ export interface HoldEscrowInput extends EscrowActor {
   providerId: string;
   currency: string;
   amountPaise: bigint;
+  /**
+   * Where the money comes from.
+   *
+   * `payment` captures afresh through the aggregator — the ordinary case,
+   * one engagement one payment. `wallet` moves an amount the seeker has
+   * already paid for out of their own balance, which is how a session
+   * drawn from a package is funded: the card was charged once, at
+   * purchase, and charging it again per session would be charging twice
+   * for the same money.
+   */
+  fundedFrom?: 'payment' | 'wallet';
   idempotencyKey: string;
 }
 
@@ -81,6 +92,7 @@ export interface PlatformFailureInput extends EscrowActor {
 }
 
 interface EscrowDbRow {
+  funded_from: 'payment' | 'wallet';
   id: string;
   engagement_id: string;
   seeker_id: string;
@@ -180,8 +192,8 @@ export class EscrowService {
         }
       } else {
         const inserted = await client.query<{ id: string }>(
-          `INSERT INTO escrows (engagement_id, seeker_id, provider_id, currency, amount_paise, session_extension_id)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO escrows (engagement_id, seeker_id, provider_id, currency, amount_paise, session_extension_id, funded_from)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            RETURNING id`,
           [
             input.engagementId,
@@ -190,6 +202,9 @@ export class EscrowService {
             input.currency,
             input.amountPaise.toString(),
             input.sessionExtensionId ?? null,
+            // Recorded so `refund` can reverse the movement that was
+            // actually made, rather than assuming a card charge (0049).
+            input.fundedFrom ?? 'payment',
           ],
         );
         escrowId = inserted.rows[0].id;
@@ -202,16 +217,28 @@ export class EscrowService {
       client.release();
     }
 
+    const fundedFrom = input.fundedFrom ?? 'payment';
+    // Null for a wallet-funded hold: there was no capture to reference,
+    // and inventing one would put a made-up aggregator id in the outbox.
+    let paReference: string | null = null;
+
     // Outside any DB transaction — this may be a real network call in
     // production against the licensed aggregator's sandbox.
-    const capture = await this.paymentAggregator.captureOrder({
-      amountPaise: input.amountPaise,
-      currency: input.currency,
-      seekerId: input.seekerId,
-      idempotencyKey: input.idempotencyKey,
-    });
-    if (capture.status !== 'succeeded') {
-      throw paymentCaptureFailed(escrowId);
+    //
+    // Skipped entirely when funding from the wallet: the aggregator was
+    // already called once, when the package was bought. Calling it again
+    // per session would take the money twice.
+    if (fundedFrom === 'payment') {
+      const capture = await this.paymentAggregator.captureOrder({
+        amountPaise: input.amountPaise,
+        currency: input.currency,
+        seekerId: input.seekerId,
+        idempotencyKey: input.idempotencyKey,
+      });
+      if (capture.status !== 'succeeded') {
+        throw paymentCaptureFailed(escrowId);
+      }
+      paReference = capture.paReference;
     }
 
     const client2 = await this.pool.connect();
@@ -221,9 +248,14 @@ export class EscrowService {
       const fee = await this.feeSchedule.getCurrent(client2, input.currency);
       const platformFeePaise = (input.amountPaise * BigInt(fee.platformFeeBps)) / 10000n;
 
-      const paAccountId = await this.ledgerAccounts.getOrCreate(client2, {
-        type: 'payment_aggregator',
-        ownerUserId: null,
+      // The source account. A wallet-funded hold debits the seeker's own
+      // balance; a payment-funded one debits the aggregator. Both credit
+      // escrow by the same amount, so the transaction sums to zero either
+      // way and the ledger never has to know which kind it was beyond the
+      // account it names.
+      const sourceAccountId = await this.ledgerAccounts.getOrCreate(client2, {
+        type: fundedFrom === 'wallet' ? 'seeker_wallet' : 'payment_aggregator',
+        ownerUserId: fundedFrom === 'wallet' ? input.seekerId : null,
         currency: input.currency,
       });
       const escrowAccountId = await this.ledgerAccounts.getOrCreate(client2, {
@@ -238,7 +270,7 @@ export class EscrowService {
         referenceType: 'escrow',
         referenceId: escrowId,
         entries: [
-          { accountId: paAccountId, currency: input.currency, amountPaise: -input.amountPaise },
+          { accountId: sourceAccountId, currency: input.currency, amountPaise: -input.amountPaise },
           { accountId: escrowAccountId, currency: input.currency, amountPaise: input.amountPaise },
         ],
       });
@@ -263,7 +295,7 @@ export class EscrowService {
           payload: {
             engagementId: input.engagementId,
             amountPaise: input.amountPaise,
-            paReference: capture.paReference,
+            paReference,
           },
         });
         // Inside the same transaction as the transition, so there can
@@ -427,9 +459,13 @@ export class EscrowService {
         ownerUserId: null,
         currency: escrow.currency,
       });
+      // Back where it came from. A wallet-funded escrow (a package draw)
+      // returns to the wallet, so the session `package_draws` just gave
+      // back is one the seeker can actually fund again. Sending it to the
+      // card instead would hand them cash for a session they still hold.
       const paAccountId = await this.ledgerAccounts.getOrCreate(client, {
-        type: 'payment_aggregator',
-        ownerUserId: null,
+        type: escrow.funded_from === 'wallet' ? 'seeker_wallet' : 'payment_aggregator',
+        ownerUserId: escrow.funded_from === 'wallet' ? escrow.seeker_id : null,
         currency: escrow.currency,
       });
 
@@ -584,7 +620,16 @@ export class EscrowService {
         await client.query('COMMIT');
         return mapEscrowRow(escrow); // idempotent no-op
       }
-      if (escrow.status !== 'disputed_hold') {
+      // `held` as well as `disputed_hold`.
+      //
+      // A split used to be reachable only from a dispute, so the guard
+      // named the one state a ruling arrives in. There is now a second
+      // legitimate source: a provider voluntarily charging less than they
+      // published, which settles from `held` without any dispute having
+      // existed. Both are live, unsettled states; what distinguishes the
+      // two cases is `input.reason`, which is recorded on the refund row
+      // so a discount is never read as a ruling against anyone.
+      if (escrow.status !== 'disputed_hold' && escrow.status !== 'held') {
         throw escrowNotReleasable(escrow.id, escrow.status);
       }
 

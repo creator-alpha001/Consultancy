@@ -4,7 +4,7 @@ import { AppShell } from '@/components/shell';
 import { ButtonLink, Card, Chip, Eyebrow, PageHead, Panel, SlaClock } from '@/components/ui';
 import { ProviderCard } from '@/components/provider-card';
 import { preview } from '@/lib/preview';
-import { FAMILIES, t, plural, withArticle, languageName } from '@/lib/pack';
+import { allFamilies, t, plural, withArticle, languageName } from '@/lib/pack';
 import { themeStyle } from '@/lib/theme';
 import { listProviders, listBoard } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
@@ -22,9 +22,10 @@ export const dynamic = 'force-dynamic';
  * Every word below comes from the manifest. The page does not know it is
  * rendering agriculture rather than accountancy.
  */
-export default async function FieldPage({ params }: { params: { code: string } }): Promise<JSX.Element> {
-  const { fam: platform, lang } = preview('seeker');
-  const field = FAMILIES.find((f) => f.code === params.code);
+export default async function FieldPage({ params }: { params: Promise<{ code: string }> }): Promise<JSX.Element> {
+  const { code } = await params;
+  const { fam: platform, lang } = await preview('seeker');
+  const field = allFamilies().find((f) => f.code === code);
   if (!field) notFound();
 
   const [providers, board] = await Promise.all([

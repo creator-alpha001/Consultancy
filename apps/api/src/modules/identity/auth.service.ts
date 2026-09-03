@@ -16,6 +16,7 @@ import {
   passwordTooWeak,
 } from './errors';
 import { PasswordService } from './password.service';
+import { MfaPolicyService } from './mfa-policy.service';
 import { SessionService } from './session.service';
 import { TotpService } from './totp.service';
 import {
@@ -74,7 +75,8 @@ function hashRecoveryCode(code: string): string {
  *    whether an account exists.
  *  - #32 (2FA mandatory for providers and admins) is enforced by a DB
  *    trigger, not here. This service returns a friendly typed error
- *    first; the trigger is what makes the rule true.
+ *    first; the trigger is what makes the rule true. WHICH roles it
+ *    applies to is read from `mfa_policy` by both — see 0039.
  *  - Nothing in this file logs a password, a TOTP secret, a recovery
  *    code, or a session token.
  */
@@ -88,6 +90,7 @@ export class AuthService {
     @Inject(PasswordService) private readonly passwords: PasswordService,
     @Inject(TotpService) private readonly totp: TotpService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(MfaPolicyService) private readonly mfaPolicy: MfaPolicyService,
     @Inject(AgreementService) private readonly agreements: AgreementService,
   ) {}
 
@@ -190,7 +193,12 @@ export class AuthService {
     }
 
     const factor = await this.confirmedFactorFor(user.id);
-    const mfaMandatory = user.role === 'provider' || user.role === 'admin';
+    // #32's role set is data now (migration 0039), not a literal here:
+    // the same row this reads is the one the DB trigger reads, so the two
+    // enforcement points cannot drift. Currently provider is switched OFF
+    // and admin is on. Everything below is unchanged by that — a factor
+    // that IS enrolled still gets verified, whatever the policy says.
+    const mfaMandatory = await this.mfaPolicy.isMandatoryFor(user.role);
 
     if (mfaMandatory && !factor) {
       // #32's awkward case: a provider who has never enrolled cannot log

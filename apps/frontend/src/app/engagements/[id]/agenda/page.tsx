@@ -25,9 +25,10 @@ export const dynamic = 'force-dynamic';
  * after it there is no edit affordance anywhere in the component — a
  * change is a change order producing a new version, never an overwrite.
  */
-export default async function AgendaPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { lang } = preview('seeker');
-  const e = await getEngagement(params.id);
+export default async function AgendaPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { id } = await params;
+  const { lang } = await preview('seeker');
+  const e = await getEngagement(id);
   if (!e) notFound();
   const fam = contextFor(e.family);
   const agenda = e.agenda;
@@ -179,7 +180,7 @@ export default async function AgendaPage({ params }: { params: { id: string } })
                 ))}
               </ul>
               <Divider className="my-4" />
-              <label className="flex cursor-pointer items-start gap-2.5 text-small">
+              <label className="flex min-h-touch cursor-pointer items-start gap-2.5 py-1.5 text-small">
                 <input type="checkbox" className="mt-0.5 h-4 w-4 flex-none accent-[color:var(--brand)]" />
                 <span>I understand this cannot be edited afterwards, and that a dispute is judged against it.</span>
               </label>

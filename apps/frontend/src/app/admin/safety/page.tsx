@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock } from '@/components/ui';
 import { preview } from '@/lib/preview';
+import { requireRole } from '@/lib/session';
 import { listSafetyQueue } from '@/lib/data';
 import { ago, until } from '@/lib/format';
 
@@ -32,7 +33,8 @@ const KIND: Record<string, { label: string; tone: 'danger' | 'caution' | 'neutra
  *    something this delicate from scratch under time pressure
  */
 export default async function SafetyQueuePage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('admin');
+  await requireRole('admin', '/admin/safety');
+  const { fam, lang } = await preview('admin');
   const items = await listSafetyQueue();
   const distress = items.filter((i) => i.kind === 'distress');
   const other = items.filter((i) => i.kind !== 'distress');

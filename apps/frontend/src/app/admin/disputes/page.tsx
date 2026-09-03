@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AppShell } from '@/components/shell';
 import { Card, Chip, Eyebrow, PageHead, Panel, SlaClock } from '@/components/ui';
 import { preview } from '@/lib/preview';
+import { requireRole } from '@/lib/session';
 import { listDisputes } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
 
@@ -23,7 +24,8 @@ const TIER_NAME: Record<number, string> = {
  * process into a reputation problem.
  */
 export default async function DisputesPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('admin');
+  await requireRole('admin', '/admin/disputes');
+  const { fam, lang } = await preview('admin');
   const disputes = await listDisputes();
 
   return (

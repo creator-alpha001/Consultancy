@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { Body, Button, Card, Chip, Empty, ErrorNote, H1, Loading, Row, Screen, Section, Small, Stepper } from '@/components/kit';
+import { Body, Button, Card, Chip, Empty, ErrorNote, H1, H3, Loading, Row, Screen, Section, Small, Stepper } from '@/components/kit';
 import { ApiError, api, durationLabel, rupees, when } from '@/lib/api';
 import { useStore, useWords } from '@/lib/store';
 import { LIGHT as C, space, type } from '@/theme/tokens';
@@ -52,6 +52,18 @@ export default function EngagementDetail(): JSX.Element {
         ? { code: err.code, message: err.message }
         : { code: 'UNKNOWN', message: 'Something went wrong.' });
     } finally { setBusy(false); }
+  }
+
+  /**
+   * Pay into escrow.
+   *
+   * The idempotency key is derived from the engagement, not generated
+   * fresh — a double tap on a phone is far more likely than a
+   * double-click, and both must reach the same key and therefore the same
+   * single charge.
+   */
+  async function pay(): Promise<void> {
+    await act(`/engagements/${id}/payment`, `engagement-payment:${id}`);
   }
 
   if (!e) return <Screen><Loading /></Screen>;
@@ -140,11 +152,64 @@ export default function EngagementDetail(): JSX.Element {
           </Card>
         )}
 
-        {e.status === 'agreed' && (
+        {/*
+          Paying, on the phone.
+          This card used to say "lock the agenda and fund escrow to start"
+          and offer no way to fund anything — the same dead end the web
+          app had. A seeker who agreed terms here could not go further
+          without opening a laptop, halfway through something they had
+          started on a phone on a train.
+
+          The amount is never sent: the API reads it from the engagement
+          row, so there is nothing this screen could get wrong about what
+          is charged.
+        */}
+        {e.status === 'agreed' && isSeeker && agenda?.lockedAt && (
           <Card>
-            <Body>Terms agreed. Lock the agenda and fund escrow to start.</Body>
+            <H3>Pay into escrow</H3>
+            <View style={{ height: space.sm }} />
+            {[
+              ['Amount', rupees(e.amountPaise)],
+              ['Held by', 'A licensed payment aggregator'],
+              ['Released when', 'You confirm the goals were met'],
+            ].map(([term, value]) => (
+              <View key={term} style={{ paddingVertical: space.xs }}>
+                <Row between align="flex-start">
+                  <Small>{term}</Small>
+                  <Text style={[type.bodyStrong, { color: C.ink, flexShrink: 1, textAlign: 'right' }]}>
+                    {value}
+                  </Text>
+                </Row>
+              </View>
+            ))}
+            <View style={{ height: space.sm }} />
+            <Small>Sandbox — no real money moves.</Small>
+            <View style={{ height: space.md }} />
+            <Button
+              label={busy ? 'Working…' : `Hold ${rupees(e.amountPaise)} in escrow`}
+              onPress={pay}
+              disabled={busy}
+            />
+          </Card>
+        )}
+
+        {e.status === 'agreed' && isSeeker && !agenda?.lockedAt && (
+          <Card>
+            <Body>
+              Lock the agenda before paying — money is held against the goals you both agreed, so
+              there has to be an agreed list first.
+            </Body>
             <View style={{ height: space.sm }} />
             <Button label="Open the agenda" variant="secondary" onPress={() => router.push(`/engagement/${id}/agenda`)} />
+          </Card>
+        )}
+
+        {e.status === 'agreed' && isProvider && (
+          <Card>
+            <Body>
+              Terms agreed. Work starts once they have paid into escrow and the agenda is locked —
+              you will see this move on its own.
+            </Body>
           </Card>
         )}
 

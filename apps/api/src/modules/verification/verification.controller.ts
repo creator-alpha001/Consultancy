@@ -1,9 +1,12 @@
-import { BadRequestException, Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { CurrentActor, Public, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
 import { CredentialService } from './credential.service';
 import { DomainLoaderService } from '../domains/domain-loader.service';
 import { ProviderLanguageService, WorkingLanguage } from './provider-language.service';
+import { ProviderReadiness, ReadinessService } from './readiness.service';
+import { TrainingService, TrainingState } from './training.service';
+import { ProviderRate, RatesService } from './rates.service';
 import { ProviderCredentialRow } from './types';
 
 /**
@@ -24,6 +27,9 @@ export class VerificationController {
     @Inject(CredentialService) private readonly credentials: CredentialService,
     @Inject(ProviderLanguageService) private readonly languages: ProviderLanguageService,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
+    @Inject(RatesService) private readonly rates: RatesService,
+    @Inject(ReadinessService) private readonly readinessService: ReadinessService,
+    @Inject(TrainingService) private readonly trainingService: TrainingService,
   ) {}
 
   // ── Working languages ───────────────────────────────────────────────
@@ -111,6 +117,99 @@ export class VerificationController {
   }
 
   /** Whether this provider is currently blocked from paid work (§11's sanction gate). */
+
+  /**
+   * What this provider charges.
+   *
+   * Scoped to the caller — there is no provider id in any of these
+   * routes (#28). The public rate a seeker sees comes back with the
+   * provider's profile instead, so nothing here is a price list anyone
+   * can enumerate.
+   */
+  /**
+   * What this provider still has to do before anyone can book them.
+   *
+   * Scoped to the caller. There is no route that answers this about
+   * anyone else — a readiness report names what someone has not done,
+   * which is nobody else's business (#28).
+   */
+  /**
+   * Training, and the record of it.
+   *
+   * The questions come back WITHOUT their answers — the server grades.
+   * A quiz whose answers arrive in the page teaches nothing, and this one
+   * covers what to do when someone in a session discloses distress (#25).
+   */
+  @Get('me/training')
+  @Roles('provider')
+  async training(
+    @CurrentActor() actor: Actor,
+    @Query('family') familyCode?: string,
+  ): Promise<TrainingState> {
+    return this.trainingService.forProvider(actor.userId, familyCode ?? 'civil_services_exams');
+  }
+
+  @Post('me/training/:moduleCode')
+  @Roles('provider')
+  async submitTraining(
+    @Param('moduleCode') moduleCode: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { familyCode?: string; answers?: Record<string, string> },
+  ): Promise<{ passed: boolean; score: number; outOf: number; wrong: string[] }> {
+    return this.trainingService.submit({
+      providerId: actor.userId,
+      familyCode: body.familyCode ?? 'civil_services_exams',
+      moduleCode,
+      answers: body.answers ?? {},
+    });
+  }
+
+  @Get('me/readiness')
+  @Roles('provider')
+  async readiness(
+    @CurrentActor() actor: Actor,
+    @Query('domain') domainCode?: string,
+  ): Promise<ProviderReadiness> {
+    return this.readinessService.forProvider(actor.userId, domainCode ?? 'upsc_cse');
+  }
+
+  @Get('me/rates')
+  @Roles('provider')
+  async myRates(@CurrentActor() actor: Actor): Promise<ProviderRate[]> {
+    return this.rates.list(actor.userId);
+  }
+
+  @Post('me/rates')
+  @Roles('provider')
+  async setRate(
+    @CurrentActor() actor: Actor,
+    @Body()
+    body: {
+      engagementType?: string;
+      skillId?: string | null;
+      amountPaise?: string;
+      /** Minutes for a live session, hours-to-return for async work. */
+      commitment?: number | null;
+    },
+  ): Promise<ProviderRate> {
+    if (!body.engagementType) throw new BadRequestException('engagementType is required');
+    if (!body.amountPaise) throw new BadRequestException('amountPaise is required');
+    return this.rates.set({
+      providerId: actor.userId,
+      engagementType: body.engagementType,
+      skillId: body.skillId ?? null,
+      amountPaise: body.amountPaise,
+      commitment: body.commitment ?? null,
+    });
+  }
+
+  @Post('me/rates/:rateId/remove')
+  @Roles('provider')
+  async removeRate(@Param('rateId') rateId: string, @CurrentActor() actor: Actor): Promise<{ ok: true }> {
+    await this.rates.remove(actor.userId, rateId);
+    return { ok: true };
+  }
+
   @Get('me/paid-work-status')
   @Roles('provider')
   async paidWorkStatus(@CurrentActor() actor: Actor): Promise<{ blocked: boolean }> {
@@ -121,8 +220,25 @@ export class VerificationController {
 
   @Get('admin/credentials/queue')
   @Roles('admin')
-  async queue(): Promise<ProviderCredentialRow[]> {
-    return this.credentials.listAwaitingReview();
+  async queue(): Promise<unknown[]> {
+    // The enriched form: the same rows, plus who submitted it, when, and
+    // which family's tier names apply — none of which the flat row
+    // carried, and all of which a reviewer triages on.
+    return this.credentials.listAwaitingReviewWithContext();
+  }
+
+  /**
+   * Context for the reviewer about to decide.
+   *
+   * Explicitly NOT the document forensics §8.3 asks for — no metadata
+   * analysis, no template matching, no reverse image search. Those need
+   * services this platform does not have, and a screen that implied they
+   * had run would be worse than one that admits they have not.
+   */
+  @Get('admin/credentials/:id/context')
+  @Roles('admin')
+  async reviewContext(@Param('id') id: string): Promise<unknown> {
+    return this.credentials.reviewContext(id);
   }
 
   /**

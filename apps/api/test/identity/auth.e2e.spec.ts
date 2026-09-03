@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Pool } from 'pg';
 import request from 'supertest';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PG_POOL } from '../../src/database/db.module';
 import { AdminModule } from '../../src/modules/admin/admin.module';
 import { DomainsModule } from '../../src/modules/domains/domains.module';
@@ -160,7 +160,87 @@ describe('identity: registration, login, mandatory 2FA, sessions', () => {
     });
   });
 
+  describe('#32 switched off for providers (the shipped setting)', () => {
+    // What the repo actually does today. If someone turns the policy back
+    // on, this test fails loudly rather than the change going unnoticed.
+    it('logs a provider straight in, with no factor and no enrolment ticket', async () => {
+      await http()
+        .post('/auth/register')
+        .send({ email: 'offmentor@test.local', password: strongPassword, role: 'provider', confirmsAdult: true })
+        .expect(201);
+
+      const res = await http()
+        .post('/auth/login')
+        .send({ email: 'offmentor@test.local', password: strongPassword })
+        .expect(201);
+
+      expect(res.body.outcome).toBe('session');
+      expect(res.body.token).toBeTruthy();
+      expect(res.body.session.mfaSatisfied).toBe(false);
+
+      // A full session, not the enrolment ticket — it must reach real routes.
+      const stored = await pool.query<{ scope: string }>(`SELECT scope FROM user_sessions`);
+      expect(stored.rows[0].scope).toBe('full');
+    });
+
+    it('leaves admins alone — they still cannot log in without a factor', async () => {
+      await http()
+        .post('/auth/register')
+        .send({ email: 'offadmin@test.local', password: strongPassword, role: 'admin', confirmsAdult: true })
+        .expect(201);
+
+      const res = await http()
+        .post('/auth/login')
+        .send({ email: 'offadmin@test.local', password: strongPassword })
+        .expect(201);
+
+      expect(res.body.outcome).toBe('mfa_enrolment_required');
+    });
+
+    it('still verifies a code when a provider HAS enrolled one', async () => {
+      // Switching the mandate off must not mean an enrolled factor is
+      // ignored — a wrong code is still a wrong code.
+      await http()
+        .post('/auth/register')
+        .send({ email: 'keen@test.local', password: strongPassword, role: 'provider', confirmsAdult: true })
+        .expect(201);
+
+      const user = await pool.query<{ id: string }>(
+        `SELECT id FROM users WHERE email = 'keen@test.local'`,
+      );
+      const enrol = await auth.beginFactorEnrolment(user.rows[0].id);
+      await auth.confirmFactorEnrolment(user.rows[0].id, totp.codeAt(enrol.secret));
+
+      await http()
+        .post('/auth/login')
+        .send({ email: 'keen@test.local', password: strongPassword, totpCode: '000000' })
+        .expect(401);
+
+      const ok = await http()
+        .post('/auth/login')
+        .send({ email: 'keen@test.local', password: strongPassword, totpCode: totp.codeAt(enrol.secret) })
+        .expect(201);
+      expect(ok.body.session.mfaSatisfied).toBe(true);
+    });
+  });
+
   describe('hard rule #32 — 2FA is mandatory for providers and admins', () => {
+    // Provider 2FA ships switched OFF in `mfa_policy` (migration 0039).
+    // These tests switch it back on so the enrolment journey — ticket,
+    // enrol, confirm, recovery codes — stays fully under test and is
+    // known to work on the day it is turned back on.
+    beforeEach(async () => {
+      await pool.query(
+        `UPDATE mfa_policy SET mandatory = true WHERE role = 'provider'`,
+      );
+    });
+
+    afterEach(async () => {
+      await pool.query(
+        `UPDATE mfa_policy SET mandatory = false WHERE role = 'provider'`,
+      );
+    });
+
     async function registerProvider(): Promise<void> {
       await http()
         .post('/auth/register')
@@ -265,9 +345,15 @@ describe('identity: registration, login, mandatory 2FA, sessions', () => {
       expect(enrol.provisioningUri).toContain('otpauth://totp/');
 
       // An unconfirmed factor satisfies nothing.
+      //
+      // Asserted on the typed CODE, not on the trigger's wording.
+      // SessionService now translates the precondition failure into the
+      // same error the rest of identity/ raises, so a caller never sees a
+      // raw Postgres message — and a test pinned to that message would be
+      // testing the database's phrasing rather than the contract.
       await expect(
         sessions.create({ userId: providerId, mfaSatisfied: true }),
-      ).rejects.toThrow(/no confirmed second factor/);
+      ).rejects.toMatchObject({ code: 'MFA_NOT_ENROLLED' });
 
       const recovery = await auth.confirmFactorEnrolment(providerId, totp.codeAt(enrol.secret));
       expect(recovery.codes).toHaveLength(10);

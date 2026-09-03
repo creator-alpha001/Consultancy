@@ -23,9 +23,10 @@ export const dynamic = 'force-dynamic';
  * Tier is shown attached to each skill, never once at the top as a badge
  * for the person, because tier is per skill (CLAUDE.md #5).
  */
-export default async function ProviderProfilePage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { lang } = preview('seeker');
-  const p = await getProvider(params.id);
+export default async function ProviderProfilePage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { lang } = await preview('seeker');
+  const { id } = await params;
+  const p = await getProvider(id);
   if (!p) notFound();
   /*
    * The vocabulary and the tier names come from the PERSON'S field, not
@@ -229,7 +230,10 @@ export default async function ProviderProfilePage({ params }: { params: { id: st
 
             <Divider className="my-4" />
 
-            <a href="/safety/report" className="text-caption text-ink-muted hover:text-danger hover:underline">
+            <a
+              href={`/safety/report?provider=${p.id}&name=${encodeURIComponent(p.displayName)}`}
+              className="text-caption text-ink-muted hover:text-danger hover:underline"
+            >
               Report this profile
             </a>
           </Card>

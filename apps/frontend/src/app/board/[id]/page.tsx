@@ -27,9 +27,10 @@ export const dynamic = 'force-dynamic';
  * 900px, because a five-column table at 360px is unreadable and a
  * horizontal scroll to compare is worse than no comparison at all.
  */
-export default async function BoardRequestPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { lang } = preview('seeker');
-  const [request, proposals] = await Promise.all([getBoardRequest(params.id), listProposals(params.id)]);
+export default async function BoardRequestPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { id } = await params;
+  const { lang } = await preview('seeker');
+  const [request, proposals] = await Promise.all([getBoardRequest(id), listProposals(id)]);
   if (!request) notFound();
   const fam = contextFor(request.family);
 

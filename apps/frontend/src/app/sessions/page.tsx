@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
  * recording should understand what they gave up.
  */
 export default async function SessionsPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { fam, lang } = await preview('seeker');
   const sessions = await listSessions();
   const upcoming = sessions.filter((s) => s.status === 'scheduled' || s.status === 'live');
   const past = sessions.filter((s) => s.status === 'ended' || s.status === 'missed');

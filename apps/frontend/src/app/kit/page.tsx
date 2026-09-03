@@ -7,7 +7,7 @@ import {
 import { EscrowRail } from '@/components/escrow';
 import { RubricBars } from '@/components/charts';
 import { preview } from '@/lib/preview';
-import { FAMILIES } from '@/lib/pack';
+import { allFamilies } from '@/lib/pack';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +20,8 @@ export const dynamic = 'force-dynamic';
  * whether the system holds together before judging any individual
  * screen.
  */
-export default function KitPage(): JSX.Element {
-  const { fam, lang } = preview('seeker');
+export default async function KitPage(): Promise<JSX.Element> {
+  const { fam, lang } = await preview('seeker');
 
   return (
     <AppShell fam={fam} lang={lang} role="seeker" current="/kit">
@@ -59,13 +59,13 @@ export default function KitPage(): JSX.Element {
 
           <Divider className="my-5" />
 
-          <Eyebrow>The same components, {FAMILIES.length} fields</Eyebrow>
+          <Eyebrow>The same components, {allFamilies().length} fields</Eyebrow>
           <p className="mt-1.5 max-w-reading text-small text-ink-muted">
             The platform's own accent is above. A field's accent applies inside that field and nowhere else — it may
             colour its own pages, never repaint the product.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {FAMILIES.map((f) => (
+            {allFamilies().map((f) => (
               <a key={f.code} href={`/fields/${f.code}`} className="rounded-md border border-line p-4 hover:border-line-strong">
                 <span aria-hidden="true" className="block h-1.5 w-full rounded-pill" style={{ background: f.theme.brand }} />
                 <p className="mt-3 text-body font-semibold">{f.label.en}</p>

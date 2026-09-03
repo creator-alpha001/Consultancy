@@ -146,10 +146,23 @@ const BUTTON_TONES: Record<ButtonTone, string> = {
   destructive: 'bg-surface text-danger border border-danger-line hover:bg-danger-soft',
 };
 
+/*
+ * Heights, not weights.
+ *
+ * `sm` used to be h-9 — 36px, under the 48px floor this project's own
+ * `minHeight.touch` token and `packages/design/tokens.json` both name.
+ * All three sizes now take that floor as a MINIMUM rather than a fixed
+ * height: the text stays small and the horizontal padding stays tight,
+ * so a small button still reads as small — it can just be hit.
+ *
+ * `min-h-touch`, not `min-h-11`. The config extends minHeight with a
+ * named token precisely so the floor is stated once; a raw number here
+ * would be a second opinion about what a thumb needs.
+ */
 const BUTTON_SIZES = {
-  sm: 'h-9 px-3 text-small gap-1.5',
-  md: 'h-11 px-4 text-body gap-2',
-  lg: 'h-12 px-5 text-body gap-2',
+  sm: 'min-h-touch px-3 text-small gap-1.5',
+  md: 'min-h-touch px-4 text-body gap-2',
+  lg: 'min-h-touch px-5 text-body gap-2',
 } as const;
 
 export function Button({
@@ -414,6 +427,11 @@ const STATUS_TONE: Record<string, ChipTone> = {
   live: 'danger',
   ended: 'neutral',
   missed: 'caution',
+  triage: 'neutral',
+  negotiation: 'brand',
+  adjudication: 'caution',
+  appeal: 'caution',
+  ruled: 'verified',
 };
 
 const STATUS_WORD: Record<string, string> = {

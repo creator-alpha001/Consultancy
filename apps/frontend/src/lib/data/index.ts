@@ -1,4 +1,11 @@
 import * as mock from './mock';
+import { api, apiListOrEmpty, apiOrNull } from '../api';
+import {
+  toEngagement, toProviderProfile, toProviderSummary, categoryIdFor,
+  toLedgerLine, toCredentialSubmission, toDispute, toSafetyItem,
+  type ApiEngagement, type ApiMoney, type ApiProgress, type ApiProviderCard, type ApiProviderProfile,
+  type ApiCredentialQueueItem, type ApiDisputeQueueItem, type ApiReport, type Reconciliation,
+} from './adapt';
 import type {
   Actor, Assessment, AssessmentTemplate, BoardRequest, CredentialSubmission, Dispute,
   Engagement, LedgerLine, ProgressPoint, Proposal, ProviderProfile, ProviderSummary,
@@ -27,6 +34,12 @@ import type {
  * The functions are async today even though the mock is synchronous.
  * That is deliberate: making them async later would ripple through every
  * caller, and this way it does not.
+ *
+ * CONNECTING IS IN PROGRESS. Functions that read the API say so; the
+ * rest still answer from `./mock` and are marked. That split is
+ * deliberate and temporary — a half-connected seam where you can see
+ * which half is which beats one where every screen silently mixes real
+ * and invented data. TRACKER.md carries the running list.
  */
 
 export type Viewer = Actor;
@@ -52,79 +65,82 @@ export async function listProviders(filter: {
   tier?: string;
   query?: string;
 } = {}): Promise<ProviderSummary[]> {
-  let out = mock.PROVIDERS;
-  if (filter.family) out = out.filter((p) => p.family === filter.family);
-  if (filter.domain) out = out.filter((p) => p.domains.includes(filter.domain as string));
-  if (filter.category) out = out.filter((p) => p.categories.includes(filter.category as string));
-  if (filter.language) out = out.filter((p) => p.languages.includes(filter.language as string));
-  if (filter.tier) out = out.filter((p) => p.verifiedSkills.some((s) => s.tier >= (filter.tier as string)));
-  if (filter.query) {
-    const q = filter.query.toLowerCase();
-    out = out.filter(
-      (p) => p.displayName.toLowerCase().includes(q) || p.headline.original.toLowerCase().includes(q),
-    );
-  }
   /*
-   * Ordered by the composite ranking score the spec defines, never by
-   * price. There is no price sort in this function, there is no price
-   * sort control on the screen, and neither is an oversight
-   * (CLAUDE.md #15) — it decides whether the marketplace rewards quality
-   * or starts a price war.
+   * CONNECTED. Naming no filter is the normal case, not a wildcard —
+   * the API answers a genuine cross-field discovery query for it, and
+   * the ordering it comes back in is the server's. There is no price
+   * sort here for the same reason there is none there (#15).
    */
-  return [...out].sort((a, b) => rank(b) - rank(a));
-}
+  const params = new URLSearchParams();
+  if (filter.family) params.set('family', filter.family);
+  if (filter.domain) params.set('domain', filter.domain);
+  if (filter.language) params.set('language', filter.language);
+  if (filter.tier) params.set('minTier', filter.tier);
+  // Screens and URLs carry a slug; the API wants the category's id.
+  const categoryId = categoryIdFor(filter.category, filter.domain);
+  if (categoryId) params.set('categoryId', categoryId);
 
-/**
- * A stand-in for the server's ranking score, present so the list order
- * on screen is the order the real thing would produce rather than
- * insertion order. Bayesian-smoothed rating, so one five-star review
- * does not outrank forty at 4.8, plus a boost that keeps new providers
- * reachable at all.
- */
-function rank(p: ProviderSummary): number {
-  const m = 5;
-  const platformMean = 4.6;
-  const v = p.rating.count;
-  const r = p.rating.mean ?? platformMean;
-  const quality = (v / (v + m)) * r + (m / (v + m)) * platformMean;
-  // No history is not the same as good history. An unknown completion
-  // rate scores below the platform's, and an unknown response time well
-  // below it — otherwise a brand-new profile outranks a proven one on
-  // the strength of having no record to hold against it.
-  const completion = p.completionRate ?? 0.85;
-  const responsiveness = p.responseMedianMinutes === null ? 0.3 : Math.max(0, 1 - p.responseMedianMinutes / 480);
-  const newBoost = p.isNew ? 1 : 0;
-  return 0.3 * (quality / 5) + 0.2 * completion + 0.15 * responsiveness + 0.1 * newBoost;
+  const qs = params.toString();
+  const cards = await api<ApiProviderCard[]>(`/providers${qs ? `?${qs}` : ''}`);
+  const out = cards.map(toProviderSummary);
+
+  /*
+   * Free-text search is not a server capability yet, so it is applied
+   * here rather than silently ignored — a filter that appears to work
+   * and does not is worse than one that is honestly local.
+   */
+  if (!filter.query) return out;
+  const q = filter.query.toLowerCase();
+  return out.filter(
+    (p) => p.displayName.toLowerCase().includes(q) || p.headline.original.toLowerCase().includes(q),
+  );
 }
 
 export async function getProvider(id: string): Promise<ProviderProfile | null> {
-  const profile = mock.PROVIDER_PROFILES[id];
-  if (profile) return profile;
-  const summary = mock.PROVIDERS.find((p) => p.id === id);
-  if (!summary) return null;
-  return {
-    ...summary,
-    about: summary.headline,
-    services: [],
-    experience: [],
-    reviews: [],
-    stats: { engagementsCompleted: 0, repeatSeekerRate: 0, onTimeRate: 0 },
-  };
+  /*
+   * CONNECTED. The profile returns conclusions only — a verified skill,
+   * its tier, and what type of credential proved it. There is no field
+   * on this shape that could carry the document itself (#30).
+   */
+  const p = await apiOrNull<ApiProviderProfile>(`/providers/${encodeURIComponent(id)}`);
+  return p ? toProviderProfile(p) : null;
 }
 
 export async function listEngagements(role: Role): Promise<Engagement[]> {
-  if (role === 'provider') return mock.ENGAGEMENTS.filter((e) => e.provider?.id === 'prv_1');
-  if (role === 'admin') return mock.ENGAGEMENTS;
   /*
-   * A seeker's list spans families — exams, a university application and
-   * a tax question sit in the same list because they are all things one
+   * CONNECTED. There is no "whose?" parameter here and none on the API
+   * route either — it can only ever return the caller's own engagements,
+   * because there is no way to ask it for anyone else's (#28). The
+   * `role` argument says which surface is asking, and the API decides
+   * what that person may see; it is not a claim this layer can make.
+   *
+   * A seeker's list spans families — an exam, a university application
+   * and a tax question sit together because they are all things one
    * person currently has in flight. Never filter this to one field.
    */
-  return mock.ENGAGEMENTS.filter((e) => e.seeker.id === 'usr_seeker_1');
+  const rows = await apiListOrEmpty<ApiEngagement>('/engagements');
+  const mine = rows.map(toEngagement);
+  if (role !== 'provider') return mine;
+  /*
+   * The API returns everything the caller is a party to. On the provider
+   * surface that means dropping the ones where they are the seeker —
+   * a provider who is also someone else's client should not find their
+   * own purchases in their work queue.
+   */
+  const me = await currentUserId();
+  return me ? mine.filter((e) => e.provider?.id === me) : mine;
+}
+
+/** The signed-in user's id, for splitting a two-sided list by side. */
+async function currentUserId(): Promise<string | null> {
+  const me = await apiOrNull<{ id: string }>('/auth/me');
+  return me?.id ?? null;
 }
 
 export async function getEngagement(id: string): Promise<Engagement | null> {
-  return mock.ENGAGEMENTS.find((e) => e.id === id) ?? null;
+  /* CONNECTED. 404 and "not a party to it" are the same answer here (#28). */
+  const e = await apiOrNull<ApiEngagement>(`/engagements/${encodeURIComponent(id)}`);
+  return e ? toEngagement(e) : null;
 }
 
 export async function getAssessment(engagementId: string): Promise<Assessment | null> {
@@ -179,6 +195,10 @@ export async function listProposals(requestId: string): Promise<Proposal[]> {
   return mock.PROPOSALS.filter((p) => p.requestId === requestId);
 }
 
+export async function getProposal(id: string): Promise<Proposal | null> {
+  return mock.PROPOSALS.find((p) => p.id === id) ?? null;
+}
+
 export async function listSessions(): Promise<SessionRecord[]> {
   return mock.SESSIONS;
 }
@@ -187,24 +207,64 @@ export async function getSession(id: string): Promise<SessionRecord | null> {
   return mock.SESSIONS.find((s) => s.id === id) ?? null;
 }
 
+/**
+ * The session actually booked for a given engagement — never a fixed
+ * id. A screen that hardcodes a session id to say "Join" is correct for
+ * exactly one engagement in the mock set and wrong for every other one.
+ */
+export async function getSessionByEngagement(engagementId: string): Promise<SessionRecord | null> {
+  return mock.SESSIONS.find((s) => s.engagementId === engagementId) ?? null;
+}
+
 export async function listLedger(): Promise<LedgerLine[]> {
-  return mock.LEDGER;
+  /*
+   * CONNECTED. The caller's own movements, never the platform ledger —
+   * only money/ reads that, and no client is handed it.
+   */
+  const money = await apiOrNull<ApiMoney>('/me/money');
+  return (money?.lines ?? []).map(toLedgerLine);
 }
 
 export async function listDisputes(): Promise<Dispute[]> {
-  return mock.DISPUTES;
+  /* CONNECTED. Admin-only server-side; a non-admin gets an empty queue, not a partial one. */
+  const rows = await apiListOrEmpty<ApiDisputeQueueItem>('/admin/disputes/queue');
+  return rows.map(toDispute);
 }
 
 export async function getDispute(id: string): Promise<Dispute | null> {
-  return mock.DISPUTES.find((d) => d.id === id) ?? null;
+  /*
+   * CONNECTED. `GET /disputes/:id` returns the flat row, so the queue's
+   * enriched fields (reference, SLA, amount) are picked up from the
+   * queue when this dispute is in it — and simply absent when it has
+   * already been ruled, which the screens render as absent.
+   */
+  const [flat, queue] = await Promise.all([
+    apiOrNull<ApiDisputeQueueItem>(`/disputes/${encodeURIComponent(id)}`),
+    apiListOrEmpty<ApiDisputeQueueItem>('/admin/disputes/queue'),
+  ]);
+  if (!flat) return null;
+  const enriched = queue.find((d) => d.id === id);
+  return toDispute({ ...flat, ...(enriched ?? {}) });
+}
+
+/** Same reasoning as getSessionByEngagement — the case tied to THIS engagement, not a fixed one. */
+export async function getDisputeByEngagement(engagementId: string): Promise<Dispute | null> {
+  return mock.DISPUTES.find((d) => d.engagementId === engagementId) ?? null;
 }
 
 export async function listCredentialQueue(): Promise<CredentialSubmission[]> {
-  return mock.CREDENTIAL_QUEUE;
+  /* CONNECTED. The conclusion and who is waiting — never the evidence (#29/#30). */
+  const rows = await apiListOrEmpty<ApiCredentialQueueItem>('/admin/credentials/queue');
+  return rows.map(toCredentialSubmission);
 }
 
 export async function listSafetyQueue(): Promise<SafetyItem[]> {
-  return mock.SAFETY_QUEUE;
+  /*
+   * CONNECTED. Distress-flagged content is held from public view and
+   * routed here (#25); this queue is where a person picks it up.
+   */
+  const rows = await apiListOrEmpty<ApiReport>('/admin/reports');
+  return rows.map(toSafetyItem);
 }
 
 export async function listActionItems(): Promise<ActionItem[]> {
@@ -212,5 +272,192 @@ export async function listActionItems(): Promise<ActionItem[]> {
 }
 
 export async function listProgress(): Promise<ProgressPoint[]> {
-  return mock.PROGRESS;
+  /*
+   * CONNECTED. The API groups points by dimension; the chart wants them
+   * flat and groups them itself. `dimension` stays the CODE — the label
+   * comes from the template bound to the category, never from here
+   * (CLAUDE.md #3: dimensions are the template's, never assumed).
+   *
+   * This is a person's own trend against their own past work. There is
+   * no cohort, percentile or comparison anywhere in it (#17).
+   */
+  const progress = await apiOrNull<ApiProgress>('/me/progress');
+  return (progress?.trends ?? []).flatMap((trend) =>
+    trend.points.map((point) => ({
+      at: point.at,
+      dimension: trend.dimensionCode,
+      score: point.score,
+    })),
+  );
+}
+
+/**
+ * The nightly reconciliation, for the operations console.
+ *
+ * Deliberately NOT `listLedger()`. That reads `/me/money` — the caller's
+ * own movements — and an operations screen showing the operator's
+ * personal purchases as if they were platform figures is worse than
+ * showing nothing.
+ */
+export async function getReconciliation(): Promise<Reconciliation | null> {
+  return apiOrNull<Reconciliation>('/admin/reconciliation');
+}
+
+/* ------------------------------------------------------------------ */
+/* The pack editor                                                     */
+/* ------------------------------------------------------------------ */
+
+/** A category as a manifest carries it: a slug, its labels, and its children. */
+export interface ManifestCategory {
+  slug: string;
+  labels: Record<string, string>;
+  skills?: string[];
+  traits?: Record<string, unknown>;
+  children?: ManifestCategory[];
+}
+
+export interface DomainManifest {
+  code: string;
+  family: string;
+  version: string;
+  labels: { domain?: Record<string, string> };
+  languages?: string[];
+  defaultLanguage?: string;
+  categories: ManifestCategory[];
+  [key: string]: unknown;
+}
+
+/**
+ * The manifest an admin is about to edit.
+ *
+ * This is the SOURCE document, not the resolved domain the rest of the
+ * app reads. Only the editor wants it, and only an admin may have it.
+ */
+export async function getDomainManifest(code: string): Promise<DomainManifest | null> {
+  return apiOrNull<DomainManifest>(`/admin/domains/${encodeURIComponent(code)}/manifest`);
+}
+
+/**
+ * Domains an admin may edit, with the supply figures that decide whether
+ * one is ready to open.
+ */
+export interface DomainReadiness {
+  familyCode: string;
+  familyStatus: string;
+  familyLabels: Record<string, Record<string, string> | undefined>;
+  domainCode: string;
+  labels: { domain?: Record<string, string> };
+  languages: string[];
+  status: string;
+  publiclyListed: boolean;
+  providerCount: number;
+  minProvidersToList: number;
+  meetsSupplyFloor: boolean;
+}
+
+export async function listDomainsForOps(): Promise<DomainReadiness[]> {
+  return apiListOrEmpty<DomainReadiness>('/admin/catalogue');
+}
+
+/* ------------------------------------------------------------------ */
+/* The provider's own account                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What still stands between a provider and being bookable.
+ *
+ * The API computes this, not the screen. A client deciding for itself
+ * what "ready" means is how the console and the matching engine end up
+ * disagreeing about who can take work.
+ */
+export interface ReadinessStep {
+  code: string;
+  done: boolean;
+  /** A step that is not blocking is worth doing, but does not gate bookability. */
+  blocking: boolean;
+  detail?: Record<string, unknown>;
+}
+
+export interface Readiness {
+  bookable: boolean;
+  steps: ReadinessStep[];
+}
+
+export async function getReadiness(): Promise<Readiness | null> {
+  return apiOrNull<Readiness>('/me/readiness');
+}
+
+export interface ProviderRate {
+  id: string;
+  engagementType: string;
+  skillId: string | null;
+  skillCode: string | null;
+  skillLabels: Record<string, string> | null;
+  currency: string;
+  amountPaise: string;
+  durationMinutes: number | null;
+  turnaroundHours: number | null;
+}
+
+export async function listMyRates(): Promise<ProviderRate[]> {
+  return apiListOrEmpty<ProviderRate>('/me/rates');
+}
+
+export interface MyCredential {
+  id: string;
+  credentialTypeId: string;
+  domainCode: string;
+  status: string;
+  decisionNote: string;
+  reviewedAt: string | null;
+}
+
+export async function listMyCredentials(): Promise<MyCredential[]> {
+  return apiListOrEmpty<MyCredential>('/me/credentials');
+}
+
+/** The credential types a provider may submit in a domain, and what each needs. */
+export interface SubmittableType {
+  code: string;
+  labels: Record<string, string>;
+  verifier: string;
+  inputs: Array<{ name: string; label?: string; type?: string; required?: boolean }>;
+  requiresPaidWorkSanction: boolean;
+  grantsPaidWorkSanction: boolean;
+}
+
+export async function listSubmittableCredentialTypes(domainCode: string): Promise<SubmittableType[]> {
+  return apiListOrEmpty<SubmittableType>(`/domains/${encodeURIComponent(domainCode)}/credential-types`);
+}
+
+export interface TrainingQuestion {
+  code: string;
+  prompt: Record<string, string>;
+  options: Array<{ code: string; labels: Record<string, string> }>;
+}
+
+export interface TrainingModule {
+  code: string;
+  labels: Record<string, string>;
+  required: boolean;
+  sections: Array<{ heading?: Record<string, string>; body: Record<string, string> }>;
+  /**
+   * A module is a short quiz, not a "mark as read" box — a completion is
+   * only recorded when the answers pass. The correct option is never
+   * sent to the client; only the API knows it.
+   */
+  questions: TrainingQuestion[];
+  completedAt?: string | null;
+  /** True when the module changed materially since it was last passed. */
+  needsRetake?: boolean;
+}
+
+export interface Training {
+  familyCode: string;
+  manifestVersion: string;
+  modules: TrainingModule[];
+}
+
+export async function getTraining(): Promise<Training | null> {
+  return apiOrNull<Training>('/me/training');
 }

@@ -4,6 +4,7 @@ import { Button, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, TextAr
 import { GoalsContract } from '@/components/goals';
 import { EscrowRail } from '@/components/escrow';
 import { preview, contextFor } from '@/lib/preview';
+import { requireRole } from '@/lib/session';
 import { t, tl } from '@/lib/pack';
 import { getDispute, getEngagement } from '@/lib/data';
 import { money, until, dateTime } from '@/lib/format';
@@ -26,9 +27,11 @@ export const dynamic = 'force-dynamic';
  * output on this screen causes a money movement; a person presses the
  * button and their name goes on the ruling.
  */
-export default async function DisputeDetailPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { lang } = preview('admin');
-  const dispute = await getDispute(params.id);
+export default async function DisputeDetailPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { id } = await params;
+  await requireRole('admin', '/admin/disputes');
+  const { lang } = await preview('admin');
+  const dispute = await getDispute(id);
   if (!dispute) notFound();
   const engagement = await getEngagement(dispute.engagementId);
   /*

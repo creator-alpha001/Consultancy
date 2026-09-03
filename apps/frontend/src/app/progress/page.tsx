@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic';
  * the thing that actually turns one-off advice into a habit.
  */
 export default async function ProgressPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { fam, lang } = await preview('seeker');
   const [points, actions, template] = await Promise.all([
     listProgress(),
     listActionItems(),

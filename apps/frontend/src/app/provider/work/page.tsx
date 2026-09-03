@@ -10,7 +10,7 @@ import { money, until, dateTime } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 export default async function ProviderWorkPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('provider');
+  const { fam, lang } = await preview('provider');
   const work = await listEngagements('provider');
 
   return (

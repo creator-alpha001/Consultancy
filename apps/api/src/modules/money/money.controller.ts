@@ -1,4 +1,15 @@
-import { BadRequestException, Body, Controller, Inject, Param, Post, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Inject, Param, Post, UseInterceptors } from '@nestjs/common';
+import { CurrentActor } from '../identity/auth.guard';
+import { Actor } from '../identity/types';
+import {
+  EarningsLine,
+  EarningsService,
+  EarningsSummary,
+  SeekerMoney,
+  SeekerMoneyLine,
+} from './earnings.service';
+import { PackagePurchase, PackageService, ProviderPackage } from './package.service';
+import { PayoutDestination, PayoutDestinationService } from './payout-destination.service';
 import { EscrowService } from './escrow.service';
 import { IdempotencyInterceptor } from '../../common/idempotency/idempotency.interceptor';
 import { Roles } from '../identity/auth.guard';
@@ -120,4 +131,177 @@ function serializeEscrow(escrow: EscrowRow): SerializedEscrow {
     amountPaise: escrow.amountPaise.toString(),
     platformFeePaise: escrow.platformFeePaise === null ? null : escrow.platformFeePaise.toString(),
   };
+}
+
+/**
+ * A provider's own money: what they have earned, and where it goes.
+ *
+ * Every route is scoped to the caller and takes no provider id — there is
+ * no way to ask this controller about anyone else's earnings (#28). That
+ * is why it is a separate class from `MoneyController`, which is
+ * `@Roles('admin')` at class level: one file, two visibilities, and no
+ * route that inherits the wrong default.
+ */
+@Controller('me')
+export class ProviderMoneyController {
+  constructor(
+    @Inject(EarningsService) private readonly earnings: EarningsService,
+    @Inject(PayoutDestinationService) private readonly destinations: PayoutDestinationService,
+  ) {}
+
+  @Get('earnings')
+  @Roles('provider')
+  async summary(@CurrentActor() actor: Actor): Promise<{
+    summary: EarningsSummary;
+    lines: EarningsLine[];
+    destination: PayoutDestination | null;
+  }> {
+    const [summary, lines, destination] = await Promise.all([
+      this.earnings.summary(actor.userId),
+      this.earnings.lines(actor.userId),
+      this.destinations.get(actor.userId),
+    ]);
+    return { summary, lines, destination };
+  }
+
+  @Get('payout-destination')
+  @Roles('provider')
+  async destination(@CurrentActor() actor: Actor): Promise<PayoutDestination | null> {
+    return this.destinations.get(actor.userId);
+  }
+
+  /**
+   * Set where payouts go.
+   *
+   * `accountNumber` is the one field on this platform that is accepted and
+   * never stored — it is exchanged with the aggregator for a token. See
+   * PayoutDestinationService.
+   */
+  @Post('payout-destination')
+  @Roles('provider')
+  async setDestination(
+    @CurrentActor() actor: Actor,
+    @Body() body: { accountHolderName?: string; accountNumber?: string; ifsc?: string },
+  ): Promise<PayoutDestination> {
+    if (!body.accountHolderName || !body.accountNumber || !body.ifsc) {
+      throw new BadRequestException('accountHolderName, accountNumber and ifsc are all required');
+    }
+    return this.destinations.set({
+      providerId: actor.userId,
+      accountHolderName: body.accountHolderName,
+      accountNumber: body.accountNumber,
+      ifsc: body.ifsc,
+    });
+  }
+}
+
+/**
+ * Packages — several sessions bought at once.
+ *
+ * Publishing is the provider's; buying and listing what you own is the
+ * seeker's. Split by role at the route rather than branching inside one
+ * handler, so no route inherits a visibility it did not ask for.
+ */
+@Controller()
+export class PackagesController {
+  constructor(@Inject(PackageService) private readonly packages: PackageService) {}
+
+  @Get('me/packages')
+  @Roles('provider')
+  async mine(@CurrentActor() actor: Actor): Promise<ProviderPackage[]> {
+    return this.packages.listForProvider(actor.userId);
+  }
+
+  @Post('me/packages')
+  @Roles('provider')
+  async publish(
+    @CurrentActor() actor: Actor,
+    @Body()
+    body: {
+      engagementType?: string;
+      skillId?: string | null;
+      title?: string;
+      sessionCount?: number;
+      amountPaise?: string;
+      commitment?: number | null;
+    },
+  ): Promise<ProviderPackage> {
+    if (!body.engagementType) throw new BadRequestException('engagementType is required');
+    if (!body.title) throw new BadRequestException('title is required');
+    if (!body.sessionCount) throw new BadRequestException('sessionCount is required');
+    if (!body.amountPaise) throw new BadRequestException('amountPaise is required');
+    return this.packages.publish({
+      providerId: actor.userId,
+      engagementType: body.engagementType,
+      skillId: body.skillId ?? null,
+      title: body.title,
+      sessionCount: body.sessionCount,
+      amountPaise: body.amountPaise,
+      commitment: body.commitment ?? null,
+    });
+  }
+
+  @Post('me/packages/:id/withdraw')
+  @Roles('provider')
+  async withdraw(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<{ ok: true }> {
+    await this.packages.withdraw(actor.userId, id);
+    return { ok: true };
+  }
+
+  /** What this seeker has bought, and how many sessions are left on each. */
+  @Get('me/package-purchases')
+  @Roles('seeker')
+  async purchases(@CurrentActor() actor: Actor): Promise<PackagePurchase[]> {
+    return this.packages.purchasesFor(actor.userId);
+  }
+
+  /**
+   * Buy a package.
+   *
+   * One capture into the seeker's wallet. Nothing is escrowed here —
+   * escrow is per session, held when each is drawn, because escrow means
+   * "held against agreed goals" and no goals exist for session four yet.
+   */
+  @Post('packages/:id/purchase')
+  @Roles('seeker')
+  @UseInterceptors(IdempotencyInterceptor)
+  async purchase(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ): Promise<PackagePurchase> {
+    return this.packages.purchase({ packageId: id, seekerId: actor.userId, idempotencyKey });
+  }
+}
+
+/**
+ * A seeker's own money.
+ *
+ * Scoped to the caller, with no user id in any route (#28). Split from
+ * ProviderMoneyController because the two answer different questions —
+ * "what am I owed" against "what have I got left" — and a single
+ * controller branching on role is one missing branch away from answering
+ * the wrong one.
+ */
+@Controller('me')
+export class SeekerMoneyController {
+  constructor(
+    @Inject(EarningsService) private readonly earnings: EarningsService,
+    @Inject(PackageService) private readonly packages: PackageService,
+  ) {}
+
+  @Get('money')
+  @Roles('seeker')
+  async summary(@CurrentActor() actor: Actor): Promise<{
+    summary: SeekerMoney;
+    lines: SeekerMoneyLine[];
+    packages: PackagePurchase[];
+  }> {
+    const [summary, lines, packages] = await Promise.all([
+      this.earnings.seekerSummary(actor.userId),
+      this.earnings.seekerLines(actor.userId),
+      this.packages.purchasesFor(actor.userId),
+    ]);
+    return { summary, lines, packages };
+  }
 }

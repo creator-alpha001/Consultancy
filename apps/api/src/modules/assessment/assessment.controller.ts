@@ -1,12 +1,14 @@
-import { BadRequestException, Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Inject, Param, Post } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { EngagementAccessService } from '../engagements/engagement-access.service';
-import { CurrentActor } from '../identity/auth.guard';
+import { CurrentActor, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
+import { evaluationNotFound } from './errors';
 import { EvaluationService } from './evaluation.service';
+import { ProgressService, SeekerProgress } from './progress.service';
 import { SubmissionService } from './submission.service';
-import { EvaluationRow, SubmissionRow } from './types';
+import { AnnotationRow, EvaluationRow, SubmissionRow } from './types';
 
 /**
  * Submissions and evaluations over HTTP.
@@ -24,6 +26,7 @@ export class AssessmentController {
     @Inject(SubmissionService) private readonly submissions: SubmissionService,
     @Inject(EvaluationService) private readonly evaluations: EvaluationService,
     @Inject(EngagementAccessService) private readonly access: EngagementAccessService,
+    @Inject(ProgressService) private readonly progressService: ProgressService,
   ) {}
 
   /**
@@ -114,6 +117,85 @@ export class AssessmentController {
       comment: body.comment,
     });
     return { scored: true };
+  }
+
+
+  /**
+   * Place a remark on the work.
+   *
+   * Only the assessor. A seeker adding remarks to their own marked answer
+   * would make the assessment unusable as evidence, and the provider is
+   * checked against the evaluation rather than the engagement so a second
+   * provider on the same engagement cannot write into someone else's
+   * assessment.
+   */
+  @Post('evaluations/:id/annotations')
+  async annotate(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { page?: number; anchorX?: number | null; anchorY?: number | null; bodyText?: string; bodyLang?: string },
+  ): Promise<AnnotationRow> {
+    await this.assertAssessor(id, actor);
+    if (!body.bodyText || !body.bodyText.trim()) {
+      throw new BadRequestException('bodyText is required');
+    }
+    return this.evaluations.addAnnotation({
+      evaluationId: id,
+      page: body.page,
+      anchorX: body.anchorX,
+      anchorY: body.anchorY,
+      bodyText: body.bodyText,
+      // The original language is authoritative (#20), so it is recorded
+      // rather than inferred at read time.
+      bodyLang: body.bodyLang || 'en',
+    });
+  }
+
+  @Delete('annotations/:id')
+  async removeAnnotation(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<{ ok: true }> {
+    const evaluationId = await this.evaluations.evaluationIdForAnnotation(id);
+    await this.assertAssessor(evaluationId, actor);
+    await this.evaluations.removeAnnotation(id);
+    return { ok: true };
+  }
+
+  /** The assessor is the provider named on the evaluation, and nobody else. */
+  private async assertAssessor(evaluationId: string, actor: Actor): Promise<void> {
+    const providerId = await this.evaluations.providerOf(evaluationId);
+    if (providerId !== actor.userId) {
+      // 404, not 403 — an evaluation id is not confirmed to someone who
+      // may not write to it.
+      throw evaluationNotFound(evaluationId);
+    }
+  }
+
+  /**
+   * A seeker's own progress, and what they were asked to work on.
+   *
+   * Scoped to the caller with no user id in the route. There is no way to
+   * ask this about anyone else, which is deliberate: #17 forbids
+   * comparing one seeker to another, and an endpoint that answered about
+   * a stranger is the first thing a leaderboard would need.
+   */
+  @Get('me/progress')
+  @Roles('seeker')
+  async progress(@CurrentActor() actor: Actor): Promise<SeekerProgress> {
+    return this.progressService.forSeeker(actor.userId);
+  }
+
+  /** Tick, or un-tick, one thing. Reversible — a one-way tick makes the list lie. */
+  @Post('me/action-items/:annotationId')
+  @Roles('seeker')
+  async setActionDone(
+    @Param('annotationId') annotationId: string,
+    @CurrentActor() actor: Actor,
+    @Body() body: { done?: boolean },
+  ): Promise<{ doneAt: Date | null }> {
+    return this.progressService.setActionDone({
+      annotationId,
+      seekerId: actor.userId,
+      done: body.done !== false,
+    });
   }
 
   @Get('evaluations/:id')

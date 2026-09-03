@@ -314,12 +314,45 @@ describe('trust invariants (raw SQL)', () => {
   });
 
   describe('escrow split settlement', () => {
-    it('rejects a split settlement on an escrow that was never disputed', async () => {
+    /*
+      This test used to assert the opposite: that `held -> settled_split`
+      was refused, because a split could only follow a dispute ruling.
+      That stopped being the rule when provider discounts landed
+      (migration 0045) — a provider charging less than they published
+      settles as a split from `held`, with no dispute having existed.
+
+      Routing a discount through `disputed_hold` to preserve the old
+      assertion would have been the wrong fix: it would stamp "disputed"
+      on an engagement where nobody disagreed, and that word appears in
+      evidence packets and in a provider's dispute rate.
+
+      What is still invariant is below: a split cannot happen from a
+      SETTLED escrow. That is the part that protects the money.
+    */
+    it('allows held -> settled_split, which is how a provider discount settles', async () => {
       const { seekerId, providerId } = await seedUsers(pool);
       const engagementId = await seedWorkingEngagement(pool, seekerId, providerId);
       await expect(
         pool.query(`UPDATE escrows SET status = 'settled_split' WHERE engagement_id = $1`, [engagementId]),
-      ).rejects.toThrow(/invalid escrow transition held -> settled_split/);
+      ).resolves.toBeDefined();
+    });
+
+    it('rejects a split on an escrow that has already been released', async () => {
+      const { seekerId, providerId } = await seedUsers(pool);
+      const engagementId = await seedWorkingEngagement(pool, seekerId, providerId);
+      await pool.query(`UPDATE escrows SET status = 'released' WHERE engagement_id = $1`, [engagementId]);
+      await expect(
+        pool.query(`UPDATE escrows SET status = 'settled_split' WHERE engagement_id = $1`, [engagementId]),
+      ).rejects.toThrow(/invalid escrow transition released -> settled_split/);
+    });
+
+    it('rejects a split on an escrow that has already been refunded', async () => {
+      const { seekerId, providerId } = await seedUsers(pool);
+      const engagementId = await seedWorkingEngagement(pool, seekerId, providerId);
+      await pool.query(`UPDATE escrows SET status = 'refunded' WHERE engagement_id = $1`, [engagementId]);
+      await expect(
+        pool.query(`UPDATE escrows SET status = 'settled_split' WHERE engagement_id = $1`, [engagementId]),
+      ).rejects.toThrow(/invalid escrow transition refunded -> settled_split/);
     });
 
     it('allows disputed_hold -> settled_split', async () => {

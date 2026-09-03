@@ -3,7 +3,7 @@ import { AppShell } from '@/components/shell';
 import { ButtonLink, Card, Chip, Eyebrow, GlyphArrow, GlyphCheckSeal, GlyphLock, GlyphShield, Panel, Stat } from '@/components/ui';
 import { ProviderCard } from '@/components/provider-card';
 import { preview } from '@/lib/preview';
-import { FAMILIES, t, plural } from '@/lib/pack';
+import { allFamilies, t, plural } from '@/lib/pack';
 import { listProviders, listBoard, familyCounts } from '@/lib/data';
 import { ago } from '@/lib/format';
 
@@ -25,10 +25,10 @@ export const dynamic = 'force-dynamic';
  * pathologist and an interview coach alike.
  */
 export default async function LandingPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { fam, lang } = await preview('seeker');
   const [providers, board, counts] = await Promise.all([listProviders(), listBoard(), familyCounts()]);
 
-  const areas = FAMILIES.reduce((n, f) => n + f.domains.length, 0);
+  const areas = allFamilies().reduce((n, f) => n + f.domains.length, 0);
 
   return (
     <AppShell fam={fam} lang={lang} role="seeker" current="/">
@@ -62,16 +62,16 @@ export default async function LandingPage(): Promise<JSX.Element> {
           <div>
             <Eyebrow>What people come here for</Eyebrow>
             <h2 id="fields" className="mt-1.5 text-title font-semibold">
-              {FAMILIES.length} fields, {areas} areas within them
+              {allFamilies().length} fields, {areas} areas within them
             </h2>
           </div>
-          <Link href="/fields" className="inline-flex items-center gap-1.5 text-small font-medium text-brand hover:underline">
+          <Link href="/fields" className="inline-flex min-h-touch items-center gap-1.5 text-small font-medium text-brand hover:underline">
             See every area <GlyphArrow />
           </Link>
         </div>
 
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FAMILIES.map((f) => {
+          {allFamilies().map((f) => {
             const c = counts[f.code] ?? { providers: 0, open: 0 };
             return (
               <li key={f.code}>
@@ -166,13 +166,13 @@ export default async function LandingPage(): Promise<JSX.Element> {
               In their own words, in their own language
             </h2>
           </div>
-          <Link href="/board" className="inline-flex items-center gap-1.5 text-small font-medium text-brand hover:underline">
+          <Link href="/board" className="inline-flex min-h-touch items-center gap-1.5 text-small font-medium text-brand hover:underline">
             The whole board <GlyphArrow />
           </Link>
         </div>
         <ul className="grid gap-3 md:grid-cols-2">
           {board.slice(0, 4).map((r) => {
-            const f = FAMILIES.find((x) => x.code === r.family);
+            const f = allFamilies().find((x) => x.code === r.family);
             return (
               <li key={r.id}>
                 <Link
@@ -208,7 +208,7 @@ export default async function LandingPage(): Promise<JSX.Element> {
               {providers.length} people, across every field
             </h2>
           </div>
-          <Link href="/providers" className="inline-flex items-center gap-1.5 text-small font-medium text-brand hover:underline">
+          <Link href="/providers" className="inline-flex min-h-touch items-center gap-1.5 text-small font-medium text-brand hover:underline">
             See all <GlyphArrow />
           </Link>
         </div>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { FAMILIES, t, withArticle, type FamilyPack, type Lang } from '@/lib/pack';
+import { allFamilies, t, withArticle, type FamilyPack, type Lang } from '@/lib/pack';
 import { themeStyle } from '@/lib/theme';
 import type { Role } from '@/lib/types';
 import { Avatar, Chip } from './ui';
@@ -47,7 +47,7 @@ export function AppShell({
     <div style={themeStyle(fam)} className="flex min-h-screen flex-col bg-canvas text-ink">
       <a
         href="#main"
-        className="sr-only rounded-md bg-brand px-4 py-2 text-brand-ink focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50"
+        className="sr-only rounded-md bg-brand px-4 text-brand-ink focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:inline-flex focus:min-h-touch focus:items-center"
       >
         Skip to content
       </a>
@@ -60,7 +60,7 @@ export function AppShell({
         }
       >
         <div className={`mx-auto flex h-16 items-center gap-4 px-4 sm:px-6 ${wide ? '' : 'max-w-shell'}`}>
-          <Link href={homeFor(role)} className="flex flex-none items-center gap-2.5">
+          <Link href={homeFor(role)} className="flex min-h-touch flex-none items-center gap-2.5">
             <Mark dark={dark} />
             <span className="text-lead font-semibold tracking-[-0.02em]">Sankalp</span>
           </Link>
@@ -80,7 +80,7 @@ export function AppShell({
                 key={item.href}
                 href={item.href}
                 aria-current={current === item.href ? 'page' : undefined}
-                className={`relative rounded-md px-3 py-2 text-small font-medium transition-colors ${
+                className={`relative inline-flex min-h-touch items-center rounded-md px-3 text-small font-medium transition-colors ${
                   current === item.href
                     ? dark
                       ? 'bg-[#26315a] text-white'
@@ -115,7 +115,7 @@ export function AppShell({
               key={item.href}
               href={item.href}
               aria-current={current === item.href ? 'page' : undefined}
-              className={`whitespace-nowrap rounded-md px-3 py-2 text-small font-medium ${
+              className={`inline-flex min-h-touch items-center whitespace-nowrap rounded-md px-3 text-small font-medium ${
                 current === item.href
                   ? dark
                     ? 'bg-[#26315a] text-white'
@@ -209,7 +209,7 @@ function FieldMenu({ dark }: { dark: boolean }): JSX.Element {
     <div className="group relative">
       <button
         type="button"
-        className={`flex h-9 items-center gap-1.5 rounded-md px-2.5 text-small font-medium ${
+        className={`flex min-h-touch items-center gap-1.5 rounded-md px-2.5 text-small font-medium ${
           dark ? 'text-[#b3bdd4] hover:bg-[#1e2a48]' : 'text-ink-muted hover:bg-surface-sunk'
         }`}
         aria-haspopup="true"
@@ -221,10 +221,10 @@ function FieldMenu({ dark }: { dark: boolean }): JSX.Element {
       <div className="invisible absolute right-0 top-full z-40 w-80 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
         <div className="rounded-lg border border-line bg-surface p-2 text-ink shadow-e3">
           <p className="px-2 py-1.5 text-caption text-ink-muted">
-            {FAMILIES.length} fields, {FAMILIES.reduce((n, f) => n + f.domains.length, 0)} areas. Each is a manifest,
+            {allFamilies().length} fields, {allFamilies().reduce((n, f) => n + f.domains.length, 0)} areas. Each is a manifest,
             not a build.
           </p>
-          {FAMILIES.map((f) => (
+          {allFamilies().map((f) => (
             <Link
               key={f.code}
               href={`/fields/${f.code}`}
@@ -266,10 +266,11 @@ function RoleMenu({ role, dark }: { role: Role; dark: boolean }): JSX.Element {
     <div className="group relative">
       <button
         type="button"
-        className={`flex h-9 items-center gap-1.5 rounded-md px-2.5 text-small font-medium ${
+        className={`flex min-h-touch items-center gap-1.5 rounded-md px-2.5 text-small font-medium ${
           dark ? 'text-[#b3bdd4] hover:bg-[#1e2a48]' : 'text-ink-muted hover:bg-surface-sunk'
         }`}
         aria-haspopup="true"
+        aria-label="Account and product menu"
       >
         <Avatar name={role === 'admin' ? 'Ops' : role === 'provider' ? 'D M' : 'A R'} size="sm" />
         <span aria-hidden="true">▾</span>
@@ -319,7 +320,7 @@ function Footer({ fam, lang, role }: { fam: FamilyPack; lang: Lang; role: Role }
               ['Grievance officer', '/legal/grievance'],
               ['Help', '/help'],
             ].map(([label, href]) => (
-              <Link key={href} href={href as string} className="text-ink-muted hover:text-ink hover:underline">
+              <Link key={href} href={href as string} className="inline-flex min-h-touch items-center text-ink-muted hover:text-ink hover:underline">
                 {label}
               </Link>
             ))}
@@ -342,10 +343,10 @@ function Footer({ fam, lang, role }: { fam: FamilyPack; lang: Lang; role: Role }
 
         <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-line pt-5 text-caption text-ink-muted">
           <span>
-            {FAMILIES.length} fields · {FAMILIES.reduce((n, f) => n + f.domains.length, 0)} areas
+            {allFamilies().length} fields · {allFamilies().reduce((n, f) => n + f.domains.length, 0)} areas
           </span>
           <span aria-hidden="true">·</span>
-          <a href={`/switch?lang=${lang === 'en' ? 'hi' : 'en'}`} className="hover:text-ink hover:underline">
+          <a href={`/switch?lang=${lang === 'en' ? 'hi' : 'en'}`} className="inline-flex min-h-touch items-center hover:text-ink hover:underline">
             {lang === 'en' ? 'हिन्दी में देखें' : 'View in English'}
           </a>
           <span className="ml-auto">Preview build — not connected to the API.</span>

@@ -5,6 +5,7 @@ import { VerificationModule } from '../verification/verification.module';
 import { EngagementAccessService } from './engagement-access.service';
 import { EngagementsController } from './engagements.controller';
 import { EngagementsService } from './engagements.service';
+import { EngagementViewService } from './engagement-view.service';
 
 /**
  * Engagement lifecycle across all four types. M3 drives document_review
@@ -14,7 +15,7 @@ import { EngagementsService } from './engagements.service';
 @Module({
   imports: [TaxonomyModule, MoneyModule, VerificationModule],
   controllers: [EngagementsController],
-  providers: [EngagementsService, EngagementAccessService],
-  exports: [EngagementsService, EngagementAccessService],
+  providers: [EngagementsService, EngagementAccessService, EngagementViewService],
+  exports: [EngagementsService, EngagementAccessService, EngagementViewService],
 })
 export class EngagementsModule {}

@@ -3,6 +3,18 @@ import { AutomatedCheckResult } from '../types';
 import { CredentialVerifier } from './verifier.interface';
 
 /**
+ * The declared input key is `attachmentId`, and that is not cosmetic.
+ * `reviewerDocumentLink` reads `verifierData.attachmentId` to mint the
+ * reviewer's signed link — so while these verifiers asked for
+ * `documentRef`, a credential submitted through the real form produced a
+ * field the reviewer could never open, and every document that DID work
+ * had been written by the seed under the other name. The form and the
+ * reader now name the same thing.
+ *
+ * `documentRef` was an honest name while it held free text. It holds an
+ * attachment id now, and a name that describes the old shape is worse
+ * than no name.
+ *
  * `document_review` and `sanction_document` (SPEC-PLATFORM.md §11) have
  * no automation — a marksheet or a sanction letter needs a human to
  * actually look at it. `passed: null` is not a failure, it's "there is
@@ -13,7 +25,7 @@ import { CredentialVerifier } from './verifier.interface';
 @Injectable()
 export class DocumentReviewVerifier implements CredentialVerifier {
   readonly code = 'document_review';
-  readonly inputs = [{ key: 'documentRef', kind: 'document' as const, required: true }];
+  readonly inputs = [{ key: 'attachmentId', kind: 'document' as const, required: true }];
 
   async check(): Promise<AutomatedCheckResult> {
     return {
@@ -27,7 +39,7 @@ export class DocumentReviewVerifier implements CredentialVerifier {
 @Injectable()
 export class SanctionDocumentVerifier implements CredentialVerifier {
   readonly code = 'sanction_document';
-  readonly inputs = [{ key: 'documentRef', kind: 'document' as const, required: true }];
+  readonly inputs = [{ key: 'attachmentId', kind: 'document' as const, required: true }];
 
   async check(): Promise<AutomatedCheckResult> {
     return {

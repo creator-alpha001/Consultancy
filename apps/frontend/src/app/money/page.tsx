@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
  * below it, which is the same discipline the ledger enforces server-side.
  */
 export default async function MoneyPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { fam, lang } = await preview('seeker');
   const [engagements, ledger] = await Promise.all([listEngagements('seeker'), listLedger()]);
 
   const held = engagements

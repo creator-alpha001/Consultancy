@@ -9,7 +9,7 @@ import { GoalsContract, OriginalLanguageNote } from '@/components/goals';
 import { RubricBars } from '@/components/charts';
 import { preview, contextFor } from '@/lib/preview';
 import { t, tl, plural, categoryLabel } from '@/lib/pack';
-import { getEngagement, getAssessment, getAssessmentTemplate } from '@/lib/data';
+import { getEngagement, getAssessment, getAssessmentTemplate, getSessionByEngagement, getDisputeByEngagement } from '@/lib/data';
 import { dateTime, until } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -25,16 +25,19 @@ export const dynamic = 'force-dynamic';
  * now. It does not render a disabled button for a transition that is not
  * legal — a greyed-out control is a question the user cannot answer.
  */
-export default async function EngagementPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { lang } = preview('seeker');
-  const e = await getEngagement(params.id);
+export default async function EngagementPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { id } = await params;
+  const { lang } = await preview('seeker');
+  const e = await getEngagement(id);
   if (!e) notFound();
   /* The field is the engagement's, so this screen speaks its language. */
   const fam = contextFor(e.family);
 
-  const [assessment, template] = await Promise.all([
+  const [assessment, template, session, dispute] = await Promise.all([
     getAssessment(e.id),
     getAssessmentTemplate(e.category),
+    getSessionByEngagement(e.id),
+    getDisputeByEngagement(e.id),
   ]);
   const type = fam.engagementTypes.find((x) => x.code === e.type);
 
@@ -121,7 +124,7 @@ export default async function EngagementPage({ params }: { params: { id: string 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <EscrowRail escrow={e.escrow} audience="seeker" />
 
-          <ActionPanel e={e} fam={fam} lang={lang} />
+          <ActionPanel e={e} fam={fam} lang={lang} sessionId={session?.id ?? null} disputeId={dispute?.id ?? null} />
 
           <Card className="p-5">
             <Eyebrow>Working with</Eyebrow>
@@ -171,10 +174,14 @@ function ActionPanel({
   e,
   fam,
   lang,
+  sessionId,
+  disputeId,
 }: {
   e: NonNullable<Awaited<ReturnType<typeof getEngagement>>>;
-  fam: ReturnType<typeof preview>['fam'];
-  lang: ReturnType<typeof preview>['lang'];
+  fam: Awaited<ReturnType<typeof preview>>['fam'];
+  lang: Awaited<ReturnType<typeof preview>>['lang'];
+  sessionId: string | null;
+  disputeId: string | null;
 }): JSX.Element | null {
   if (e.status === 'assessed' || e.status === 'delivered') {
     return (
@@ -215,9 +222,13 @@ function ActionPanel({
           You will be asked about recording at the start. Either of you may say no and the session still runs.
         </p>
         <div className="mt-4">
-          <ButtonLink href="/sessions/ses_1" full size="lg">
-            Join <GlyphArrow />
-          </ButtonLink>
+          {sessionId ? (
+            <ButtonLink href={`/sessions/${sessionId}`} full size="lg">
+              Join <GlyphArrow />
+            </ButtonLink>
+          ) : (
+            <p className="text-caption text-ink-muted">The room opens closer to the scheduled time.</p>
+          )}
         </div>
       </Panel>
     );
@@ -247,9 +258,13 @@ function ActionPanel({
           {plural(fam.labels.agendaItem, lang)} in question.
         </p>
         <div className="mt-4">
-          <ButtonLink href="/disputes/dsp_1" tone="secondary" full>
-            See the case
-          </ButtonLink>
+          {disputeId ? (
+            <ButtonLink href={`/disputes/${disputeId}`} tone="secondary" full>
+              See the case
+            </ButtonLink>
+          ) : (
+            <p className="text-caption text-ink-muted">The case reference will appear here once it is logged.</p>
+          )}
         </div>
       </Panel>
     );

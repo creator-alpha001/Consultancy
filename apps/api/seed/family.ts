@@ -1,4 +1,5 @@
 import { FamilyManifestInput } from '../src/modules/domains/types';
+import { civilServicesTraining } from './training';
 
 /**
  * The civil services exam family pack.
@@ -297,6 +298,10 @@ export function civilServicesExamsFamily(): FamilyManifestInput {
     // CLAUDE.md #25: a distress-flagged post is answered with these, not
     // with a rejection notice. Tele-MANAS is the Government of India's
     // national mental-health helpline.
+    // Content lives in its own file: it is written for people, revised
+    // by people who are not engineers, and long.
+    trainingModules: civilServicesTraining(),
+
     supportResources: [
       { label: 'Tele-MANAS (national, 24x7)', value: '14416' },
       { label: 'Tele-MANAS (alternate)', value: '1800-891-4416' },

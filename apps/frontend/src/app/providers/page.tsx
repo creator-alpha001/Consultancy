@@ -2,7 +2,7 @@ import { AppShell } from '@/components/shell';
 import { ProviderCard } from '@/components/provider-card';
 import { Chip, EmptyState, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { preview } from '@/lib/preview';
-import { FAMILIES, t, plural, languageName, allLanguages, domainByCode, familyOfDomain } from '@/lib/pack';
+import { allFamilies, t, plural, languageName, allLanguages, domainByCode, familyOfDomain } from '@/lib/pack';
 import { listProviders } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
@@ -25,21 +25,22 @@ export const dynamic = 'force-dynamic';
 export default async function ProvidersPage({
   searchParams,
 }: {
-  searchParams: { family?: string; domain?: string; category?: string; language?: string; tier?: string };
+  searchParams: Promise<{ family?: string; domain?: string; category?: string; language?: string; tier?: string }>;
 }): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
-  const providers = await listProviders(searchParams);
+  const { fam, lang } = await preview('seeker');
+  const params = await searchParams;
+  const providers = await listProviders(params);
 
-  const activeFamily = searchParams.family
-    ? FAMILIES.find((f) => f.code === searchParams.family)
-    : searchParams.domain
-      ? familyOfDomain(searchParams.domain)
+  const activeFamily = params.family
+    ? allFamilies().find((f) => f.code === params.family)
+    : params.domain
+      ? familyOfDomain(params.domain)
       : null;
-  const activeDomain = searchParams.domain ? domainByCode(searchParams.domain) : null;
+  const activeDomain = params.domain ? domainByCode(params.domain) : null;
 
   const qs = (patch: Record<string, string | undefined>) => {
     const merged: Record<string, string> = {};
-    for (const [k, v] of Object.entries({ ...searchParams, ...patch })) {
+    for (const [k, v] of Object.entries({ ...params, ...patch })) {
       if (v) merged[k] = v;
     }
     const s = new URLSearchParams(merged).toString();
@@ -63,7 +64,7 @@ export default async function ProvidersPage({
               <FilterPill href={qs({ family: undefined, domain: undefined, category: undefined })} active={!activeFamily}>
                 Every field
               </FilterPill>
-              {FAMILIES.map((f) => (
+              {allFamilies().map((f) => (
                 <FilterPill
                   key={f.code}
                   href={qs({ family: f.code, domain: undefined, category: undefined })}
@@ -82,7 +83,7 @@ export default async function ProvidersPage({
                   <FilterPill
                     key={d.code}
                     href={qs({ domain: d.code, category: undefined })}
-                    active={searchParams.domain === d.code}
+                    active={params.domain === d.code}
                   >
                     {t(d.label, lang)}
                   </FilterPill>
@@ -93,7 +94,7 @@ export default async function ProvidersPage({
             {activeDomain && activeFamily && (
               <FilterGroup label={t(activeFamily.labels.category, lang)}>
                 {activeDomain.categories.map((c) => (
-                  <FilterPill key={c.code} href={qs({ category: c.code })} active={searchParams.category === c.code}>
+                  <FilterPill key={c.code} href={qs({ category: c.code })} active={params.category === c.code}>
                     {t(c.label, lang)}
                   </FilterPill>
                 ))}
@@ -102,7 +103,7 @@ export default async function ProvidersPage({
 
             <FilterGroup label="Working language">
               {(activeDomain?.languages ?? allLanguages()).map((l) => (
-                <FilterPill key={l} href={qs({ language: l })} active={searchParams.language === l}>
+                <FilterPill key={l} href={qs({ language: l })} active={params.language === l}>
                   {languageName(l, lang)}
                 </FilterPill>
               ))}
@@ -115,7 +116,7 @@ export default async function ProvidersPage({
             */}
             <FilterGroup label="Verified at least to">
               {(['t2', 't3', 't4'] as const).map((tier) => (
-                <FilterPill key={tier} href={qs({ tier })} active={searchParams.tier === tier}>
+                <FilterPill key={tier} href={qs({ tier })} active={params.tier === tier}>
                   {t((activeFamily ?? fam).tierLabels[tier], lang)}
                 </FilterPill>
               ))}
@@ -198,7 +199,7 @@ function FilterPill({
     <a
       href={href}
       aria-current={active ? 'true' : undefined}
-      className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-pill border px-3 text-caption font-medium transition-colors ${
+      className={`inline-flex min-h-touch items-center gap-1.5 rounded-pill border px-3 text-caption font-medium transition-colors ${
         active
           ? 'border-brand bg-brand text-brand-ink'
           : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink'

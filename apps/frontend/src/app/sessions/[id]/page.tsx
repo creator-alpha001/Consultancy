@@ -7,9 +7,10 @@ import { SessionRoom } from './session-room';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SessionPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
-  const session = await getSession(params.id);
+export default async function SessionPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { id } = await params;
+  const { fam, lang } = await preview('seeker');
+  const session = await getSession(id);
   if (!session) notFound();
   const engagement = await getEngagement(session.engagementId);
   /* The room speaks the engagement's field's language, not the shell's. */

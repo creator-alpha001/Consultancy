@@ -1,7 +1,7 @@
 import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, Field, PageHead, Panel, Select, TextArea } from '@/components/ui';
 import { preview } from '@/lib/preview';
-import { FAMILIES, t, tl, languageName, allLanguages } from '@/lib/pack';
+import { allFamilies, t, tl, languageName, allLanguages } from '@/lib/pack';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,14 +17,14 @@ export const dynamic = 'force-dynamic';
  * distress in a person's own description has to be noticed. A person
  * whose post is held never sees the word "rejected" (CLAUDE.md #25).
  */
-export default function NewRequestPage(): JSX.Element {
-  const { fam, lang } = preview('seeker');
+export default async function NewRequestPage(): Promise<JSX.Element> {
+  const { fam, lang } = await preview('seeker');
   /*
    * Step one asks for the FIELD before anything else, and the options
    * below it come from whichever is chosen. Nothing here is exam-shaped,
    * or shaped like any other single field.
    */
-  const field = FAMILIES[0];
+  const field = allFamilies()[0];
   const domain = field?.domains[0];
 
   return (
@@ -56,7 +56,7 @@ export default function NewRequestPage(): JSX.Element {
               <Select
                 label="Field"
                 name="family"
-                options={FAMILIES.map((f) => ({ value: f.code, label: t(f.label, lang) }))}
+                options={allFamilies().map((f) => ({ value: f.code, label: t(f.label, lang) }))}
                 hint="Everything below changes with this — the areas, the languages, and what the people here call things."
               />
               <Select

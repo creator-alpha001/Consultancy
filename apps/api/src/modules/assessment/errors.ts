@@ -56,3 +56,19 @@ export function unknownDimension(dimensionCode: string, evaluationId: string): A
     { detail: { dimensionCode, evaluationId } },
   );
 }
+
+export function annotationNotFound(annotationId: string): AppError {
+  return new AppError('ANNOTATION_NOT_FOUND', `no annotation ${annotationId}`, {
+    status: HttpStatus.NOT_FOUND,
+    detail: { annotationId },
+  });
+}
+
+/** An anchor is a point or it is nothing — half of one is not a position. */
+export function annotationAnchorIncomplete(): AppError {
+  return new AppError(
+    'ANNOTATION_ANCHOR_INCOMPLETE',
+    'an annotation anchor needs both x and y, or neither',
+    { status: HttpStatus.UNPROCESSABLE_ENTITY },
+  );
+}

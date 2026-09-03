@@ -4,7 +4,7 @@ import { ButtonLink, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, St
 import { EscrowLine } from '@/components/escrow';
 import { preview, contextFor } from '@/lib/preview';
 import { t, tl, plural, categoryLabel } from '@/lib/pack';
-import { listEngagements, listBoard } from '@/lib/data';
+import { listEngagements, listBoard, listSessions } from '@/lib/data';
 import { dateTime, money, until, ago } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -23,8 +23,8 @@ export const dynamic = 'force-dynamic';
  * answer "which one am I in" is the colour of the bar at the top.
  */
 export default async function ProviderHome(): Promise<JSX.Element> {
-  const { fam, lang } = preview('provider');
-  const [work, board] = await Promise.all([listEngagements('provider'), listBoard()]);
+  const { fam, lang } = await preview('provider');
+  const [work, board, sessions] = await Promise.all([listEngagements('provider'), listBoard(), listSessions()]);
 
   const due = work.filter((e) => e.status === 'working');
   const upcoming = work.filter((e) => e.status === 'agreed' && e.scheduledAt);
@@ -37,7 +37,14 @@ export default async function ProviderHome(): Promise<JSX.Element> {
       <PageHead
         title="Today"
         sub={`${due.length} to deliver, ${upcoming.length} booked, ${board.length} open on the board.`}
-        action={<ButtonLink href="/provider/requests">See open requests</ButtonLink>}
+        action={
+          <>
+            <ButtonLink href="/provider/readiness" tone="secondary">
+              Getting ready
+            </ButtonLink>
+            <ButtonLink href="/provider/requests">See open requests</ButtonLink>
+          </>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -96,25 +103,30 @@ export default async function ProviderHome(): Promise<JSX.Element> {
               <p className="text-body text-ink-muted">Nothing booked.</p>
             ) : (
               <ul className="divide-y divide-line">
-                {upcoming.map((e) => (
-                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="figure text-body font-medium">{dateTime(e.scheduledAt)}</p>
-                      <p className="mt-0.5 text-small text-ink-muted">
-                        {e.seeker.displayName} · {categoryLabel(contextFor(e.family), e.domain, e.category, lang)} ·{' '}
-                        {e.language.toUpperCase()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <ButtonLink href={`/provider/work/${e.id}`} tone="secondary" size="sm">
-                        Prep brief
-                      </ButtonLink>
-                      <ButtonLink href="/sessions/ses_1" size="sm">
-                        Join
-                      </ButtonLink>
-                    </div>
-                  </li>
-                ))}
+                {upcoming.map((e) => {
+                  const session = sessions.find((s) => s.engagementId === e.id);
+                  return (
+                    <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
+                      <div>
+                        <p className="figure text-body font-medium">{dateTime(e.scheduledAt)}</p>
+                        <p className="mt-0.5 text-small text-ink-muted">
+                          {e.seeker.displayName} · {categoryLabel(contextFor(e.family), e.domain, e.category, lang)} ·{' '}
+                          {e.language.toUpperCase()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <ButtonLink href={`/provider/work/${e.id}`} tone="secondary" size="sm">
+                          Prep brief
+                        </ButtonLink>
+                        {session && (
+                          <ButtonLink href={`/sessions/${session.id}`} size="sm">
+                            Join
+                          </ButtonLink>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Panel>

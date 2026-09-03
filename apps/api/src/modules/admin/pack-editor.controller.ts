@@ -1,4 +1,4 @@
-import { Body, Controller, Inject, Post, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, UseInterceptors } from '@nestjs/common';
 import { IdempotencyInterceptor } from '../../common/idempotency/idempotency.interceptor';
 import { CurrentActor, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
@@ -26,6 +26,20 @@ export class PackEditorController {
     @Inject(FamilyManifestService) private readonly families: FamilyManifestService,
     @Inject(DomainManifestService) private readonly domains: DomainManifestService,
   ) {}
+
+  /**
+   * The manifest an editor is about to change.
+   *
+   * A pass-through: this controller does not parse it — module boundary,
+   * only domains/ may — it hands the stored document to the editor that
+   * will publish a new version of it. Admin-only because publishing is,
+   * not because a manifest is secret: it is the same document the public
+   * `/domains/:code` is derived from.
+   */
+  @Get('domains/:code/manifest')
+  async getDomainManifest(@Param('code') code: string): Promise<Record<string, unknown>> {
+    return this.domains.getRawManifest(code);
+  }
 
   @Post('families/manifest')
   @UseInterceptors(IdempotencyInterceptor)

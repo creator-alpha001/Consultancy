@@ -119,12 +119,16 @@ export class SessionsController {
   async myAvailability(@CurrentActor() actor: Actor): Promise<{
     rules: unknown[];
     policy: unknown;
+    exceptions: unknown[];
   }> {
-    const [rules, policy] = await Promise.all([
+    const [rules, policy, exceptions] = await Promise.all([
       this.availability.listRules(actor.userId),
       this.availability.getPolicy(actor.userId),
+      // Exceptions were writable and unreadable: a provider could block a
+      // date and then had no way to see or undo it.
+      this.availability.listExceptions(actor.userId),
     ]);
-    return { rules, policy };
+    return { rules, policy, exceptions };
   }
 
   @Post('me/availability/rules')
@@ -160,6 +164,16 @@ export class SessionsController {
   @Roles('provider')
   async removeRule(@Param('ruleId') ruleId: string, @CurrentActor() actor: Actor): Promise<{ ok: true }> {
     await this.availability.removeRule(actor.userId, ruleId);
+    return { ok: true };
+  }
+
+  @Post('me/availability/exceptions/:exceptionId/remove')
+  @Roles('provider')
+  async removeException(
+    @Param('exceptionId') exceptionId: string,
+    @CurrentActor() actor: Actor,
+  ): Promise<{ ok: true }> {
+    await this.availability.removeException(actor.userId, exceptionId);
     return { ok: true };
   }
 

@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
  * undercut.
  */
 export default async function BoardPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { fam, lang } = await preview('seeker');
   const requests = await listBoard();
 
   return (

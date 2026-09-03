@@ -68,6 +68,7 @@ export class DomainLoaderService {
       reportReasons: m.reportReasons ?? [],
       agreementDocuments: m.agreementDocuments ?? [],
       supportResources: m.supportResources,
+      trainingModules: m.trainingModules ?? [],
       theme: m.theme,
     };
     this.familyCache.set(familyCode, resolved);

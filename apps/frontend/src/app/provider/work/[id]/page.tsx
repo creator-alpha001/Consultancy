@@ -22,9 +22,10 @@ export const dynamic = 'force-dynamic';
  * A category with no template is not an error state. Some have nothing
  * meaningful to score, and the delivery is the written work itself.
  */
-export default async function ProviderWorkDetail({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { lang } = preview('provider');
-  const e = await getEngagement(params.id);
+export default async function ProviderWorkDetail({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { id } = await params;
+  const { lang } = await preview('provider');
+  const e = await getEngagement(id);
   if (!e) notFound();
   const fam = contextFor(e.family);
   const template = await getAssessmentTemplate(e.category);

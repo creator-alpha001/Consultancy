@@ -260,6 +260,63 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     return { label, value };
   });
 
+  /*
+    Training. Validated as strictly as anything else, because a malformed
+    module fails the PUBLISH rather than the onboarding flow that later
+    needs it — and a provider blocked from taking work by a typo in a
+    manifest is the worst place to discover one.
+  */
+  const trainingModules = m.trainingModules === undefined
+    ? []
+    : v.array(m.trainingModules, 'trainingModules', (item, p) => {
+        const t = (item ?? {}) as Record<string, unknown>;
+        const code = v.string(t.code, `${p}.code`);
+        const labels = v.labelMap(t.labels, `${p}.labels`);
+        const sections = v.array(t.sections, `${p}.sections`, (sec, sp) => {
+          const x = (sec ?? {}) as Record<string, unknown>;
+          const heading = v.labelMap(x.heading, `${sp}.heading`);
+          const body = v.labelMap(x.body, `${sp}.body`);
+          if (!heading || !body) return undefined;
+          return { heading, body };
+        });
+        const questions = v.array(t.questions, `${p}.questions`, (q, qp) => {
+          const x = (q ?? {}) as Record<string, unknown>;
+          const qcode = v.string(x.code, `${qp}.code`);
+          const prompt = v.labelMap(x.prompt, `${qp}.prompt`);
+          const options = v.array(x.options, `${qp}.options`, (o, op) => {
+            const y = (o ?? {}) as Record<string, unknown>;
+            const ocode = v.string(y.code, `${op}.code`);
+            const olabels = v.labelMap(y.labels, `${op}.labels`);
+            if (!ocode || !olabels) return undefined;
+            return { code: ocode, labels: olabels };
+          });
+          const correct = v.string(x.correct, `${qp}.correct`);
+          if (!qcode || !prompt || !correct) return undefined;
+          if (options.length < 2) {
+            v.fail(`${qp}.options`, 'a question needs at least two options');
+          }
+          // A correct answer that is not one of the options makes the
+          // question unpassable, and nothing else would notice until a
+          // provider was stuck on it.
+          if (!options.some((o) => o.code === correct)) {
+            v.fail(`${qp}.correct`, `"${correct}" is not one of this question's options`);
+          }
+          return { code: qcode, prompt, options, correct };
+        });
+        if (!code || !labels) return undefined;
+        if (sections.length === 0) v.fail(`${p}.sections`, 'a module needs something to read');
+        if (questions.length === 0) {
+          v.fail(`${p}.questions`, 'a module with no questions cannot be passed or failed');
+        }
+        return {
+          code,
+          labels,
+          required: t.required !== false,
+          sections,
+          questions,
+        };
+      });
+
   const themeRaw = (m.theme ?? {}) as Record<string, unknown>;
   const themeSignature = v.string(themeRaw.signature, 'theme.signature');
   if (typeof themeRaw.tokens !== 'object' || themeRaw.tokens === null) {
@@ -288,6 +345,7 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
     reportReasons,
     agreementDocuments,
     supportResources,
+    trainingModules,
     theme: { signature: themeSignature!, tokens: themeRaw.tokens as Record<string, string> },
   };
 }

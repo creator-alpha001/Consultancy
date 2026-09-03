@@ -20,9 +20,10 @@ export const dynamic = 'force-dynamic';
  *
  * The button names the consequence and the amount.
  */
-export default async function CompletePage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { lang } = preview('seeker');
-  const e = await getEngagement(params.id);
+export default async function CompletePage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+  const { id } = await params;
+  const { lang } = await preview('seeker');
+  const e = await getEngagement(id);
   if (!e || !e.agenda) notFound();
   const fam = contextFor(e.family);
 

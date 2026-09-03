@@ -334,7 +334,12 @@ describe('M4 acceptance: submit -> automated check -> human review -> tier grant
       // A result-list check reads a numeric year; collecting it as text
       // fails at review time rather than at submission.
       expect(byCode.get('exam_rank')?.inputs.find((i) => i.key === 'year')?.kind).toBe('number');
-      expect(byCode.get('mains_cleared')?.inputs.map((i) => i.key)).toEqual(['documentRef']);
+      // The key is `attachmentId`, and the name matters: it is what
+      // `reviewerDocumentLink` reads out of verifierData to mint the
+      // reviewer's signed link. While these disagreed, a credential
+      // submitted through the real form carried a document no reviewer
+      // could open.
+      expect(byCode.get('mains_cleared')?.inputs.map((i) => i.key)).toEqual(['attachmentId']);
       expect(byCode.get('mains_cleared')?.inputs[0].kind).toBe('document');
     });
 

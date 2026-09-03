@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createPool, resetDatabase } from '../test-utils';
 
 /**
@@ -7,7 +7,7 @@ import { createPool, resetDatabase } from '../test-utils';
  * not hold, and these are the tests that say so.
  *
  * The two that matter most:
- *   CLAUDE.md #32 — 2FA is MANDATORY for provider and admin accounts.
+ *   CLAUDE.md #32 — 2FA is MANDATORY for the roles `mfa_policy` names.
  *   CLAUDE.md #27 — the platform is 18+.
  */
 describe('identity invariants (raw SQL)', () => {
@@ -46,7 +46,37 @@ describe('identity invariants (raw SQL)', () => {
     );
   }
 
-  describe('hard rule #32 — 2FA mandatory for providers and admins', () => {
+  /**
+   * #32's role set is data (migration 0039), so these tests state the
+   * policy they are testing instead of assuming it. `mfa_policy` is
+   * config, not fixture data, so `resetDatabase` deliberately leaves it
+   * alone — which means every test that changes it must put it back.
+   */
+  async function setPolicy(role: string, mandatory: boolean): Promise<void> {
+    await pool.query(
+      `INSERT INTO mfa_policy (role, mandatory) VALUES ($1::user_role, $2)
+         ON CONFLICT (role) DO UPDATE SET mandatory = EXCLUDED.mandatory, updated_at = now()`,
+      [role, mandatory],
+    );
+  }
+
+  /** The setting the repo currently ships — see TRACKER.md. */
+  const SHIPPED_PROVIDER_POLICY = false;
+
+  afterEach(async () => {
+    await setPolicy('provider', SHIPPED_PROVIDER_POLICY);
+    await setPolicy('admin', true);
+  });
+
+  describe('hard rule #32 — 2FA mandatory for whichever roles the policy names', () => {
+    // Provider 2FA is switched off in the shipped policy, so these tests
+    // switch it back ON and prove the rule is intact and ready to be
+    // restored. That is the point of testing it this way: the mechanism
+    // is verified even while the setting is off.
+    beforeEach(async () => {
+      await setPolicy('provider', true);
+    });
+
     it('refuses a provider session with no second factor satisfied', async () => {
       const providerId = await makeUser('provider');
       await expect(insertSession(providerId, false)).rejects.toThrow(
@@ -109,9 +139,40 @@ describe('identity invariants (raw SQL)', () => {
         pool.query(`UPDATE auth_factors SET confirmed_at = NULL WHERE user_id = $1`, [providerId]),
       ).rejects.toThrow(/revoke them before removing their second factor/);
     });
+
+    it('lets a provider session through with no factor once the policy says not mandatory', async () => {
+      // The switch itself. This is what is currently shipped.
+      await setPolicy('provider', false);
+      const providerId = await makeUser('provider');
+      await expect(insertSession(providerId, false)).resolves.toBeDefined();
+    });
+
+    it('still refuses an admin when provider is switched off — the roles are independent', async () => {
+      await setPolicy('provider', false);
+      const adminId = await makeUser('admin');
+      await expect(insertSession(adminId, false)).rejects.toThrow(
+        /a second factor is mandatory and was not satisfied/,
+      );
+    });
+
+    it('falls back to the ORIGINAL rule when a role has no policy row at all', async () => {
+      // A deleted row must not be the thing that quietly drops 2FA.
+      await pool.query(`DELETE FROM mfa_policy WHERE role = 'provider'`);
+      const providerId = await makeUser('provider');
+      await expect(insertSession(providerId, false)).rejects.toThrow(
+        /a second factor is mandatory and was not satisfied/,
+      );
+    });
   });
 
   describe('enrolment-scoped sessions (the D19 bootstrap)', () => {
+    // These prove the bootstrap is not a way AROUND #32, so they need
+    // #32 to actually apply to providers. The shipped policy has it off,
+    // so turn it on for this block; the outer afterEach puts it back.
+    beforeEach(async () => {
+      await setPolicy('provider', true);
+    });
+
     async function insertScoped(userId: string, scope: string, mfa = false): Promise<unknown> {
       return pool.query(
         `INSERT INTO user_sessions (user_id, token_hash, mfa_satisfied, scope, expires_at)

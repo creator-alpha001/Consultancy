@@ -102,4 +102,34 @@ export class RankingService {
     const seen = new Set(ordered);
     return [...ordered, ...providerIds.filter((id) => !seen.has(id))];
   }
+
+  /**
+   * The same ordering, for a search that named no category.
+   *
+   * Browsing across fields has no single skill to rank against, so each
+   * provider is ordered on their strongest one. This is still a specific
+   * search producing a specific order — not the standing "top providers"
+   * table #17 forbids — and price is no more part of it here than
+   * anywhere else (#15).
+   */
+  async rankProvidersAcrossSkills(providerIds: string[]): Promise<string[]> {
+    if (providerIds.length === 0) return [];
+
+    const res = await this.pool.query<{ provider_id: string }>(
+      `SELECT s.provider_id
+         FROM provider_skill_stats s
+        WHERE s.provider_id = ANY($1::uuid[])
+        GROUP BY s.provider_id
+        ORDER BY max(s.tier) DESC,
+                 coalesce(max(s.avg_rating), 0) DESC,
+                 sum(s.completed_engagements) DESC,
+                 max(s.last_completed_at) DESC NULLS LAST,
+                 s.provider_id`,
+      [providerIds],
+    );
+
+    const ordered = res.rows.map((r) => r.provider_id);
+    const seen = new Set(ordered);
+    return [...ordered, ...providerIds.filter((id) => !seen.has(id))];
+  }
 }

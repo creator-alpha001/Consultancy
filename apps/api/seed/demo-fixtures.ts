@@ -24,9 +24,9 @@ async function main() {
   if (cats.rows.length === 0) throw new Error('no mapped categories — seed the domain first');
 
   const people = [
-    { email: 'asha.rathore@demo.local', langs: ['hi', 'en'], tier: 't3' },
-    { email: 'vikram.kulkarni@demo.local', langs: ['en'], tier: 't3' },
-    { email: 'meera.banerjee@demo.local', langs: ['hi', 'en'], tier: 't2' },
+    { email: 'asha.rathore@demo.local', langs: ['hi', 'en'], tier: 't3', live: 95_000, minutes: 45 },
+    { email: 'vikram.kulkarni@demo.local', langs: ['en'], tier: 't3', live: 120_000, minutes: 60 },
+    { email: 'meera.banerjee@demo.local', langs: ['hi', 'en'], tier: 't2', live: 70_000, minutes: 30 },
   ];
 
   for (const p of people) {
@@ -78,16 +78,76 @@ async function main() {
       [providerId],
     );
 
+    // A published price for a live session, with the duration it buys.
+    // Booking offers only the engagement types a provider has priced —
+    // there is no price negotiation, so an unpriced type is simply not
+    // on sale (and every mentor here was unbookable for live work).
+    await pool.query(
+      `INSERT INTO provider_rates
+         (provider_id, engagement_type, skill_id, currency, amount_paise, duration_minutes)
+       VALUES ($1, 'live_session', NULL, 'INR', $2, $3)
+       ON CONFLICT DO NOTHING`,
+      [providerId, p.live, p.minutes],
+    );
+
     console.log(`provider ${p.email} verified on ${skillIds.length} skills at ${p.tier}`);
+  }
+
+  // ── Which fields the seekers are in ──────────────────────────────────
+  // `seeker_domains` was never written by anything, so every screen had
+  // to guess — and guessed `upsc_cse`, in thirty-two places. A seeker has
+  // MANY domains (#6); Priya is given two so the field switcher in the
+  // header has something real to switch between, which is the whole
+  // reason the exam family launches as a family.
+  const seekerFields: Array<{ email: string; domains: Array<[string, string, boolean]> }> = [
+    // [domain code, the language they work in there, is it their primary]
+    { email: 'priya.nair@demo.local', domains: [['upsc_cse', 'en', true], ['uppsc', 'hi', false]] },
+    { email: 'rahul.verma@demo.local', domains: [['upsc_cse', 'hi', true]] },
+    { email: 'sneha.iyer@demo.local', domains: [['upsc_cse', 'en', true]] },
+  ];
+  for (const s of seekerFields) {
+    const u = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, role, status, adult_confirmed_at)
+       VALUES ($1, 'seeker', 'active', now())
+       ON CONFLICT (email) DO UPDATE SET status = 'active'
+       RETURNING id`,
+      [s.email],
+    );
+    for (const [code, lang, primary] of s.domains) {
+      // Skipped rather than failed when the domain is not seeded: a
+      // deployment carrying only one family is a legitimate state, and a
+      // fixture that refuses to run there helps nobody.
+      const exists = await pool.query(`SELECT 1 FROM domains WHERE code = $1`, [code]);
+      if (exists.rowCount === 0) continue;
+      await pool.query(
+        `INSERT INTO seeker_domains (seeker_id, domain_code, working_language, is_primary)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (seeker_id, domain_code)
+         DO UPDATE SET working_language = EXCLUDED.working_language,
+                       is_primary = EXCLUDED.is_primary,
+                       active = true`,
+        [u.rows[0].id, code, lang, primary],
+      );
+    }
+    console.log(`seeker ${s.email} is in ${s.domains.length} domain(s)`);
   }
 
   // ── Verified achievements ────────────────────────────────────────────
   // Real rows in provider_credentials, with evidence in verifier_data that
   // the profile endpoint must NOT publish — only the keys each credential
   // type's manifest lists in public_fields.
+  // adult_confirmed_at is NOT optional here. `check_session_preconditions`
+  // refuses a session to any user who has not confirmed they are 18+
+  // (#27), and it applies to every role — so an admin seeded without it
+  // is an admin who can never log in, and every ops screen behind them is
+  // unreachable. This row omitted it, which is why the demo had a console
+  // nobody could open.
   const admin = await pool.query<{ id: string }>(
-    `INSERT INTO users (email, role, status) VALUES ('demo.admin@demo.local', 'admin', 'active')
-     ON CONFLICT (email) DO UPDATE SET role = 'admin' RETURNING id`,
+    `INSERT INTO users (email, role, status, adult_confirmed_at)
+     VALUES ('demo.admin@demo.local', 'admin', 'active', now())
+     ON CONFLICT (email) DO UPDATE
+       SET role = 'admin', adult_confirmed_at = COALESCE(users.adult_confirmed_at, now())
+     RETURNING id`,
   );
   const adminId = admin.rows[0].id;
 

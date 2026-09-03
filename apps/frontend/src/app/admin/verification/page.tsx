@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, FieldChip, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
 import { preview, contextFor } from '@/lib/preview';
+import { requireRole } from '@/lib/session';
 import { t } from '@/lib/pack';
 import { listCredentialQueue } from '@/lib/data';
 import { ago, until } from '@/lib/format';
@@ -20,7 +21,8 @@ export const dynamic = 'force-dynamic';
  * something worse than a template.
  */
 export default async function VerificationQueuePage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('admin');
+  await requireRole('admin', '/admin/verification');
+  const { fam, lang } = await preview('admin');
   const queue = await listCredentialQueue();
   const selected = queue[0];
   /*

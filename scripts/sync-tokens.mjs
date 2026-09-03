@@ -95,7 +95,19 @@ export const cssVariables: Record<string, string> = ${JSON.stringify(cssVars, nu
 
 const targets = [
   [join(ROOT, 'apps/mobile/src/theme/generated-tokens.ts'), mobile()],
-  [join(ROOT, 'apps/web/src/lib/generated-tokens.ts'), web()],
+  /*
+   * apps/frontend is deliberately NOT a target.
+   *
+   * This pipeline exists so two clients cannot drift apart. apps/frontend
+   * is not a copy of the client it replaced — it names colour by job
+   * rather than by hue, replaces Tailwind's palette rather than extending
+   * it, and holds no hex value in any component. Generating this file
+   * into it would either be ignored or would flatten a deliberate
+   * redesign into the older system's names.
+   *
+   * Unifying the two is a design decision, not a mechanical one, and it
+   * is recorded in TRACKER.md as open rather than made quietly here.
+   */
 ];
 
 const check = process.argv.includes('--check');

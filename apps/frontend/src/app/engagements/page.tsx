@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
  * rather than sorted into a single undifferentiated list.
  */
 export default async function EngagementsPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('seeker');
+  const { fam, lang } = await preview('seeker');
   const all = await listEngagements('seeker');
 
   const needsYou = all.filter((e) => e.status === 'assessed' || e.status === 'delivered');
@@ -108,7 +108,7 @@ function Row({
   lang,
 }: {
   e: Awaited<ReturnType<typeof listEngagements>>[number];
-  lang: ReturnType<typeof preview>['lang'];
+  lang: Awaited<ReturnType<typeof preview>>['lang'];
 }): JSX.Element {
   /* Each row wears its own field's vocabulary. */
   const fam = contextFor(e.family);

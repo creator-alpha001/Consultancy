@@ -11,6 +11,10 @@ interface SubmissionDbRow {
   seeker_id: string;
   content_ref: string;
   attachment_id: string | null;
+  /** Joined from `attachments` — the client cannot decide how to display
+   *  a file without knowing what it is, and asking for the attachment
+   *  separately would be a second round trip for one string. */
+  attachment_content_type?: string | null;
   note: string;
   submitted_at: Date;
 }
@@ -22,6 +26,7 @@ function mapSubmission(row: SubmissionDbRow): SubmissionRow {
     seekerId: row.seeker_id,
     contentRef: row.content_ref,
     attachmentId: row.attachment_id,
+    attachmentContentType: row.attachment_content_type ?? null,
     note: row.note,
     submittedAt: row.submitted_at,
   };
@@ -104,7 +109,12 @@ export class SubmissionService {
 
   async getLatestForEngagement(engagementId: string): Promise<SubmissionRow | null> {
     const res = await this.pool.query<SubmissionDbRow>(
-      `SELECT * FROM submissions WHERE engagement_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+      `SELECT s.*, a.content_type AS attachment_content_type
+         FROM submissions s
+         LEFT JOIN attachments a ON a.id = s.attachment_id
+        WHERE s.engagement_id = $1
+        ORDER BY s.submitted_at DESC
+        LIMIT 1`,
       [engagementId],
     );
     return res.rows[0] ? mapSubmission(res.rows[0]) : null;

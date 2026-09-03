@@ -42,18 +42,26 @@ export class AuthController {
       role: UserRow['role'];
       confirmsAdult: boolean;
       /** Which pack's wording was on the screen, so the acceptance records it. */
+      familyCode?: string;
+      /** Older clients sent a domain; it resolves to the same family. */
       domainCode?: string;
       lang?: string;
     },
   ): Promise<UserRow> {
-    // The domain resolves the family whose agreement wording was shown.
+    // Agreement wording is FAMILY data — a domain was only ever a way to
+    // reach one, and a registration screen has no domain to name because
+    // nobody registering is in one yet. `familyCode` is what this always
+    // meant; `domainCode` still resolves for anything already sending it.
+    //
     // Optional rather than required, because refusing a registration
     // over a missing display hint would be the wrong trade — but without
     // it only the bare timestamp is kept, which is the weaker record
     // this exists to move away from.
-    const familyCode = body.domainCode
-      ? (await this.loader.getDomain(body.domainCode).catch(() => null))?.familyCode
-      : undefined;
+    const familyCode =
+      body.familyCode ??
+      (body.domainCode
+        ? (await this.loader.getDomain(body.domainCode).catch(() => null))?.familyCode
+        : undefined);
 
     return this.auth.register({
       email: body.email,

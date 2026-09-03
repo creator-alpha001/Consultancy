@@ -52,7 +52,7 @@ The seed creates seven working accounts. Password for all of them:
 The providers and the admin have **no second factor set up**, so signing
 in as one lands you on 2FA enrolment first (CLAUDE.md #32 — mandatory for
 both roles). The enrolment screen shows the secret; put it in any
-authenticator app, or use `apps/web/test/totp.mjs` to generate a code
+authenticator app, or use `apps/frontend/test/totp.mjs` to generate a code
 from it.
 
 | Command | Does |
@@ -159,13 +159,13 @@ credential pipeline.
 ## 3. Web
 
 ```bash
-cd apps/web
+cd apps/frontend
 npm install
 export API_BASE_URL=http://localhost:3000
-npm run dev                   # :3001
+npm run dev                   # :3002
 ```
 
-Open <http://localhost:3001>.
+Open <http://localhost:3002>.
 
 ### A note on `upsc_cse`
 
@@ -218,18 +218,22 @@ an authenticator app to hand.
 
 ```bash
 cd apps/api  && npm test            # 411 tests
-cd apps/web  && npm run typecheck && npm run build
+cd apps/frontend && npm run typecheck && npm run build
 ```
 
 Browser journeys, all needing the full stack running and seeded. The
 simplest way to run the lot is `./scripts/dev.sh test`; individually:
 
 ```bash
-cd apps/web
-npm run journey:booking    # booking, agenda, session, paid extension, the board
-npm run journey:provider   # the mentor side behind mandatory 2FA
-npm run journey:admin      # the ops queues, and reporting end to end
+cd apps/frontend
+npm run journey            # visitor, joining and 2FA, seeker, provider, ops,
+                           # and a pack publish reaching the live taxonomy
 npm run hardening          # Fast-3G timings and axe-core accessibility
+
+# The hardening run needs a PRODUCTION build, not the dev server: dev
+# compiles on demand, and under a 4x CPU slowdown that alone blows the
+# budget the test exists to measure.
+#   npm run build && npm start   # then: WEB_ORIGIN=http://localhost:3002 npm run hardening
 npm run journey            # the original: catalogue, auth, screening
 npm run walkthrough        # records a video into docs/screens/walkthrough/
 ```

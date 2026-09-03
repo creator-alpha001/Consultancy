@@ -1,7 +1,11 @@
+import Link from 'next/link';
 import { AppShell } from '@/components/shell';
 import { Button, Chip, Divider, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { preview } from '@/lib/preview';
-import { FAMILIES, t } from '@/lib/pack';
+import { requireRole } from '@/lib/session';
+import { listDomainsForOps } from '@/lib/data';
+import { setDomainListing } from '@/app/actions/pack';
+import { allFamilies, t } from '@/lib/pack';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +23,10 @@ export const dynamic = 'force-dynamic';
  * migration, the abstraction has failed and the right response is to say
  * so, not to special-case it.
  */
-export default function AdminConfigPage(): JSX.Element {
-  const { fam, lang } = preview('admin');
+export default async function AdminConfigPage(): Promise<JSX.Element> {
+  await requireRole('admin', '/admin/config');
+  const { fam, lang } = await preview('admin');
+  const opsDomains = await listDomainsForOps();
 
   return (
     <AppShell fam={fam} lang={lang} role="admin" current="/admin/config">
@@ -79,14 +85,76 @@ export default function AdminConfigPage(): JSX.Element {
           </p>
         </Panel>
 
+        <Panel
+          title="What is open to the public"
+          className="lg:col-span-2"
+          note="A domain appears in search only when it is listed AND active. The supply figure is what a seeker would actually find."
+        >
+          {opsDomains.length === 0 ? (
+            <p className="text-body text-ink-muted">No domains are published.</p>
+          ) : (
+            <div className="-mx-5 overflow-x-auto px-5">
+              <table className="w-full min-w-[640px] text-small">
+                <thead>
+                  <tr className="border-b border-line text-left">
+                    {['Domain', 'Field', 'State', 'Providers', 'Floor', ''].map((h) => (
+                      <th key={h} className="pb-2 text-micro font-semibold uppercase tracking-[0.09em] text-ink-muted">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {opsDomains.map((d) => (
+                    <tr key={d.domainCode}>
+                      <td className="py-3 font-medium">{d.labels?.domain?.en ?? d.domainCode}</td>
+                      <td className="py-3 text-ink-muted">{d.familyLabels?.family?.en ?? d.familyCode}</td>
+                      <td className="py-3">
+                        <Chip tone={d.publiclyListed ? 'verified' : 'neutral'}>
+                          {d.publiclyListed ? 'Open' : 'Not listed'}
+                        </Chip>
+                      </td>
+                      <td className="figure py-3">
+                        <span className={d.meetsSupplyFloor ? '' : 'text-caution'}>{d.providerCount}</span>
+                      </td>
+                      <td className="figure py-3 text-ink-muted">{d.minProvidersToList}</td>
+                      <td className="py-3 text-right">
+                        <form action={setDomainListing}>
+                          <input type="hidden" name="domainCode" value={d.domainCode} />
+                          <input type="hidden" name="publiclyListed" value={d.publiclyListed ? 'false' : 'true'} />
+                          <Button type="submit" size="sm" tone={d.publiclyListed ? 'destructive' : 'secondary'}>
+                            {d.publiclyListed ? 'Close' : 'Open'}
+                          </Button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {/*
+            The floor is advisory, never automatic. Opening a domain also
+            depends on whether its category tree has been checked against
+            a current official source, which no query knows — so refusing
+            on a count alone would block a correct decision. The number is
+            shown, and the audit entry records what it was.
+          */}
+          <p className="mt-4 border-t border-line pt-3 text-caption text-ink-muted">
+            Opening below the floor is allowed and recorded. Listing a domain nobody can serve is worse than not
+            listing it, but the count is not the only thing that decides readiness.
+          </p>
+        </Panel>
+
         <Panel title="Domain packs" className="lg:col-span-2">
           <p className="mb-4 max-w-reading text-small text-ink-muted">
             A family owns the vocabulary, the engagement types, the credential types, the safety policy and the theme.
             A domain under it is thin — its categories, its languages, its price band. Adding a domain is a manifest.
-            It is not a code change and it is not a migration.
+            It is not a code change and it is not a migration.{' '}
+            <span className="font-medium text-ink">Open a domain to edit its category tree.</span>
           </p>
           <ul className="grid gap-3 md:grid-cols-3">
-            {FAMILIES.map((f) => (
+            {allFamilies().map((f) => (
               <li key={f.code} className="rounded-md border border-line p-4">
                 <div className="flex items-center gap-2">
                   <span
@@ -106,7 +174,13 @@ export default function AdminConfigPage(): JSX.Element {
                 </dl>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {f.domains.map((d) => (
-                    <Chip key={d.code}>{d.label.en}</Chip>
+                    <Link
+                      key={d.code}
+                      href={`/admin/config/domains/${d.code}`}
+                      className="inline-flex items-center rounded-pill border border-line bg-surface-sunk px-2.5 py-1 text-caption font-medium text-ink-muted transition-colors hover:border-brand hover:text-brand"
+                    >
+                      {d.label.en}
+                    </Link>
                   ))}
                 </div>
                 <div className="mt-3">
@@ -119,8 +193,16 @@ export default function AdminConfigPage(): JSX.Element {
           </ul>
           <Divider className="my-5" />
           <div className="flex flex-wrap items-center gap-3">
-            <Button tone="secondary">Add a domain</Button>
-            <Button tone="secondary">Add a family</Button>
+            {/*
+              Creating a family or a domain from scratch means composing a
+              whole manifest — skills, credential types, tier names, the
+              safety policy — and there is no editor for those yet. A
+              button that opened nothing would be worse than saying so.
+            */}
+            <p className="text-caption text-ink-muted">
+              Creating a new domain or family still means publishing a manifest through the API; there is no form for
+              it here yet. Editing an existing domain&rsquo;s categories is above.
+            </p>
             <p className="text-caption text-ink-muted">
               Regulated domains — medical, legal, investment — cannot be opened from here. They need the licence-gating
               engine and a legal review first.

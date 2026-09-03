@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, PageHead, Panel, TierChip } from '@/components/ui';
 import { preview } from '@/lib/preview';
+import { requireRole } from '@/lib/session';
 import { t, tl } from '@/lib/pack';
 import { getProvider } from '@/lib/data';
 import { dateLong } from '@/lib/format';
@@ -19,8 +20,15 @@ export const dynamic = 'force-dynamic';
  *    rejection with no reason is how you lose good supply permanently
  */
 export default async function ProviderStandingPage(): Promise<JSX.Element> {
-  const { fam, lang } = preview('provider');
-  const me = await getProvider('prv_1');
+  /*
+   * The signed-in provider's OWN profile. This used to read a fixture id,
+   * which against the real API is simply not a provider — the page then
+   * rendered nothing and, when the API answered 400 rather than 404,
+   * failed outright.
+   */
+  const actor = await requireRole('provider', '/provider/standing');
+  const { fam, lang } = await preview('provider');
+  const me = await getProvider(actor.id);
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider/standing">

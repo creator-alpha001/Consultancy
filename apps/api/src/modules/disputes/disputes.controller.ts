@@ -85,8 +85,11 @@ export class DisputesController {
 
   @Get('admin/disputes/queue')
   @Roles('admin')
-  async queue(): Promise<DisputeRow[]> {
-    return this.disputes.listAwaitingRuling();
+  async queue(): Promise<unknown[]> {
+    // The enriched form: same rows, plus the SLA clock, the frozen
+    // amount and which side raised it — the three things a reviewer
+    // triages on and none of which the flat row carried.
+    return this.disputes.listAwaitingRulingWithContext();
   }
 
   /**
