@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
 import { Card, PageTitle } from '@/components/ui';
 import { enrolmentToken } from '@/lib/api';
-import { getDomain } from '@/lib/pack';
+import { viewerContext } from '@/lib/viewer-context';
 import { beginEnrolmentAction } from '@/app/actions/auth';
 import { EnrolForm } from './enrol-form';
 
@@ -18,13 +18,13 @@ export const dynamic = 'force-dynamic';
 export default async function EnrolPage(): Promise<JSX.Element> {
   if (!enrolmentToken()) redirect('/login');
 
-  const [domain, enrolment] = await Promise.all([
-    getDomain('upsc_cse').catch(() => null),
+  const [{ domain, language, languageOptions }, enrolment] = await Promise.all([
+    viewerContext(),
     beginEnrolmentAction(),
   ]);
 
   return (
-    <PackShell domain={domain}>
+    <PackShell domain={domain} lang={language} languageOptions={languageOptions}>
       <div className="mx-auto max-w-md">
         <PageTitle sub="Two-factor authentication is required for mentor and admin accounts.">
           Set up two-factor authentication

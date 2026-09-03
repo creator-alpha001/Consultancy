@@ -35,7 +35,7 @@ export async function registerAction(_prev: FormState, form: FormData): Promise<
         // Which pack's wording was on the screen. The acceptance record
         // stores the exact text, so this is what ties it to what was
         // actually shown rather than to whatever the pack says later.
-        domainCode: String(form.get('domainCode') ?? '') || undefined,
+        familyCode: String(form.get('familyCode') ?? '') || undefined,
         lang: String(form.get('lang') ?? '') || undefined,
       }),
     });

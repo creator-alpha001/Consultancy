@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { apiAsUser, apiPublic } from '@/lib/api';
 import { PackShell } from '@/components/pack-shell';
-import { Card, PageTitle, Status } from '@/components/ui';
+import { ActionLink, Card, PageTitle, Status } from '@/components/ui';
 import { duration, getEngagement, getSession, when } from '@/lib/engagements';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -26,11 +25,18 @@ export default async function SessionPage({ params }: { params: { id: string } }
     apiAsUser<Array<{ id: string; minutes: number; amountPaise: string; status: string }>>(
       `/sessions/${params.id}/extensions`,
     ).catch(() => []),
-    apiPublic<{ text: string }>(
-      `/agreements/document?domainCode=${engagement?.domainCode ?? 'upsc_cse'}&code=session_extension&lang=en`,
-    )
-      .then((d) => d.text)
-      .catch(() => null),
+    // The engagement's own field, or nothing. There is no sensible
+    // default here: showing another family's extension terms and
+    // recording them as accepted would be worse than showing none.
+    engagement?.domainCode
+      ? apiPublic<{ text: string }>(
+          `/agreements/document?domainCode=${encodeURIComponent(
+            engagement.domainCode,
+          )}&code=session_extension&lang=en`,
+        )
+          .then((d) => d.text)
+          .catch(() => null)
+      : Promise.resolve(null),
   ]);
   const domain = engagement?.domainCode
     ? await getDomain(engagement.domainCode).catch(() => null)
@@ -53,12 +59,8 @@ export default async function SessionPage({ params }: { params: { id: string } }
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Status value={s.status} />
-        <Link href={`/engagements/${s.engagementId}`} className="text-sm text-accent underline">
-          The engagement
-        </Link>
-        <Link href="/sessions" className="text-sm text-accent underline">
-          All sessions
-        </Link>
+        <ActionLink href={`/engagements/${s.engagementId}`}>The engagement</ActionLink>
+        <ActionLink href="/sessions">All sessions</ActionLink>
       </div>
 
       <SessionRoom

@@ -11,12 +11,15 @@ export function PostForm({
   languages,
   engagementTypes,
   priceBands,
+  categoryWord,
 }: {
   domainCode: string;
   categories: Array<{ id: string; path: string }>;
   languages: string[];
   engagementTypes: string[];
   priceBands: Record<string, [number, number]>;
+  /** What this family calls a category. Never defaulted to "Paper" here. */
+  categoryWord: string;
 }): JSX.Element {
   const [state, formAction] = useFormState<ActionState, FormData>(createBoardPostAction, {});
   const [engagementType, setEngagementType] = useState(engagementTypes[0] ?? 'document_review');
@@ -33,7 +36,7 @@ export function PostForm({
 
       <Card className="mb-4">
         <label htmlFor="categoryId" className="mb-1 block text-sm font-medium">
-          Paper or topic
+          {categoryWord} or topic
         </label>
         <select
           id="categoryId"

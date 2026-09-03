@@ -165,14 +165,65 @@ export async function agreeAction(_prev: ActionState, form: FormData): Promise<A
   return { ok: true };
 }
 
+/**
+ * The seeker pays, and the money goes into escrow.
+ *
+ * The idempotency key is derived from the ENGAGEMENT, not generated
+ * fresh per click. That is the whole point: a double-submitted form, a
+ * refreshed tab, or an impatient second click must all reach the same
+ * key and therefore the same single charge. A `crypto.randomUUID()` here
+ * would satisfy the header requirement and defeat what it is for.
+ *
+ * There is no amount in this form. The API reads it from the engagement
+ * row, so there is nothing a browser could alter to change what is
+ * charged (CLAUDE.md #28).
+ */
+export async function payAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const engagementId = str(form, 'engagementId');
+  const result = await run(() =>
+    apiAsUser(`/engagements/${engagementId}/payment`, {
+      method: 'POST',
+      idempotencyKey: `engagement-payment:${engagementId}`,
+    }),
+  );
+  if (result.error) return { error: result.error };
+  revalidatePath(`/engagements/${engagementId}`);
+  revalidatePath('/engagements');
+  return { ok: true };
+}
+
 /* ── Work and assessment ───────────────────────────────────────── */
 
+/**
+ * Send the work to be marked.
+ *
+ * `attachmentId` is a real uploaded file now; `contentRef` remains
+ * accepted because the API takes either, and a live session's outcome may
+ * genuinely have no document behind it. What is no longer possible is
+ * submitting a text "reference" to a file the platform never received.
+ */
 export async function submitWorkAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const engagementId = str(form, 'engagementId');
+  const attachmentId = str(form, 'attachmentId');
+  const contentRef = str(form, 'contentRef');
+
+  if (!attachmentId && !contentRef) {
+    return {
+      error: {
+        code: 'SUBMISSION_EMPTY',
+        message: 'Attach the file you want marked before sending this.',
+      },
+    };
+  }
+
   const result = await run(() =>
     apiAsUser(`/engagements/${engagementId}/submissions`, {
       method: 'POST',
-      body: JSON.stringify({ contentRef: str(form, 'contentRef'), note: str(form, 'note') }),
+      body: JSON.stringify({
+        ...(attachmentId ? { attachmentId } : {}),
+        ...(contentRef ? { contentRef } : {}),
+        note: str(form, 'note'),
+      }),
     }),
   );
   if (result.error) return { error: result.error };
@@ -223,6 +274,55 @@ export async function scoreEvaluationAction(_prev: ActionState, form: FormData):
 }
 
 /** Refused unless every dimension is scored — the API pre-checks, a trigger enforces. */
+/**
+ * Place a remark on the work.
+ *
+ * Called from the sheet rather than a form, so it takes the values
+ * directly instead of FormData — a click at a point is not a form
+ * submission, and pretending otherwise would mean serialising
+ * coordinates through hidden inputs for no gain.
+ *
+ * The ordinal is NOT sent. The server assigns it, because "pin 4" has to
+ * mean one thing to both parties and to a dispute.
+ */
+export async function addAnnotationAction(input: {
+  evaluationId: string;
+  engagementId: string;
+  page: number;
+  anchorX: number | null;
+  anchorY: number | null;
+  bodyText: string;
+  bodyLang: string;
+}): Promise<ActionState> {
+  const result = await run(() =>
+    apiAsUser(`/evaluations/${input.evaluationId}/annotations`, {
+      method: 'POST',
+      body: JSON.stringify({
+        page: input.page,
+        anchorX: input.anchorX,
+        anchorY: input.anchorY,
+        bodyText: input.bodyText,
+        bodyLang: input.bodyLang,
+      }),
+    }),
+  );
+  if (result.error) return { error: result.error };
+  revalidatePath(`/engagements/${input.engagementId}/evaluate`);
+  return { ok: true };
+}
+
+export async function removeAnnotationAction(input: {
+  annotationId: string;
+  engagementId: string;
+}): Promise<ActionState> {
+  const result = await run(() =>
+    apiAsUser(`/annotations/${input.annotationId}`, { method: 'DELETE' }),
+  );
+  if (result.error) return { error: result.error };
+  revalidatePath(`/engagements/${input.engagementId}/evaluate`);
+  return { ok: true };
+}
+
 export async function returnEvaluationAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const evaluationId = str(form, 'evaluationId');
   const engagementId = str(form, 'engagementId');

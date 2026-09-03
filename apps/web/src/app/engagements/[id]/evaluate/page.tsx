@@ -1,10 +1,10 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, PageTitle, Section, Status } from '@/components/ui';
+import { BackLink, Card, PageTitle, Section, Status } from '@/components/ui';
 import { getEngagement, getLatestEvaluation, getLatestSubmission } from '@/lib/engagements';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
+import { AnnotateSheet } from './annotate';
 import { OpenEvaluation, RubricForm } from './rubric-form';
 
 export const dynamic = 'force-dynamic';
@@ -32,28 +32,41 @@ export default async function EvaluatePage({ params }: { params: { id: string } 
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Status value={engagement.status} />
-        <Link href={`/engagements/${params.id}`} className="text-sm text-accent underline">
-          Back to the engagement
-        </Link>
+        <BackLink href={`/engagements/${params.id}`}>Back to the engagement</BackLink>
       </div>
 
-      <Section title="The work">
-        {submission ? (
+      {/*
+          The sheet, with the remarks on it. This section used to print a
+          text "reference" to a document the platform never received —
+          there was no upload, so there was nothing to open and nothing to
+          mark. Both halves exist now.
+      */}
+      {submission?.note && (
+        <Section title="What they asked you to look at">
           <Card>
-            <p className="font-mono text-xs text-ink-muted">{submission.contentRef}</p>
-            {submission.note && <p className="mt-2 text-sm">{submission.note}</p>}
-            {/*
-                A pointer, not a file. Private object storage with signed URLs and
-                viewer watermarking is required but not built yet, so nothing here
-                opens a document.
-            */}
+            <p className="text-body">{submission.note}</p>
           </Card>
-        ) : (
+        </Section>
+      )}
+
+      {submission && evaluation && isProvider && (
+        <Section title="The work">
+          <AnnotateSheet
+            evaluation={evaluation}
+            submission={submission}
+            engagementId={params.id}
+            language={language}
+          />
+        </Section>
+      )}
+
+      {!submission && (
+        <Section title="The work">
           <Card>
-            <p className="text-sm text-ink-muted">Nothing submitted yet.</p>
+            <p className="text-body text-ink-muted">Nothing submitted yet.</p>
           </Card>
-        )}
-      </Section>
+        </Section>
+      )}
 
       {!isProvider ? (
         <Section title="You are the seeker on this engagement">

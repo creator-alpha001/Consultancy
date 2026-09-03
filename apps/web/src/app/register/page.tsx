@@ -2,28 +2,42 @@ import Link from 'next/link';
 import { PackShell } from '@/components/pack-shell';
 import { Card, PageTitle } from '@/components/ui';
 import { apiPublic } from '@/lib/api';
-import { getDomain, label } from '@/lib/pack';
+import { CatalogueFamily, getCatalogue, label } from '@/lib/pack';
+import { viewerContext } from '@/lib/viewer-context';
+import { capitalise } from '@/lib/words';
 import { RegisterForm } from './register-form';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RegisterPage(): Promise<JSX.Element> {
-  const domainCode = 'upsc_cse';
-  const domain = await getDomain(domainCode).catch(() => null);
-  const seekerWord = label(domain?.labels.seeker, 'en') || 'Seeker';
-  const providerWord = label(domain?.labels.provider, 'en') || 'Provider';
+  const { domain, language, languageOptions } = await viewerContext();
+  const seekerWord = capitalise(label(domain?.labels.seeker, language) || 'Person');
+  const providerWord = capitalise(label(domain?.labels.provider, language) || 'Expert');
 
-  // The wording people are asked to agree to comes from the family pack,
-  // so a lawyer can revise it without a deploy — and so this file never
-  // contains the words themselves.
+  // Agreement documents are FAMILY data. Nobody registering is in a
+  // domain yet, so this asks by family — it used to name one exam in
+  // order to reach terms that were never that exam's in the first place.
+  //
+  // Which family: the viewer's, if a link brought them into one;
+  // otherwise the first published family. That fallback is a real
+  // limitation, not a design — a platform carrying several families
+  // needs PLATFORM-level terms, which is a legal question, not a coding
+  // one. Recorded in TRACKER.md.
+  const families = await getCatalogue().catch(() => [] as CatalogueFamily[]);
+  const familyCode = domain?.familyCode ?? families[0]?.code;
+
   const doc = async (code: string): Promise<string | null> =>
-    apiPublic<{ text: string }>(`/agreements/document?domainCode=${domainCode}&code=${code}&lang=en`)
-      .then((d) => d.text)
-      .catch(() => null);
+    familyCode
+      ? apiPublic<{ text: string }>(
+          `/agreements/document?familyCode=${encodeURIComponent(familyCode)}&code=${code}&lang=${language}`,
+        )
+          .then((d) => d.text)
+          .catch(() => null)
+      : null;
   const [adultText, termsText] = await Promise.all([doc('adult_attestation'), doc('terms_of_service')]);
 
   return (
-    <PackShell domain={domain}>
+    <PackShell domain={domain} lang={language} languageOptions={languageOptions}>
       <div className="mx-auto max-w-md">
         <PageTitle sub="You will confirm your goals in writing before any money moves.">
           Create an account
@@ -33,7 +47,7 @@ export default async function RegisterPage(): Promise<JSX.Element> {
           <RegisterForm
             seekerWord={seekerWord}
             providerWord={providerWord}
-            domainCode={domainCode}
+            familyCode={familyCode}
             adultText={adultText ?? 'I confirm I am 18 years of age or older.'}
             termsText={termsText}
           />

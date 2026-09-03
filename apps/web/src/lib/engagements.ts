@@ -50,6 +50,8 @@ export interface ProviderSkill {
 }
 
 export interface ProviderCard {
+  /** What they sell, with price and commitment. Never ordered by price (#15). */
+  services?: ProviderRate[];
   providerId: string;
   displayName: string;
   languages: string[];
@@ -96,12 +98,29 @@ export interface Evaluation {
   annotatedRef: string | null;
   overallNote: string | null;
   returnedAt: string | null;
+  /** Remarks anchored to a place on the work, in reading order. */
+  annotations: Annotation[];
+}
+
+/** Mirrors the API's AnnotationRow — see migration 0041 for the position model. */
+export interface Annotation {
+  id: string;
+  ordinal: number;
+  page: number;
+  anchorX: number | null;
+  anchorY: number | null;
+  bodyText: string;
+  bodyLang: string;
 }
 
 export interface Submission {
   id: string;
   engagementId: string;
   contentRef: string;
+  /** A private uploaded file. Null for a submission that is only a pointer. */
+  attachmentId: string | null;
+  /** What that file is — the sheet cannot decide how to show it otherwise. */
+  attachmentContentType: string | null;
   note: string;
   submittedAt: string;
 }
@@ -160,8 +179,22 @@ export const searchProviders = (params: { categoryId: string; language?: string;
   return apiPublic<ProviderCard[]>(`/providers?${q.toString()}`);
 };
 
+export interface ProviderRate {
+  id: string;
+  engagementType: string;
+  skillId: string | null;
+  skillCode: string | null;
+  skillLabels: Record<string, string> | null;
+  currency: string;
+  amountPaise: string;
+  /** Time with the seeker. Live work only. */
+  durationMinutes: number | null;
+  /** Time until it comes back. Async work only. */
+  turnaroundHours: number | null;
+}
+
 export const getProvider = (id: string) =>
-  apiPublic<ProviderCard & { reviews: unknown[] }>(`/providers/${id}`);
+  apiPublic<ProviderCard & { reviews: unknown[]; rates: ProviderRate[] }>(`/providers/${id}`);
 
 export const searchBoard = (params: { domainCode?: string; language?: string } = {}) => {
   const q = new URLSearchParams();

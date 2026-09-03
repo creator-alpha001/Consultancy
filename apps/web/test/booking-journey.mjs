@@ -89,7 +89,12 @@ const page = await ctx.newPage();
 
 // ── 1. Discovery, signed out ─────────────────────────────────────────
 console.log('\n1. Find a mentor (public)');
-await page.goto(`${WEB}/mentors`, { waitUntil: 'networkidle' });
+// Search is scoped to one field (#5 — verification is per skill within
+// a field, so there is no cross-field search to run). Signed out with
+// no field chosen, /mentors correctly shows a prompt to pick one rather
+// than guessing — this follows a link the way a domain page's own "Find
+// someone here" button does.
+await page.goto(`${WEB}/mentors?domain=upsc_cse`, { waitUntil: 'networkidle' });
 let body = await page.textContent('body');
 /मेंटर|Mentor/.test(body)
   ? ok('provider label resolved from the pack (Devanagari on a Hindi-default domain)')
@@ -232,7 +237,9 @@ await signIn(page, seeker);
 await warm(['/mentors', '/engagements', '/sessions', '/board', '/board/new']);
 
 console.log('\n4. The booking screen');
-await page.goto(`${WEB}/mentors`, { waitUntil: 'networkidle' });
+// This seeker has declared no field and booked nothing yet, so /mentors
+// alone would resolve to none — the same reason as step 1.
+await page.goto(`${WEB}/mentors?domain=upsc_cse`, { waitUntil: 'networkidle' });
 (await page.textContent('body')).includes('Sign out')
   ? ok('the session survived the navigation')
   : bad('signed out unexpectedly on /mentors');
@@ -243,8 +250,22 @@ await Promise.all([
 await page.waitForLoadState('networkidle');
 body = await page.textContent('body');
 body.includes('document review') ? ok('engagement types come from the pack') : bad('engagement types missing');
-body.includes('Typical for this category') ? ok('price band comes from the domain pack') : bad('price band missing');
-body.includes('paise') ? ok('the stored paise value is shown beside the rupee amount') : bad('paise not surfaced');
+
+// The price model changed deliberately: a provider publishes a price for
+// a stated duration or turnaround, and there is no negotiation on it.
+// This step used to assert a price BAND and a paise figure, which is the
+// old negotiable model — a screen that offered a range invited a haggle
+// the product does not have.
+/Set by .+\. It goes into escrow/.test(body.replace(/\s+/g, ' '))
+  ? ok("one price, named as the provider's own — not a band to negotiate within")
+  : bad('the price is not stated as set by the provider');
+/₹[\d,]+/.test(body) ? ok('the price is shown in rupees') : bad('no price on the booking screen');
+/Back within|minutes|minute session/.test(body)
+  ? ok('and what the price buys — a duration, or a turnaround')
+  : bad('the price names no duration or turnaround');
+/Typical for this category|–\s*₹/.test(body)
+  ? bad('a price band is still being shown — there is no price negotiation')
+  : ok('no price band is offered');
 console.log('   → ' + (await shot(page, 'booking-document-review')));
 
 console.log('\n5. Switch to a live session — the slot picker appears');
@@ -486,32 +507,48 @@ const mentorPage = await (await browser.newContext({ viewport: { width: 1280, he
 const mentor = `book-mentor-${uniq}@test.local`;
 await register(mentorPage, mentor, 'provider');
 
-// Password alone lands a provider on enrolment, never on the product.
-// Strict: #32 makes 2FA mandatory, so anywhere else is a failure, not an
-// alternative. The old version reported ok on both branches, which is
-// how a helper that never actually selected the provider role went
-// unnoticed for as long as it did.
-await mentorPage.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
-await mentorPage.fill('#f-email', mentor);
-await mentorPage.fill('#f-password', PASS);
-await mentorPage.click('button[type=submit]');
-await mentorPage.waitForURL('**/mfa/**', { timeout: 45000 });
-ok('a new mentor is routed to 2FA enrolment, not locked out (#32)');
-
-const mentorSecret = (await mentorPage.locator('code').first().textContent())?.trim();
-await mentorPage.fill('input[name=code]', totp(mentorSecret));
-await mentorPage.click('button[type=submit]');
-await mentorPage.waitForLoadState('networkidle');
+// Whether a provider must enrol is the `mfa_policy` row for the role,
+// not a constant. It is off for providers by an explicit decision, and
+// asserting the old answer made a correct configuration fail. Read the
+// policy; then hold the app to whichever answer it gives, strictly —
+// there is no branch here that passes either way.
+const providerMfa = execFileSync(
+  'psql',
+  ['-U', 'sankalp', '-h', 'localhost', '-d', 'sankalp_dev', '-tAc',
+   "SELECT mandatory FROM mfa_policy WHERE role = 'provider'"],
+  { env: { ...process.env, PGPASSWORD: 'sankalp' }, encoding: 'utf8' },
+).trim() === 't';
 
 await mentorPage.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
 await mentorPage.fill('#f-email', mentor);
 await mentorPage.fill('#f-password', PASS);
 await mentorPage.click('button[type=submit]');
-await mentorPage.waitForSelector('input[name=totpCode]', { timeout: 45000 });
-await mentorPage.fill('input[name=totpCode]', totp(mentorSecret));
-await mentorPage.click('button[type=submit]');
-await mentorPage.waitForSelector('button:has-text("Sign out")', { timeout: 45000 });
-ok('mentor signed in with 2FA satisfied');
+
+if (providerMfa) {
+  await mentorPage.waitForURL('**/mfa/**', { timeout: 45000 });
+  ok('a new mentor is routed to 2FA enrolment, not locked out (#32)');
+
+  const mentorSecret = (await mentorPage.locator('code').first().textContent())?.trim();
+  await mentorPage.fill('input[name=code]', totp(mentorSecret));
+  await mentorPage.click('button[type=submit]');
+  await mentorPage.waitForLoadState('networkidle');
+
+  await mentorPage.goto(`${WEB}/login`, { waitUntil: 'networkidle' });
+  await mentorPage.fill('#f-email', mentor);
+  await mentorPage.fill('#f-password', PASS);
+  await mentorPage.click('button[type=submit]');
+  await mentorPage.waitForSelector('input[name=totpCode]', { timeout: 45000 });
+  await mentorPage.fill('input[name=totpCode]', totp(mentorSecret));
+  await mentorPage.click('button[type=submit]');
+  await mentorPage.waitForSelector('button:has-text("Sign out")', { timeout: 45000 });
+  ok('mentor signed in with 2FA satisfied');
+} else {
+  await mentorPage.waitForSelector('button:has-text("Sign out")', { timeout: 45000 });
+  mentorPage.url().includes('/mfa/')
+    ? bad('mentor sent to 2FA enrolment though the policy says it is not mandatory')
+    : ok('mentor signed in — 2FA is off for the role by policy, so it is not demanded');
+  console.log('  [2m· provider 2FA is UNENFORCED. Turn the mfa_policy row back on before launch.[0m');
+}
 
 await mentorPage.goto(`${WEB}/mentor`, { waitUntil: 'networkidle' });
 const mentorBody = await mentorPage.textContent('body');

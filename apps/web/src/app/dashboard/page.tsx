@@ -4,7 +4,7 @@ import { PackShell } from '@/components/pack-shell';
 import { Card, Money, PageTitle, Status } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import { getDomain, label } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,12 +36,11 @@ interface SkillStat {
  * "whose?" parameter, so this literally cannot show anyone else's.
  */
 export default async function DashboardPage(): Promise<JSX.Element> {
-  const user = await currentUser();
+  const { user, domain, available, language, languageOptions } = await viewerContext();
   if (!user) redirect('/login');
 
   const isProvider = user.role === 'provider';
-  const [domain, engagements, stats, paidWork] = await Promise.all([
-    getDomain('upsc_cse').catch(() => null),
+  const [engagements, stats, paidWork] = await Promise.all([
     apiAsUser<EngagementSummary[]>('/engagements').catch(() => []),
     isProvider ? apiAsUser<SkillStat[]>('/me/skill-stats').catch(() => []) : Promise.resolve([]),
     isProvider
@@ -50,11 +49,17 @@ export default async function DashboardPage(): Promise<JSX.Element> {
   ]);
 
   const roleWord = isProvider
-    ? label(domain?.labels.provider, 'en') || 'Provider'
-    : label(domain?.labels.seeker, 'en') || 'Seeker';
+    ? label(domain?.labels.provider, language) || 'Provider'
+    : label(domain?.labels.seeker, language) || 'Seeker';
 
   return (
-    <PackShell domain={domain} actor={user}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={user}
+      available={available}
+      languageOptions={languageOptions}
+    >
       <PageTitle sub={`Signed in as ${user.email} · ${roleWord}`}>Dashboard</PageTitle>
 
       {isProvider && paidWork.blocked && (
@@ -73,7 +78,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
             <h2 id="engagements" className="text-lg font-semibold">
               Your engagements
             </h2>
-            <Link href="/board" className="text-sm underline">
+            <Link href="/board" className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">
               {isProvider ? 'Find work' : 'Post a request'}
             </Link>
           </div>
@@ -153,13 +158,41 @@ export default async function DashboardPage(): Promise<JSX.Element> {
             </Card>
           )}
 
+          {/*
+              The two screens a seeker otherwise had to find by guessing.
+              A dashboard that lists engagements and nothing else is a dead
+              end for anyone between pieces of work.
+          */}
+          {user.role === 'seeker' && (
+            <Card tone="outline">
+              <h2 className="text-heading font-semibold tracking-tight">Your own record</h2>
+              <p className="mt-sm text-small text-ink-muted">
+                How your marks have moved, what you were asked to work on, and where your money is.
+              </p>
+              <div className="mt-lg flex flex-wrap gap-md">
+                <Link
+                  href="/progress"
+                  className="inline-flex min-h-[44px] items-center rounded-pill border border-rule px-lg text-small font-medium transition-colors hover:bg-surface-sunk"
+                >
+                  Progress
+                </Link>
+                <Link
+                  href="/money"
+                  className="inline-flex min-h-[44px] items-center rounded-pill border border-rule px-lg text-small font-medium transition-colors hover:bg-surface-sunk"
+                >
+                  Money
+                </Link>
+              </div>
+            </Card>
+          )}
+
           <Card>
             <h2 className="mb-2 text-base font-semibold">Ask a question</h2>
             <p className="mb-3 text-sm text-ink-muted">
               {domain?.policy.freeQuestionsPerDay ?? 3} free questions a day, answered by verified
               mentors.
             </p>
-            <Link href="/board#ask" className="text-sm underline">
+            <Link href="/board#ask" className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">
               Go to the question board
             </Link>
           </Card>
@@ -167,7 +200,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
           {user.role === 'admin' && (
             <Card>
               <h2 className="mb-2 text-base font-semibold">Operations</h2>
-              <Link href="/admin" className="text-sm underline">
+              <Link href="/admin" className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">
                 Reconciliation and queues
               </Link>
             </Card>

@@ -5,7 +5,7 @@ import { Card, PageTitle, Section } from '@/components/ui';
 import { RelayPanel } from './admin-panels';
 import { apiAsUser } from '@/lib/api';
 import { getDomain } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,19 +35,23 @@ interface Report {
  * has understood what happened.
  */
 export default async function AdminPage(): Promise<JSX.Element> {
-  const user = await currentUser();
+  const { user: user, domain, language, languageOptions } = await viewerContext();
   if (!user) redirect('/login');
   if (user.role !== 'admin') redirect('/dashboard');
 
-  const [domain, report] = await Promise.all([
-    getDomain('upsc_cse').catch(() => null),
+  const [report] = await Promise.all([
     apiAsUser<Report>('/admin/reconciliation').catch(() => null),
   ]);
 
   const critical = (report?.findings ?? []).filter((f) => f.severity === 'critical');
 
   return (
-    <PackShell domain={domain} actor={user}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={user}
+      languageOptions={languageOptions}
+    >
       <PageTitle sub="Read-only. Corrections are reversing entries made by a human, never a button here.">
         Reconciliation
       </PageTitle>
@@ -101,6 +105,7 @@ export default async function AdminPage(): Promise<JSX.Element> {
             ['/admin/disputes', 'Disputes to adjudicate'],
             ['/admin/moderation', 'Held for review'],
             ['/admin/reports', 'Reports from people'],
+            ['/admin/catalogue', 'Catalogue and supply'],
           ].map(([href, label]) => (
             <Link
               key={href}

@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, EmptyState, PageTitle, Section, Status } from '@/components/ui';
+import { ActionLink, Card, EmptyState, PageTitle, Section, Status } from '@/components/ui';
 import { duration, listSessions, when } from '@/lib/engagements';
 import { currentUser } from '@/lib/session';
 
@@ -47,9 +46,7 @@ export default async function SessionsPage(): Promise<JSX.Element> {
           </div>
           <div className="flex items-center gap-3">
             <Status value={r.status} />
-            <Link href={`/sessions/${r.id}`} className="text-sm text-accent underline">
-              Open
-            </Link>
+            <ActionLink href={`/sessions/${r.id}`}>Open</ActionLink>
           </div>
         </div>
       </Card>
@@ -64,9 +61,7 @@ export default async function SessionsPage(): Promise<JSX.Element> {
         {upcoming.length === 0 ? (
           <EmptyState
             action={
-              <Link href="/mentors" className="text-sm text-accent underline">
-                Find someone to book
-              </Link>
+              <ActionLink href="/mentors">Find someone to book</ActionLink>
             }
           >
             Nothing booked.

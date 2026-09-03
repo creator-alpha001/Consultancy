@@ -8,33 +8,57 @@
  * black primary buttons, and a much larger, tighter display size.
  * Separation comes from fill and whitespace rather than from lines.
  */
+import Link from 'next/link';
 
 export function Card({
   children,
   className = '',
+  tone = 'sunk',
 }: {
   children: React.ReactNode;
   className?: string;
+  /**
+   * `sunk` is the default grey panel. `outline` is a lighter weight for
+   * dense grids where a wall of filled boxes reads as noise, and `lead`
+   * is the one card on a page that should carry more weight than the
+   * rest. Having three is the point: with a single card style nothing on
+   * a page can be more important than anything else.
+   */
+  tone?: 'sunk' | 'outline' | 'lead';
 }): JSX.Element {
-  return (
-    <div className={`rounded-lg bg-surface-sunk p-xl ${className}`}>{children}</div>
-  );
+  const tones = {
+    sunk: 'bg-surface-sunk',
+    outline: 'border border-rule bg-surface',
+    lead: 'bg-ink text-accent-ink',
+  }[tone];
+  return <div className={`rounded-lg p-xl ${tones} ${className}`}>{children}</div>;
 }
 
 export function PageTitle({
   children,
   sub,
   eyebrow,
+  action,
 }: {
   children: React.ReactNode;
   sub?: React.ReactNode;
   eyebrow?: React.ReactNode;
+  /** A primary button beside the heading — "Find someone here" on a domain page,
+      the thing this screen exists for. Wraps under the title on a narrow screen. */
+  action?: React.ReactNode;
 }): JSX.Element {
   return (
-    <div className="mb-xxl max-w-2xl">
-      {eyebrow && <p className="mb-sm text-small text-ink-muted">{eyebrow}</p>}
-      <h1 className="text-display font-semibold">{children}</h1>
-      {sub && <p className="mt-md text-body text-ink-muted">{sub}</p>}
+    <div className="mb-xxl max-w-3xl">
+      {eyebrow && (
+        <p className="mb-md text-caption font-medium uppercase tracking-[0.12em] text-ink-muted">
+          {eyebrow}
+        </p>
+      )}
+      <div className="flex flex-wrap items-start justify-between gap-lg">
+        <h1 className="text-display font-semibold text-balance">{children}</h1>
+        {action && <div className="flex-none">{action}</div>}
+      </div>
+      {sub && <p className="mt-lg max-w-prose text-body text-ink-muted">{sub}</p>}
     </div>
   );
 }
@@ -96,8 +120,8 @@ export function Field({
 } & React.InputHTMLAttributes<HTMLInputElement>): JSX.Element {
   const id = `f-${name}`;
   return (
-    <div className="mb-4">
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+    <div className="mb-lg">
+      <label htmlFor={id} className="mb-sm block text-small font-medium">
         {text}
         {required && <span aria-hidden="true"> *</span>}
       </label>
@@ -108,11 +132,11 @@ export function Field({
         required={required}
         defaultValue={defaultValue}
         aria-describedby={hint ? `${id}-hint` : undefined}
-        className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-base"
+        className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-body transition-colors placeholder:text-ink-faint hover:border-ink-faint focus:border-ink"
         {...rest}
       />
       {hint && (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-ink-muted">
+        <p id={`${id}-hint`} className="mt-sm text-caption text-ink-muted">
           {hint}
         </p>
       )}
@@ -169,8 +193,8 @@ export function Textarea({
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement>): JSX.Element {
   const id = `f-${name}`;
   return (
-    <div className="mb-4">
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+    <div className="mb-lg">
+      <label htmlFor={id} className="mb-sm block text-small font-medium">
         {text}
         {required && <span aria-hidden="true"> *</span>}
       </label>
@@ -181,11 +205,11 @@ export function Textarea({
         required={required}
         defaultValue={defaultValue}
         aria-describedby={hint ? `${id}-hint` : undefined}
-        className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-base"
+        className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-body transition-colors placeholder:text-ink-faint hover:border-ink-faint focus:border-ink"
         {...rest}
       />
       {hint && (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-ink-muted">
+        <p id={`${id}-hint`} className="mt-sm text-caption text-ink-muted">
           {hint}
         </p>
       )}
@@ -210,8 +234,8 @@ export function Select({
 }): JSX.Element {
   const id = `f-${name}`;
   return (
-    <div className="mb-4">
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+    <div className="mb-lg">
+      <label htmlFor={id} className="mb-sm block text-small font-medium">
         {text}
         {required && <span aria-hidden="true"> *</span>}
       </label>
@@ -221,7 +245,7 @@ export function Select({
         required={required}
         defaultValue={defaultValue}
         aria-describedby={hint ? `${id}-hint` : undefined}
-        className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-base"
+        className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-body transition-colors placeholder:text-ink-faint hover:border-ink-faint focus:border-ink"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -230,7 +254,7 @@ export function Select({
         ))}
       </select>
       {hint && (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-ink-muted">
+        <p id={`${id}-hint`} className="mt-sm text-caption text-ink-muted">
           {hint}
         </p>
       )}
@@ -251,12 +275,12 @@ export function Section({
   note?: string;
 }): JSX.Element {
   return (
-    <section className="mb-8">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-heading font-semibold">{title}</h2>
+    <section className="mb-xxl">
+      <div className="mb-lg flex flex-wrap items-baseline justify-between gap-md">
+        <h2 className="text-heading font-semibold tracking-tight">{title}</h2>
         {action}
       </div>
-      {note && <p className="mb-3 text-sm text-ink-muted">{note}</p>}
+      {note && <p className="-mt-sm mb-lg max-w-prose text-small text-ink-muted">{note}</p>}
       {children}
     </section>
   );
@@ -264,9 +288,9 @@ export function Section({
 
 export function EmptyState({ children, action }: { children: React.ReactNode; action?: React.ReactNode }): JSX.Element {
   return (
-    <div className="rounded-lg bg-surface-sunk p-xxl text-center">
-      <p className="text-sm text-ink-muted">{children}</p>
-      {action && <div className="mt-3">{action}</div>}
+    <div className="rounded-lg border border-dashed border-rule px-xl py-xxxl text-center">
+      <p className="mx-auto max-w-prose text-body text-ink-muted">{children}</p>
+      {action && <div className="mt-xl">{action}</div>}
     </div>
   );
 }
@@ -282,7 +306,7 @@ export function Avatar({ name }: { name: string }): JSX.Element {
   return (
     <span
       aria-hidden="true"
-      className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-ink text-small font-medium text-accent-ink"
+      className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-ink text-small font-medium tracking-tight text-accent-ink"
     >
       {initials}
     </span>
@@ -296,7 +320,10 @@ export function Avatar({ name }: { name: string }): JSX.Element {
  */
 export function TierChip({ tier }: { tier: string }): JSX.Element {
   return (
-    <span className="rounded-pill bg-surface px-md py-xs text-caption font-medium text-ink">
+    <span className="inline-flex items-center gap-xs rounded-pill border border-rule bg-surface px-md py-xs text-caption font-medium text-ink">
+      <svg viewBox="0 0 16 16" className="h-[11px] w-[11px] text-good" fill="currentColor" aria-hidden="true">
+        <path d="M6.2 11.6L3 8.4l1.1-1.1 2.1 2.1L11.9 3.6 13 4.7z" />
+      </svg>
       {tier.toUpperCase()} verified
     </span>
   );
@@ -308,13 +335,25 @@ export function TierChip({ tier }: { tier: string }): JSX.Element {
  */
 export function Rating({ value, count }: { value: number | null; count: number }): JSX.Element {
   if (value === null || count === 0) {
-    return <span className="text-xs text-ink-muted">No reviews yet</span>;
+    return <span className="text-caption text-ink-muted">No reviews yet</span>;
   }
   const rounded = Math.round(value * 10) / 10;
+  const filled = Math.round(value);
   return (
-    <span className="text-xs text-ink-muted">
-      <span aria-hidden="true">{'★'.repeat(Math.round(value))}{'☆'.repeat(5 - Math.round(value))}</span>{' '}
-      <span className="tabular-nums">{rounded}</span> ({count})
+    <span className="inline-flex items-center gap-sm text-caption text-ink-muted">
+      <span aria-hidden="true" className="inline-flex gap-[2px]">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <svg key={i} viewBox="0 0 20 20" className="h-[13px] w-[13px]" fill="currentColor">
+            <path
+              className={i < filled ? 'text-ink' : 'text-rule'}
+              fill="currentColor"
+              d="M10 1.6l2.47 5.2 5.53.78-4 4.03.95 5.79L10 14.67l-4.95 2.73.95-5.79-4-4.03 5.53-.78z"
+            />
+          </svg>
+        ))}
+      </span>
+      <span className="tabular-nums text-ink">{rounded}</span>
+      <span>({count})</span>
     </span>
   );
 }
@@ -336,7 +375,7 @@ export function Lifecycle({ status }: { status: string }): JSX.Element {
     );
   }
   return (
-    <ol className="flex flex-wrap gap-x-1 gap-y-2 text-xs" aria-label="Progress">
+    <ol className="flex flex-wrap items-center gap-x-sm gap-y-sm text-caption" aria-label="Progress">
       {LIFECYCLE.map((step, i) => (
         <li key={step} className="flex items-center gap-1">
           <span
@@ -358,3 +397,69 @@ export function Lifecycle({ status }: { status: string }): JSX.Element {
   );
 }
 
+
+/**
+ * The way back out of a detail screen.
+ *
+ * It exists as a component because it appeared three times as a bare
+ * `text-sm underline` — which is a 20px-tall target on a phone. A thumb
+ * needs 44px, and the definition of done says so. Written once so the
+ * next detail screen inherits it rather than repeating the mistake.
+ *
+ * The arrow is decorative; the words carry the meaning.
+ */
+export function BackLink({ href, children }: { href: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <Link
+      href={href}
+      className="-ml-sm inline-flex min-h-[44px] items-center gap-xs rounded-pill px-sm text-small text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+    >
+      <span aria-hidden="true">&larr;</span>
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * "Go here" — a section's action, a row's open link, an empty state's way out.
+ *
+ * The same eight-word link was written eight times as `text-sm text-accent
+ * underline`, which lands as a 20px-tall target. Only the two on screens
+ * that happened to have rows were caught; the rest were waiting. One
+ * component so the ninth is right by default.
+ */
+export function ActionLink({ href, children }: { href: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-[44px] items-center text-small font-medium text-accent underline underline-offset-4 hover:opacity-80"
+    >
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * A wide table that scrolls inside itself instead of dragging the page sideways.
+ *
+ * `overflow-x-auto` alone is not enough. A `<table>` with a `min-width`
+ * inside a scroll container still propagates its overflow to the viewport
+ * in Chrome — the container clips the paint, but the whole page becomes
+ * horizontally scrollable anyway. At 360px that means every row's right
+ * half is off-screen with no indication it exists.
+ *
+ * `contain: paint` is what actually stops it; neither `overflow-x: clip`
+ * on the wrapper nor on `<main>` does. Measured, not guessed — see
+ * `test/mobile-fit.mjs`, which is what caught it.
+ *
+ * The wrapper is a component rather than a copied class string because
+ * the same three-class incantation appeared in three files and was
+ * subtly wrong in all of them.
+ */
+export function TableScroll({ children }: { children: React.ReactNode }): JSX.Element {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-rule [contain:paint]" tabIndex={0}>
+      {children}
+    </div>
+  );
+}

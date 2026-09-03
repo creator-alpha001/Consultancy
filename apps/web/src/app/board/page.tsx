@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, Money, PageTitle, Status } from '@/components/ui';
+import { ActionLink, Card, Money, PageTitle, Status } from '@/components/ui';
 import { apiAsUser, apiPublic } from '@/lib/api';
-import { getDomain, label } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { label } from '@/lib/pack';
+import { viewerContext } from '@/lib/viewer-context';
+import { pluralWord } from '@/lib/words';
 import { AskForm } from './ask-form';
 
 export const dynamic = 'force-dynamic';
@@ -27,20 +29,36 @@ interface Question {
   status: string;
 }
 
-export default async function BoardPage(): Promise<JSX.Element> {
-  const user = await currentUser();
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: { domain?: string };
+}): Promise<JSX.Element> {
+  const { user, domain, available, language, languageOptions } = await viewerContext(searchParams);
   if (!user) redirect('/login');
 
-  const [domain, posts, questions] = await Promise.all([
-    getDomain('upsc_cse').catch(() => null),
+  const [posts, questions] = await Promise.all([
     apiAsUser<BoardPost[]>('/board/posts').catch(() => []),
-    apiPublic<Question[]>('/board/questions?domainCode=upsc_cse').catch(() => []),
+    // Questions belong to a field. Asking for one particular exam's
+    // meant a mentor in any other family saw an empty board and a
+    // seeker saw questions from a field they were not in.
+    domain
+      ? apiPublic<Question[]>(
+          `/board/questions?domainCode=${encodeURIComponent(domain.domainCode)}`,
+        ).catch(() => [])
+      : Promise.resolve([] as Question[]),
   ]);
 
   const isProvider = user.role === 'provider';
 
   return (
-    <PackShell domain={domain} actor={user}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={user}
+      available={available}
+      languageOptions={languageOptions}
+    >
       <PageTitle
         sub={
           isProvider
@@ -50,6 +68,28 @@ export default async function BoardPage(): Promise<JSX.Element> {
       >
         The board
       </PageTitle>
+
+      {/*
+        A seeker with no field yet — nothing declared, nothing booked —
+        resolves to no domain, and the ask form and the request list both
+        need one. Silently hiding them with no way forward is a dead end,
+        not an empty state; this is the way out of it.
+      */}
+      {!domain && (
+        <Card tone="outline" className="mb-xxl">
+          <p className="text-bodyStrong font-medium">Pick a field to see requests and ask questions.</p>
+          <p className="mt-sm text-small text-ink-muted">
+            The board is scoped to one field at a time — questions and requests belong to the people
+            verified to answer them.
+          </p>
+          <Link
+            href="/domains"
+            className="mt-lg inline-flex min-h-[44px] items-center text-small font-medium underline underline-offset-4"
+          >
+            Explore fields &rarr;
+          </Link>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2" aria-labelledby="open">
@@ -84,6 +124,17 @@ export default async function BoardPage(): Promise<JSX.Element> {
                         </p>
                       </div>
                     </div>
+                    {/*
+                      The way in. /board/[id] holds the proposals and the
+                      accept decision, and nothing linked to it — a seeker
+                      could post a request, receive proposals, and have no
+                      route to them from the only screen that lists the post.
+                    */}
+                    <div className="mt-md border-t border-rule pt-sm">
+                      <ActionLink href={`/board/${p.id}`}>
+                        {isProvider ? 'Propose on this' : 'Open it and see proposals'}
+                      </ActionLink>
+                    </div>
                   </Card>
                 </li>
               ))}
@@ -102,9 +153,15 @@ export default async function BoardPage(): Promise<JSX.Element> {
             </h2>
             <p className="mb-3 text-sm text-ink-muted">
               {domain?.policy.freeQuestionsPerDay ?? 3} a day. Answered by verified{' '}
-              {(label(domain?.labels.provider, 'en') || 'mentor').toLowerCase()}s.
+              {pluralWord((label(domain?.labels.provider, language) || 'expert').toLowerCase())}.
             </p>
-            <AskForm domainCode="upsc_cse" />
+            {domain ? (
+              <AskForm domainCode={domain.domainCode} />
+            ) : (
+              <p className="text-sm text-ink-muted">
+                Pick a field first — a question is asked of the people verified in one.
+              </p>
+            )}
           </Card>
 
           <Card>

@@ -17,14 +17,14 @@ function Submit(): JSX.Element {
 export function RegisterForm({
   seekerWord,
   providerWord,
-  domainCode,
+  familyCode,
   lang = 'en',
   adultText,
   termsText,
 }: {
   seekerWord: string;
   providerWord: string;
-  domainCode: string;
+  familyCode: string | undefined;
   lang?: string;
   /** The 18+ wording, from the family pack — never written in this file. */
   adultText: string;
@@ -49,15 +49,20 @@ export function RegisterForm({
 
       <fieldset className="mb-4">
         <legend className="mb-1 block text-sm font-medium">I am joining as</legend>
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="role" value="seeker" defaultChecked className="h-4 w-4" />
+        {/*
+            The whole row is the target, not the 16px dot. This is the
+            choice that decides which half of the product someone lands
+            in, and a mis-tap sends them to the wrong one.
+        */}
+        <div className="grid gap-sm">
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-md rounded-md border border-rule px-lg text-small transition-colors hover:bg-surface-sunk has-[:checked]:border-ink has-[:checked]:bg-surface-sunk">
+            <input type="radio" name="role" value="seeker" defaultChecked className="h-5 w-5 flex-none" />
             <span>
               {seekerWord} <span className="text-ink-muted">— I want guidance</span>
             </span>
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="role" value="provider" className="h-4 w-4" />
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-md rounded-md border border-rule px-lg text-small transition-colors hover:bg-surface-sunk has-[:checked]:border-ink has-[:checked]:bg-surface-sunk">
+            <input type="radio" name="role" value="provider" className="h-5 w-5 flex-none" />
             <span>
               {providerWord} <span className="text-ink-muted">— I want to give it</span>
             </span>
@@ -75,11 +80,16 @@ export function RegisterForm({
         revised later. It is shown here rather than linked, because an
         agreement nobody read is not much of an agreement.
       */}
-      <input type="hidden" name="domainCode" value={domainCode} />
+      {familyCode && <input type="hidden" name="familyCode" value={familyCode} />}
       <input type="hidden" name="lang" value={lang} />
 
-      <label className="mb-4 flex items-start gap-2 text-sm">
-        <input type="checkbox" name="confirmsAdult" className="mt-1 h-4 w-4" required />
+      {/*
+          A 16px checkbox is a miss on a phone, and this is the one that
+          gates an 18+ platform (#27) — a mis-tap here is not cosmetic.
+          The whole row is the target, not just the box.
+      */}
+      <label className="mb-lg flex min-h-[44px] cursor-pointer items-start gap-md py-sm text-small">
+        <input type="checkbox" name="confirmsAdult" className="mt-[2px] h-6 w-6 flex-none" required />
         <span>{adultText}</span>
       </label>
 

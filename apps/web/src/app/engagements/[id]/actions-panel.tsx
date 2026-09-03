@@ -6,13 +6,15 @@ import {
   ActionState,
   agreeAction,
   completeAction,
+  payAction,
   raiseDisputeAction,
   replyToReviewAction,
   reviewAction,
   submitWorkAction,
 } from '@/app/actions/engagement';
 import { bookSessionAction } from '@/app/actions/engagement';
-import { Button, Card, ErrorNote } from '@/components/ui';
+import { FileField } from '@/components/file-field';
+import { Button, Card, ErrorNote, Money } from '@/components/ui';
 
 function Pending({ children, variant }: { children: string; variant?: 'secondary' | 'danger' }): JSX.Element {
   const { pending } = useFormStatus();
@@ -40,6 +42,92 @@ export function AgreePanel({ engagementId }: { engagementId: string }): JSX.Elem
   );
 }
 
+
+/**
+ * The payment step: the seeker funds the escrow, and only then does work
+ * start.
+ *
+ * The design rule this follows is "money is always legible" — the amount,
+ * the state, and what changes it are all on screen before the button is
+ * pressed. Never a bare "Pay now" whose consequence has to be inferred.
+ * The button names its own consequence too: it says what is being held
+ * and for whom, not "Submit".
+ *
+ * What is NOT here is as deliberate: no amount field, no card form, no
+ * saved-instrument picker. The amount comes from the agreed engagement,
+ * and card details never touch this platform — they belong to the
+ * licensed aggregator (#31: we store last-4 and IFSC, nothing more).
+ */
+export function PayPanel({
+  engagementId,
+  amountPaise,
+  currency,
+  providerName,
+  sandbox,
+}: {
+  engagementId: string;
+  amountPaise: string | number | null;
+  currency: string;
+  providerName: string;
+  sandbox: boolean;
+}): JSX.Element {
+  const [state, formAction] = useFormState<ActionState, FormData>(payAction, {});
+  return (
+    <Card>
+      <ErrorNote code={state.error?.code} message={state.error?.message} />
+
+      <h3 className="text-heading font-semibold tracking-tight">Pay into escrow</h3>
+
+      <dl className="mt-lg border-t border-rule">
+        <div className="flex items-baseline justify-between gap-lg border-b border-rule py-md">
+          <dt className="text-small text-ink-muted">Amount</dt>
+          <dd className="text-heading font-semibold">
+            <Money paise={amountPaise} currency={currency} />
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-lg border-b border-rule py-md">
+          <dt className="text-small text-ink-muted">Held by</dt>
+          <dd className="text-small">A licensed payment aggregator, not this platform</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-lg border-b border-rule py-md">
+          <dt className="text-small text-ink-muted">Released to {providerName} when</dt>
+          <dd className="text-small">You confirm the agreed goals were met</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-lg py-md">
+          <dt className="text-small text-ink-muted">Returned to you if</dt>
+          <dd className="text-small">They are not, and a dispute finds in your favour</dd>
+        </div>
+      </dl>
+
+      {sandbox && (
+        <p className="mt-lg rounded-md bg-warn-soft px-lg py-md text-small text-warn">
+          Sandbox: no real money moves. The aggregator is a stand-in until a merchant account
+          exists, and this screen says so rather than pretending otherwise.
+        </p>
+      )}
+
+      <form action={formAction} className="mt-xl">
+        <input type="hidden" name="engagementId" value={engagementId} />
+        {/* The button names its consequence — the state it produces says the same word. */}
+        <Pending>
+          {`Hold ${formatAmount(amountPaise, currency)} in escrow`}
+        </Pending>
+      </form>
+    </Card>
+  );
+}
+
+/** Button copy needs a plain string, so this mirrors `Money` without JSX. */
+function formatAmount(paise: string | number | null, currency: string): string {
+  if (paise === null) return '';
+  const rupees = Number(BigInt(paise)) / 100;
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 2,
+  }).format(rupees);
+}
+
 export function SubmitWorkPanel({ engagementId }: { engagementId: string }): JSX.Element {
   const [state, formAction] = useFormState<ActionState, FormData>(submitWorkAction, {});
   return (
@@ -47,35 +135,39 @@ export function SubmitWorkPanel({ engagementId }: { engagementId: string }): JSX
       <ErrorNote code={state.error?.code} message={state.error?.message} />
       <form action={formAction}>
         <input type="hidden" name="engagementId" value={engagementId} />
-        <label htmlFor="contentRef" className="mb-1 block text-sm font-medium">
-          What you are sending
-        </label>
-        <input
-          id="contentRef"
-          name="contentRef"
+
+        {/*
+            The upload the loop was missing. The storage layer, the grant
+            model and the signed links were all built and tested; what did
+            not exist was a way for anyone to put a file into them, so this
+            panel used to ask for a text "reference" to a document the
+            platform never received.
+
+            Sending the file also grants the provider read access to it —
+            done server-side when the submission is recorded, not here, so
+            the grant and the submission commit together.
+        */}
+        <FileField
+          name="attachmentId"
+          label="Your answer"
           required
-          placeholder="A reference to your answer, e.g. gs2-collegium-attempt-3"
-          className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+          hint="A PDF, or photographs of your pages. Up to 25 MB. Only you and your reviewer can open it."
         />
-        <label htmlFor="note" className="mb-1 mt-3 block text-sm font-medium">
+
+        <label htmlFor="note" className="mb-sm mt-lg block text-small font-medium">
           Anything they should look at first
         </label>
         <textarea
           id="note"
           name="note"
           rows={3}
-          className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+          placeholder="Optional — e.g. I ran out of time on the last part"
+          className="w-full rounded-md border border-rule bg-surface px-lg py-md text-body transition-colors placeholder:text-ink-faint hover:border-ink-faint focus:border-ink"
         />
-        <div className="mt-3">
-          <Pending>Send it</Pending>
+        <div className="mt-lg">
+          <Pending>Send it to be marked</Pending>
         </div>
       </form>
-      {/*
-          A text reference, not an upload. Private storage with signed URLs
-          and viewer watermarking is required before any real document can
-          move through here — so this screen does not offer a file picker it
-          could not honour.
-      */}
     </Card>
   );
 }

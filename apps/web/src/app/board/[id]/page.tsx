@@ -51,7 +51,10 @@ export default async function BoardPostPage({ params }: { params: { id: string }
                     <Avatar name={p.providerId.slice(0, 2)} />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`/mentors/${p.providerId}`} className="text-sm font-medium hover:underline">
+                        <Link
+                          href={`/mentors/${p.providerId}`}
+                          className="inline-flex min-h-[44px] items-center text-sm font-medium underline-offset-4 hover:underline"
+                        >
                           View mentor
                         </Link>
                         <Status value={p.status} />

@@ -4,7 +4,7 @@ import { PackShell } from '@/components/pack-shell';
 import { Card, EmptyState, PageTitle, Section, Status } from '@/components/ui';
 import { apiAsUser, apiPublic } from '@/lib/api';
 import { getDomain, label } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 import { CredentialForm, SubmittableType } from './credential-form';
 
 export const dynamic = 'force-dynamic';
@@ -51,14 +51,19 @@ export default async function CredentialsPage({
 }: {
   searchParams: { domain?: string };
 }): Promise<JSX.Element> {
-  const actor = await currentUser();
+  const { user: actor, domain, available, language, languageOptions } =
+    await viewerContext(searchParams);
   if (!actor) redirect('/login?next=/mentor/credentials');
 
-  const domainCode = searchParams.domain ?? 'upsc_cse';
-  const [domain, mine, types] = await Promise.all([
-    getDomain(domainCode).catch(() => null),
+  const [mine, types] = await Promise.all([
     apiAsUser<MyCredential[]>('/me/credentials').catch(() => [] as MyCredential[]),
-    apiPublic<RawSubmittableType[]>(`/domains/${domainCode}/credential-types`).catch(() => [] as RawSubmittableType[]),
+    // Credential types are the family's. Without a field there is nothing
+    // to submit against — better an empty list than another family's.
+    domain
+      ? apiPublic<RawSubmittableType[]>(
+          `/domains/${encodeURIComponent(domain.domainCode)}/credential-types`,
+        ).catch(() => [] as RawSubmittableType[])
+      : Promise.resolve([] as RawSubmittableType[]),
   ]);
 
   const lang = domain?.defaultLanguage ?? 'en';
@@ -82,7 +87,13 @@ export default async function CredentialsPage({
   }));
 
   return (
-    <PackShell domain={domain} actor={actor}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={actor}
+      available={available}
+      languageOptions={languageOptions}
+    >
       {/*
         The subtitle is phrased around the article rather than in front of
         the noun. "A मेंटर" is English grammar glued to a Devanagari word,
@@ -128,10 +139,31 @@ export default async function CredentialsPage({
       </Section>
 
       <Section title="Submit a credential">
-        {types.length === 0 ? (
-          <EmptyState>Nothing can be submitted for this domain yet.</EmptyState>
+        {types.length === 0 && !domain ? (
+          // A brand-new provider has no verified skill yet, so no domain
+          // is resolved — and credential types are the family's, so
+          // there is nothing to offer until one is chosen. Left as a
+          // dead end, this was uncrossable: verification is how a
+          // provider GETS their first domain (#5's derivation), so a
+          // provider with none could never reach the form that grants
+          // one.
+          <EmptyState
+            action={
+              <Link
+                href="/domains"
+                className="inline-flex min-h-[44px] items-center text-small font-medium underline underline-offset-4"
+              >
+                Explore fields &rarr;
+              </Link>
+            }
+          >
+            Pick a field first — what you can submit depends on which one. Open a field from Explore and
+            come back here, or follow a link from a mentor profile in the field you work in.
+          </EmptyState>
+        ) : types.length === 0 ? (
+          <EmptyState>Nothing can be submitted for this field yet.</EmptyState>
         ) : (
-          <CredentialForm domainCode={domainCode} types={formTypes} skills={skills} />
+          <CredentialForm domainCode={domain?.domainCode ?? ''} types={formTypes} skills={skills} />
         )}
       </Section>
     </PackShell>

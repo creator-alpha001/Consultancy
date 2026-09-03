@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useMemo, useState } from 'react';
 import { ActionState, bookMentorAction } from '@/app/actions/engagement';
@@ -33,6 +34,14 @@ function toSlots(raw: Array<{ start: string; end: string }>): Slot[] {
   });
 }
 
+interface Rate {
+  engagementType: string;
+  skillId: string | null;
+  amountPaise: string;
+  durationMinutes: number | null;
+  turnaroundHours: number | null;
+}
+
 export function BookingForm({
   providerId,
   providerName,
@@ -44,6 +53,7 @@ export function BookingForm({
   engagementTypes,
   priceBands,
   availableSlots,
+  rates,
   currency = 'INR',
 }: {
   providerId: string;
@@ -57,16 +67,35 @@ export function BookingForm({
   priceBands: Record<string, [number, number]>;
   /** The provider's real free slots, resolved on the server. */
   availableSlots: Array<{ start: string; end: string }>;
+  /**
+   * What this provider says they charge. Used to prefill and to show the
+   * seeker whose number they are looking at — never to compare providers.
+   */
+  rates: Rate[];
   currency?: string;
 }): JSX.Element {
   const [state, formAction] = useFormState<ActionState, FormData>(bookMentorAction, {});
-  const [engagementType, setEngagementType] = useState(engagementTypes[0] ?? 'document_review');
+  /**
+   * Only what this provider actually sells.
+   *
+   * The picker used to offer every engagement type the DOMAIN allows,
+   * whether or not this provider had said they do it — so a seeker could
+   * book a live session from someone who has never offered one, at a
+   * price nobody set. A provider is bookable for what they have
+   * published, and for nothing else.
+   */
+  const bookableTypes = engagementTypes.filter((t) => rateFor(rates, t) !== null);
+  const [engagementType, setEngagementType] = useState(bookableTypes[0] ?? '');
   const [selected, setSelected] = useState<Slot | null>(null);
-  const [amountRupees, setAmountRupees] = useState(() => {
-    const band = priceBands[engagementTypes[0] ?? ''] ?? [8000, 25000];
-    return Math.round(band[0] / 100);
-  });
-
+  /**
+   * The provider's own rate wins over the domain's typical band.
+   *
+   * The band was the only starting point there was, which meant every
+   * booking opened at the bottom of what other people charge — a default
+   * that quietly argues the provider down before they have seen the
+   * request. Their stated rate is the honest starting number; the band
+   * stays visible as context.
+   */
   const needsSlot = engagementType === 'live_session';
   const slots = useMemo(() => toSlots(availableSlots), [availableSlots]);
   const byDay = useMemo(() => {
@@ -79,9 +108,30 @@ export function BookingForm({
     return [...map.entries()];
   }, [slots]);
 
-  const band = priceBands[engagementType];
+  const statedRateRow = rateFor(rates, engagementType);
+  const statedRate = statedRateRow?.amountPaise ?? null;
+  const statedCommitment = statedRateRow ?? null;
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
-  const belowBand = band ? amountRupees * 100 < band[0] : false;
+
+  if (bookableTypes.length === 0) {
+    return (
+      <Card>
+        <p className="text-body">
+          {providerName} has not published any services for this {categoryLabel} yet, so there is
+          nothing to book.
+        </p>
+        <p className="mt-md text-small text-ink-muted">
+          You can still describe what you need on the board and let people come to you.
+        </p>
+        <Link
+          href="/board/new"
+          className="mt-lg inline-flex min-h-[44px] items-center rounded-pill border border-rule px-xl text-small font-medium transition-colors hover:bg-surface-sunk"
+        >
+          Post on the board
+        </Link>
+      </Card>
+    );
+  }
 
   return (
     <form action={formAction}>
@@ -89,7 +139,6 @@ export function BookingForm({
       <input type="hidden" name="domainCode" value={domainCode} />
       <input type="hidden" name="categoryId" value={categoryId} />
       <input type="hidden" name="timezone" value={timezone} />
-      <input type="hidden" name="amountPaise" value={String(Math.round(amountRupees * 100))} />
       {needsSlot && selected && (
         <>
           <input type="hidden" name="scheduledStart" value={selected.startIso} />
@@ -104,7 +153,7 @@ export function BookingForm({
         <fieldset>
           <legend className="mb-2 text-sm font-medium">How should this happen?</legend>
           <div className="flex flex-wrap gap-2">
-            {engagementTypes.map((t) => (
+            {bookableTypes.map((t) => (
               <label
                 key={t}
                 className={`cursor-pointer rounded-card border px-3 py-2 text-sm ${
@@ -116,11 +165,10 @@ export function BookingForm({
                   name="engagementType"
                   value={t}
                   checked={engagementType === t}
-                  onChange={() => {
-                    setEngagementType(t);
-                    const b = priceBands[t];
-                    if (b) setAmountRupees(Math.round(b[0] / 100));
-                  }}
+                  // Nothing to recompute: the price follows the chosen
+                  // service, which is read straight from the provider's
+                  // published rate for it.
+                  onChange={() => setEngagementType(t)}
                   className="sr-only"
                 />
                 {t.replace(/_/g, ' ')}
@@ -212,35 +260,36 @@ export function BookingForm({
             </p>
           </div>
 
+          {/*
+              A price, not an offer.
+
+              This was an editable "Your offer" box: the seeker typed a
+              number and that became the amount. That is a reverse-market
+              interaction (SPEC-PLATFORM §5.3) placed on a direct-booking
+              screen, and it made price a thing to haggle over. It is not.
+              The provider publishes a service at a price for a stated
+              length of work; the seeker buys it. What the two of them
+              negotiate is the AGENDA — the goals, what is out of scope —
+              and that happens on the next screen.
+
+              A provider may still reduce what they charge, but only once
+              the work has actually started. That is a decision made with
+              knowledge of the work, not a price to be argued down before
+              it begins.
+          */}
           <div>
-            <label htmlFor="amount" className="mb-1 block text-sm font-medium">
-              Your offer
-            </label>
-            <div className="flex items-center gap-2">
-              <span aria-hidden="true" className="text-ink-muted">₹</span>
-              <input
-                id="amount"
-                type="number"
-                min={1}
-                step={1}
-                value={amountRupees}
-                onChange={(e) => setAmountRupees(Number(e.target.value))}
-                className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm tabular-nums"
-              />
-            </div>
-            {band && (
-              <p className="mt-1 text-xs text-ink-muted tabular-nums">
-                Typical for this category: ₹{Math.round(band[0] / 100)} – ₹{Math.round(band[1] / 100)}
-              </p>
-            )}
-            {belowBand && (
-              <p className="mt-1 text-xs text-correction">
-                Below the typical band. Allowed — but fewer mentors will take it.
-              </p>
-            )}
-            <p className="mt-1 text-xs text-ink-muted tabular-nums">
-              Stored as {Math.round(amountRupees * 100)} paise · {currency}
+            <p className="mb-1 block text-sm font-medium">Price</p>
+            <p className="text-lg font-semibold tabular-nums">
+              ₹{Math.round(Number(statedRate) / 100).toLocaleString('en-IN')}
             </p>
+            <p className="mt-1 text-xs text-ink-muted">
+              {commitmentLine(statedCommitment, engagementType)}
+            </p>
+            <p className="mt-1 text-xs text-ink-muted">
+              Set by {providerName}. It goes into escrow and is released when the goals you agree are
+              met.
+            </p>
+            <input type="hidden" name="amountPaise" value={statedRate ?? ''} />
           </div>
         </div>
       </Card>
@@ -277,4 +326,39 @@ function SubmitButton({ disabled, needsSlot }: { disabled: boolean; needsSlot: b
       {disabled && needsSlot && <span className="text-sm text-ink-muted">Pick a time first.</span>}
     </div>
   );
+}
+
+/**
+ * The rate that applies to one kind of work.
+ *
+ * Mirrors the server's precedence — a rate naming a skill beats the
+ * provider's default — but the booking form only knows the engagement
+ * type, so it takes the default. The server re-resolves properly when the
+ * engagement is created; this is a starting number, not an authority.
+ */
+function rateFor(rates: Rate[], engagementType: string): Rate | null {
+  const forType = rates.filter((r) => r.engagementType === engagementType);
+  if (forType.length === 0) return null;
+  return forType.find((r) => r.skillId === null) ?? forType[0];
+}
+
+/**
+ * What the seeker actually gets for the money.
+ *
+ * A price with no stated commitment is half a listing. The two units are
+ * genuinely different promises — time WITH someone, versus time UNTIL it
+ * comes back — so they are worded differently rather than both rendered
+ * as "duration".
+ */
+function commitmentLine(rate: Rate | null, engagementType: string): string {
+  if (rate?.durationMinutes) return `${rate.durationMinutes} minutes with them`;
+  if (rate?.turnaroundHours) {
+    const hours = rate.turnaroundHours;
+    return hours % 24 === 0
+      ? `Back within ${hours / 24} ${hours === 24 ? 'day' : 'days'}`
+      : `Back within ${hours} hours`;
+  }
+  return engagementType === 'live_session'
+    ? 'Session length is set when you pick a slot.'
+    : 'They have not stated a turnaround for this.';
 }

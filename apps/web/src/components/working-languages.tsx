@@ -61,7 +61,7 @@ export function WorkingLanguages({
                   <input type="checkbox" name="lang" value={code} defaultChecked={mine !== undefined} />
                   {languageName(code, displayLang)}
                 </label>
-                <label className="ml-xl flex min-h-[40px] items-center gap-md text-small text-ink-muted">
+                <label className="ml-xl flex min-h-[44px] items-center gap-md text-small text-ink-muted">
                   <input
                     type="checkbox"
                     name="evaluate"

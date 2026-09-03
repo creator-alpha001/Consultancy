@@ -58,3 +58,17 @@ export function languageName(code: string, lang = 'en'): string {
     return code.toUpperCase();
   }
 }
+
+/**
+ * First letter up, the rest untouched.
+ *
+ * For starting a sentence with a pack label. `toUpperCase()` on the
+ * whole string would shout, and CSS `::first-letter` cannot reach a word
+ * that sits mid-string after an article ("a mentor" → "A mentor").
+ *
+ * Untouched, not lowercased, because a label may legitimately carry
+ * capitals inside it — "UPSC aspirant" must not become "Upsc aspirant".
+ */
+export function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { AnnotatedSheet } from '@/components/annotated-sheet';
 import { PackShell } from '@/components/pack-shell';
-import { Card, EmptyState, Lifecycle, PageTitle, Section, Status } from '@/components/ui';
+import { ActionLink, Card, EmptyState, Lifecycle, PageTitle, Section, Status } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import {
   Agenda,
@@ -20,6 +21,7 @@ import { pluralWord } from '@/lib/words';
 import { currentUser } from '@/lib/session';
 import {
   AgreePanel,
+  PayPanel,
   BookSessionPanel,
   DecisionPanel,
   ReviewPanel,
@@ -103,9 +105,7 @@ export default async function EngagementPage({ params }: { params: { id: string 
       <Section
         title="Agenda"
         action={
-          <Link href={`/engagements/${params.id}/agenda`} className="text-sm text-accent underline">
-            {agenda ? 'Open it' : 'Write it'}
-          </Link>
+          <ActionLink href={`/engagements/${params.id}/agenda`}>{agenda ? 'Open it' : 'Write it'}</ActionLink>
         }
       >
         {agenda ? (
@@ -153,9 +153,7 @@ export default async function EngagementPage({ params }: { params: { id: string 
                       </div>
                       <div className="flex items-center gap-3">
                         <Status value={s.status} />
-                        <Link href={`/sessions/${s.id}`} className="text-sm text-accent underline">
-                          Join
-                        </Link>
+                        <ActionLink href={`/sessions/${s.id}`}>Join</ActionLink>
                       </div>
                     </div>
                   </Card>
@@ -172,16 +170,49 @@ export default async function EngagementPage({ params }: { params: { id: string 
       <Section title="What happens next">
         {engagement.status === 'draft' && <AgreePanel engagementId={params.id} />}
 
-        {engagement.status === 'agreed' && (
+        {/*
+            An agreed engagement is waiting on money, and until now this
+            said so and offered no way to pay it — the escrow endpoint was
+            admin-only, so a real seeker's engagement could never leave
+            this state. The seeker gets the payment step; the provider is
+            told what is being waited on rather than shown a button they
+            must not press.
+
+            Both preconditions are still checked by the database, and the
+            transition to `working` is a trigger — so hard rule #12 holds
+            even if this screen is bypassed entirely.
+        */}
+        {engagement.status === 'agreed' && isSeeker && agenda?.lockedAt && (
+          <PayPanel
+            engagementId={params.id}
+            amountPaise={engagement.amountPaise}
+            currency={engagement.currency}
+            providerName={providerWord.toLowerCase()}
+            sandbox
+          />
+        )}
+
+        {engagement.status === 'agreed' && isSeeker && !agenda?.lockedAt && (
           <Card>
-            <p className="text-sm">
-              Terms agreed. Work starts once the agenda is locked <strong>and</strong> escrow is held.
+            <p className="text-body">
+              Lock the agenda before paying — money is held against the goals you both agreed, so
+              there has to be an agreed list first.
             </p>
-            {/*
-                Both preconditions are checked by the database, and the transition
-                is refused if either is missing — so there is no path where work
-                begins on an unlocked agreement or unfunded escrow.
-            */}
+            <Link
+              href={`/engagements/${params.id}/agenda`}
+              className="mt-lg inline-flex text-bodyStrong font-medium underline underline-offset-4"
+            >
+              Open the agenda
+            </Link>
+          </Card>
+        )}
+
+        {engagement.status === 'agreed' && isProvider && (
+          <Card>
+            <p className="text-body">
+              Terms agreed. Work starts once the {seekerWord.toLowerCase()} has paid into escrow and
+              the agenda is locked — you will see this move on its own.
+            </p>
           </Card>
         )}
 
@@ -189,19 +220,34 @@ export default async function EngagementPage({ params }: { params: { id: string 
           <SubmitWorkPanel engagementId={params.id} />
         )}
 
+        {engagement.status === 'working' && isSeeker && submission && (
+          <Card>
+            <p className="text-body">
+              Sent. {providerWord} has access to this file and nobody else does.
+            </p>
+            <div className="mt-lg">
+              <SubmittedFile submission={submission} />
+            </div>
+          </Card>
+        )}
+
         {engagement.status === 'working' && isProvider && (
           <Card>
-            <p className="text-sm">
+            <p className="text-body">
               {submission
                 ? 'The work is in. Mark it against the rubric.'
                 : `Waiting for the ${seekerWord.toLowerCase()} to send their work.`}
             </p>
             {submission && (
-              <p className="mt-3">
-                <Link href={`/engagements/${params.id}/evaluate`} className="text-sm text-accent underline">
+              <div className="mt-lg flex flex-wrap items-center gap-lg">
+                <Link
+                  href={`/engagements/${params.id}/evaluate`}
+                  className="inline-flex min-h-[44px] items-center rounded-pill bg-accent px-xl text-small font-medium text-accent-ink transition-opacity hover:opacity-85"
+                >
                   Open the evaluation
                 </Link>
-              </p>
+                <SubmittedFile submission={submission} />
+              </div>
             )}
           </Card>
         )}
@@ -210,9 +256,7 @@ export default async function EngagementPage({ params }: { params: { id: string 
           <Card>
             <p className="text-sm">Delivered. Now mark it.</p>
             <p className="mt-3">
-              <Link href={`/engagements/${params.id}/evaluate`} className="text-sm text-accent underline">
-                Open the evaluation
-              </Link>
+              <ActionLink href={`/engagements/${params.id}/evaluate`}>Open the evaluation</ActionLink>
             </p>
           </Card>
         )}
@@ -260,6 +304,45 @@ export default async function EngagementPage({ params }: { params: { id: string 
       </Section>
 
       {/* ── Marks, once returned ────────────────────────────────── */}
+      {/*
+          The marked sheet, before the scores.
+          A number against a dimension tells an aspirant where they stand;
+          a remark against a specific line tells them what to do, and that
+          is the thing they are actually buying. It leads for that reason.
+      */}
+      {evaluation?.returnedAt && submission?.attachmentId && evaluation.annotations.length > 0 && (
+        <Section title="Your work, marked">
+          <Card>
+            <AnnotatedSheet
+              attachmentId={submission.attachmentId}
+              contentType={submission.attachmentContentType}
+              annotations={evaluation.annotations}
+              mode="read"
+            />
+          </Card>
+        </Section>
+      )}
+
+      {/*
+          The bridge from one marked answer to the running list.
+          Remarks read once and forgotten are the difference between an
+          evaluation that changed something and one that did not.
+      */}
+      {evaluation?.returnedAt && isSeeker && evaluation.annotations.length > 0 && (
+        <Card tone="outline" className="mb-xxl">
+          <p className="text-body">
+            These remarks are on your list of things to work on, alongside everything else you have
+            been asked to change.
+          </p>
+          <Link
+            href="/progress"
+            className="mt-lg inline-flex min-h-[44px] items-center rounded-pill border border-rule px-xl text-small font-medium transition-colors hover:bg-surface-sunk"
+          >
+            Open your progress
+          </Link>
+        </Card>
+      )}
+
       {evaluation?.returnedAt && (
         <Section title="Marks">
           <Card>
@@ -295,5 +378,38 @@ export default async function EngagementPage({ params }: { params: { id: string 
         </Section>
       )}
     </PackShell>
+  );
+}
+
+/**
+ * A link to the submitted file.
+ *
+ * Not a preview and not an inline frame: these are answer scripts, and
+ * the private-storage model exists so they are opened deliberately by
+ * someone with a grant, not painted into whatever page happens to
+ * reference them (CLAUDE.md #29).
+ *
+ * The href is a route on THIS server, not the API — it mints a fresh
+ * five-minute link per click and streams the bytes back, so no working
+ * credential ever appears in the address bar.
+ */
+function SubmittedFile({ submission }: { submission: Submission }): JSX.Element {
+  if (!submission.attachmentId) {
+    return (
+      <span className="text-small text-ink-muted">
+        {submission.contentRef ? `Reference: ${submission.contentRef}` : 'No file attached'}
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={`/api/attachments/${submission.attachmentId}`}
+      className="inline-flex items-center gap-sm text-small font-medium underline underline-offset-4"
+    >
+      <svg viewBox="0 0 16 16" className="h-[14px] w-[14px]" fill="currentColor" aria-hidden="true">
+        <path d="M8 1v8.6l2.6-2.6 1 1L8 11.6 4.4 8l1-1L8 9.6V1zM3 12.5h10V14H3z" />
+      </svg>
+      Download the answer
+    </Link>
   );
 }

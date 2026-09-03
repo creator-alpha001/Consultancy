@@ -4,7 +4,7 @@ import { PackShell } from '@/components/pack-shell';
 import { Card, EmptyState, PageTitle, Section } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import { getDomain } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 import { ReportDecision } from '../admin-panels';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +43,7 @@ function age(iso: string): string {
  * real helplines are shown beside them (#25).
  */
 export default async function ReportsPage(): Promise<JSX.Element> {
-  const actor = await currentUser();
+  const { user: actor, domain, language, languageOptions } = await viewerContext();
   if (!actor) redirect('/login?next=/admin/reports');
 
   let queue: Report[] = [];
@@ -53,13 +53,17 @@ export default async function ReportsPage(): Promise<JSX.Element> {
   } catch (err) {
     loadError = err instanceof Error ? err.message : 'Could not load the queue.';
   }
-  const domain = await getDomain('upsc_cse').catch(() => null);
 
   const welfare = queue.filter((r) => r.welfareConcern);
   const rest = queue.filter((r) => !r.welfareConcern);
 
   return (
-    <PackShell domain={domain} actor={actor}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={actor}
+      languageOptions={languageOptions}
+    >
       <PageTitle
         eyebrow={<Link href="/admin" className="underline">Ops</Link>}
         sub="Someone told us something was wrong. Reported content is already out of public view — dismissing a report puts it back."

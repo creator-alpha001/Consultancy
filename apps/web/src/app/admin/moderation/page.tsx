@@ -4,7 +4,7 @@ import { PackShell } from '@/components/pack-shell';
 import { Card, EmptyState, PageTitle, Section } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import { getDomain } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 import { ClearHeld } from '../admin-panels';
 
 export const dynamic = 'force-dynamic';
@@ -34,19 +34,21 @@ interface HeldQuestion {
  * the worst failure this product can have.
  */
 export default async function ModerationPage(): Promise<JSX.Element> {
-  const actor = await currentUser();
+  const { user: actor, domain, language, languageOptions } = await viewerContext();
   if (!actor) redirect('/login?next=/admin/moderation');
 
-  const [held, domain] = await Promise.all([
-    apiAsUser<HeldQuestion[]>('/moderation/held').catch(() => [] as HeldQuestion[]),
-    getDomain('upsc_cse').catch(() => null),
-  ]);
+  const held = await apiAsUser<HeldQuestion[]>('/moderation/held').catch(() => [] as HeldQuestion[]);
 
   const distressed = held.filter((q) => q.distressFlagged ?? q.distress_flagged);
   const others = held.filter((q) => !(q.distressFlagged ?? q.distress_flagged));
 
   return (
-    <PackShell domain={domain} actor={actor}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={actor}
+      languageOptions={languageOptions}
+    >
       <PageTitle
         eyebrow={<Link href="/admin" className="underline">Ops</Link>}
         sub="Held, not rejected. Nothing here has been deleted and the person who wrote it was answered, not refused."

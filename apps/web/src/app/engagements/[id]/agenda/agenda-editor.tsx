@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { ActionState, draftAgendaAction, lockAgendaAction } from '@/app/actions/engagement';
 import { Button, Card, ErrorNote } from '@/components/ui';
 import { Agenda } from '@/lib/engagements';
+import { languageName } from '@/lib/words';
 
 const MAX_GOALS = 5;
 
@@ -64,14 +65,14 @@ export function AgendaEditor({
                   i === 0 ? 'e.g. Mark this answer against the rubric' : 'Add another checkable goal'
                 }
                 aria-label={`Goal ${i + 1}`}
-                className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+                className="min-h-[48px] w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
               />
               {goals.length > 1 && (
                 <button
                   type="button"
                   onClick={() => setGoals(goals.filter((_, j) => j !== i))}
                   aria-label={`Remove goal ${i + 1}`}
-                  className="mt-1 rounded px-2 py-1 text-sm text-ink-muted hover:text-correction"
+                  className="inline-flex min-h-[44px] min-w-[44px] flex-none items-center justify-center rounded text-sm text-ink-muted hover:text-correction"
                 >
                   ✕
                 </button>
@@ -84,7 +85,7 @@ export function AgendaEditor({
           <button
             type="button"
             onClick={() => setGoals([...goals, ''])}
-            className="mt-3 rounded-card border border-rule px-3 py-1.5 text-sm hover:bg-paper"
+            className="mt-3 inline-flex min-h-[44px] items-center rounded-card border border-rule px-lg text-sm hover:bg-paper"
           >
             + Add a goal
           </button>
@@ -106,7 +107,7 @@ export function AgendaEditor({
           rows={2}
           defaultValue=""
           placeholder="e.g. Doing the work for me. Promising a particular result."
-          className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+          className="min-h-[48px] w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
         />
         {/*
             This protects the mentor, and it protects you from a disappointing
@@ -124,7 +125,7 @@ export function AgendaEditor({
           rows={2}
           required
           placeholder="e.g. I can name the two things that cost me marks, without being told again."
-          className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+          className="min-h-[48px] w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
         />
 
         <label htmlFor="expectedDeliverable" className="mb-1 mt-4 block text-sm font-medium">
@@ -135,7 +136,7 @@ export function AgendaEditor({
           name="expectedDeliverable"
           required
           placeholder="e.g. The marked answer with margin notes, plus one structure I can reuse"
-          className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+          className="min-h-[48px] w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
         />
 
         <label htmlFor="context" className="mb-1 mt-4 block text-sm font-medium">
@@ -146,7 +147,7 @@ export function AgendaEditor({
           name="context"
           rows={2}
           placeholder="Optional context"
-          className="w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+          className="min-h-[48px] w-full rounded-card border border-rule bg-paper px-3 py-2 text-sm"
         />
 
         <label htmlFor="originalLang" className="mb-1 mt-4 block text-sm font-medium">
@@ -156,11 +157,12 @@ export function AgendaEditor({
           id="originalLang"
           name="originalLang"
           defaultValue={language}
-          className="rounded-card border border-rule bg-paper px-3 py-2 text-sm"
+          className="min-h-[48px] rounded-card border border-rule bg-paper px-3 py-2 text-sm"
         >
+          {/* The name, not the ISO code — "hi" is not a word anyone reads. */}
           {languages.map((l) => (
             <option key={l} value={l}>
-              {l}
+              {languageName(l, language)}
             </option>
           ))}
         </select>

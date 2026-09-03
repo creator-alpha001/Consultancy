@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PackShell } from '@/components/pack-shell';
 import { Card, PageTitle } from '@/components/ui';
-import { getDomain } from '@/lib/pack';
+import { viewerContext } from '@/lib/viewer-context';
 import { LoginForm } from './login-form';
 
 export const dynamic = 'force-dynamic';
@@ -11,12 +11,15 @@ export default async function LoginPage({
 }: {
   searchParams: { registered?: string; role?: string };
 }): Promise<JSX.Element> {
-  const domain = await getDomain('upsc_cse').catch(() => null);
+  // Neutral chrome. Nobody is signed in, so there is no field to be in
+  // — the sign-in page used to announce one particular exam to every
+  // visitor, whatever they had come for.
+  const { domain, language, languageOptions } = await viewerContext();
   const justRegistered = searchParams.registered === '1';
   const asProvider = searchParams.role === 'provider' || searchParams.role === 'admin';
 
   return (
-    <PackShell domain={domain}>
+    <PackShell domain={domain} lang={language} languageOptions={languageOptions}>
       <div className="mx-auto max-w-md">
         <PageTitle>Sign in</PageTitle>
 

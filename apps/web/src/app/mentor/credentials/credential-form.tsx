@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
+import { FileField } from '@/components/file-field';
 import { Button, Card, ErrorNote } from '@/components/ui';
 import { CredentialState, submitCredentialAction } from '@/app/actions/credentials';
 
@@ -88,26 +89,43 @@ export function CredentialForm({
           know that a result-list credential needs a roll number, and a
           new verifier needs no change here.
         */}
-        {type?.inputs.map((f) => (
-          <div key={f.key} className="mb-lg">
-            <label htmlFor={`vd-${f.key}`} className="mb-sm block text-smallStrong font-medium">
-              {fieldLabel(f.key)}
-            </label>
-            <input
-              id={`vd-${f.key}`}
+        {type?.inputs.map((f) =>
+          /*
+            A document input is a real upload now. It was a text box asking
+            for "a reference to the document you uploaded" — which nobody
+            could have uploaded, because no screen in either client could
+            send a file. A credential with no document behind it cannot be
+            verified, so this was the gap that made the whole verification
+            queue decorative.
+
+            The file goes to private storage on selection; what this form
+            submits is its id. The reviewer is granted access when they
+            open it, not now — nobody has read it yet.
+          */
+          f.kind === 'document' ? (
+            <FileField
+              key={f.key}
               name={`vd.${f.key}`}
-              type={f.kind === 'number' ? 'number' : 'text'}
+              label={fieldLabel(f.key)}
               required={f.required}
-              className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-base"
+              hint="A PDF or a clear photograph. Private — only a reviewer who opens your application can see it, and every viewing is recorded."
             />
-            {f.kind === 'number' && <input type="hidden" name={`numeric.${f.key}`} value="1" />}
-            {f.kind === 'document' && (
-              <p className="mt-xs text-caption text-ink-muted">
-                A reference to the document you uploaded. File upload is not built yet.
-              </p>
-            )}
-          </div>
-        ))}
+          ) : (
+            <div key={f.key} className="mb-lg">
+              <label htmlFor={`vd-${f.key}`} className="mb-sm block text-smallStrong font-medium">
+                {fieldLabel(f.key)}
+              </label>
+              <input
+                id={`vd-${f.key}`}
+                name={`vd.${f.key}`}
+                type={f.kind === 'number' ? 'number' : 'text'}
+                required={f.required}
+                className="w-full min-h-[48px] rounded-md border border-rule bg-surface px-lg py-md text-body transition-colors hover:border-ink-faint focus:border-ink"
+              />
+              {f.kind === 'number' && <input type="hidden" name={`numeric.${f.key}`} value="1" />}
+            </div>
+          ),
+        )}
 
         {type?.requiresPaidWorkSanction && (
           <p className="mb-lg rounded-md bg-warn-soft p-lg text-small text-warn">
@@ -129,7 +147,9 @@ export function CredentialForm({
               return (
                 <label
                   key={s.code}
-                  className={`cursor-pointer rounded-pill px-lg py-sm text-small ${
+                  // A skill chip is a real choice, not decoration: these
+                  // decide what someone is verified against. Thumb-sized.
+                  className={`inline-flex min-h-[44px] cursor-pointer items-center rounded-pill px-lg text-small ${
                     on ? 'bg-ink text-accent-ink' : 'bg-surface-sunk text-ink-muted'
                   }`}
                 >

@@ -1,10 +1,10 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, EmptyState, Money, PageTitle, Section, Status } from '@/components/ui';
+import { BackLink, Card, EmptyState, Money, PageTitle, Section, Status } from '@/components/ui';
 import { apiAsUser } from '@/lib/api';
 import { getDomain } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { getEngagement } from '@/lib/engagements';
+import { viewerContext } from '@/lib/viewer-context';
 import { AppealPanel, WithdrawPanel } from './dispute-panels';
 
 export const dynamic = 'force-dynamic';
@@ -58,36 +58,41 @@ export default async function DisputePage({
 }: {
   params: { id: string };
 }): Promise<JSX.Element> {
-  const actor = await currentUser();
+  const { user: actor, languageOptions } = await viewerContext();
   if (!actor) redirect(`/login?next=/disputes/${params.id}`);
 
   const dispute = await apiAsUser<Dispute>(`/disputes/${params.id}`).catch(() => null);
   if (!dispute) {
     return (
-      <PackShell domain={null} actor={actor}>
+      <PackShell domain={null} actor={actor} languageOptions={languageOptions}>
         <PageTitle>Dispute</PageTitle>
         <EmptyState>This dispute does not exist, or it is not yours to see.</EmptyState>
       </PackShell>
     );
   }
 
-  const [evidence, rulings, domain] = await Promise.all([
+  // The field comes from the ENGAGEMENT this dispute is about — not from
+  // the viewer's own preference and not from a literal. An adjudicator
+  // reading a dispute needs the vocabulary and helplines of the field the
+  // work was in, whatever field they themselves happen to be looking at.
+  const [evidence, rulings, engagement] = await Promise.all([
     apiAsUser<Evidence[]>(`/disputes/${dispute.id}/evidence`).catch(() => [] as Evidence[]),
     apiAsUser<Ruling[]>(`/disputes/${dispute.id}/rulings`).catch(() => [] as Ruling[]),
-    getDomain('upsc_cse').catch(() => null),
+    getEngagement(dispute.engagementId).catch(() => null),
   ]);
+  const domain = engagement?.domainCode
+    ? await getDomain(engagement.domainCode).catch(() => null)
+    : null;
 
   const latest = rulings[rulings.length - 1];
   const isRaiser = dispute.raisedBy === actor.id;
   const lang = dispute.bodyLang || domain?.defaultLanguage || 'en';
 
   return (
-    <PackShell domain={domain} actor={actor}>
+    <PackShell domain={domain} lang={lang} actor={actor} languageOptions={languageOptions}>
       <PageTitle
         eyebrow={
-          <Link href={`/engagements/${dispute.engagementId}`} className="underline">
-            Back to the engagement
-          </Link>
+          <BackLink href={`/engagements/${dispute.engagementId}`}>Back to the engagement</BackLink>
         }
         sub="While this is open the money is frozen — neither side can draw it. A person decides it; no automated process rules on a dispute."
       >

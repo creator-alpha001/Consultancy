@@ -31,7 +31,10 @@ export function AskForm({ domainCode }: { domainCode: string }): JSX.Element {
           {state.supportResources.map((r) => (
             <li key={r.value} className="flex items-center justify-between gap-2">
               <span className="text-ink-muted">{r.label}</span>
-              <a href={`tel:${r.value}`} className="font-medium underline">
+              {/* A number worth calling in a bad moment deserves a
+                  thumb-sized target — this is the response to a distress
+                  flag (#25), not a place to make someone tap precisely. */}
+              <a href={`tel:${r.value}`} className="inline-flex min-h-[44px] items-center font-medium underline">
                 {r.value}
               </a>
             </li>

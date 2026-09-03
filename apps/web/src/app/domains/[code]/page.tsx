@@ -1,8 +1,10 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
 import { Card, PageTitle } from '@/components/ui';
 import { CategoryNode, getCategories, getDomain, label } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
+import { pluralWord } from '@/lib/words';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,10 +75,37 @@ export default async function DomainPage({ params }: { params: { code: string } 
     currentUser(),
   ]);
   const allProvisional = categories.length > 0 && everyNodeProvisional(categories);
+  // What this family calls a category — "Paper" for exams, "Practice area"
+  // for accountancy, "Stage" for higher education. Never written in core.
+  const categoryWord = label(domain.labels.category, 'en') || 'Category';
 
   return (
     <PackShell domain={domain} actor={user}>
-      <PageTitle sub={`Working languages: ${domain.languages.join(', ')}`}>
+      <PageTitle
+        sub={`Working languages: ${domain.languages.join(', ')}`}
+        action={
+          // Opening a field here was a dead end: nothing on this page
+          // led anywhere. A seeker had no way to search WITHIN it — the
+          // mentor search page needed a domain the moment it stopped
+          // guessing one (#1) — and a provider had no route to the
+          // credentials screen where verification here begins at all.
+          !user || user.role === 'seeker' ? (
+            <Link
+              href={`/mentors?domain=${domain.domainCode}`}
+              className="inline-flex min-h-[44px] items-center rounded-pill bg-accent px-lg text-small font-medium text-accent-ink transition-opacity hover:opacity-85"
+            >
+              Find someone here
+            </Link>
+          ) : user.role === 'provider' ? (
+            <Link
+              href={`/mentor/credentials?domain=${domain.domainCode}`}
+              className="inline-flex min-h-[44px] items-center rounded-pill bg-accent px-lg text-small font-medium text-accent-ink transition-opacity hover:opacity-85"
+            >
+              Get verified here
+            </Link>
+          ) : null
+        }
+      >
         {label(domain.labels.domain, 'en')}
       </PageTitle>
 
@@ -84,8 +113,9 @@ export default async function DomainPage({ params }: { params: { code: string } 
         <div role="note" className="mb-6 rounded-card border border-correction bg-surface-sunk p-3 text-sm">
           <p className="font-medium text-correction">This domain is not open yet.</p>
           <p className="mt-1 text-ink-muted">
-            It is seeded but not publicly listed — its exam pattern still needs confirming against the
-            current official notification, and supply has to exist before it opens.
+            It is seeded but not publicly listed — its {categoryWord.toLowerCase()} structure still
+            needs confirming against the current published source, and supply has to exist before it
+            opens.
           </p>
         </div>
       )}
@@ -93,11 +123,11 @@ export default async function DomainPage({ params }: { params: { code: string } 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card className="signature-surface signature-margin">
-            <h2 className="mb-3 text-lg font-semibold">Papers and skills</h2>
+            <h2 className="mb-lg text-heading font-semibold tracking-tight">{pluralWord(categoryWord)} and skills</h2>
             {allProvisional && (
               <p className="mb-3 border-b border-rule pb-2 text-xs text-correction">
-                Every pattern below is provisional — seeded, but not yet checked against the current
-                official notification.
+                Everything below is provisional — seeded, but not yet checked against the current
+                published source.
               </p>
             )}
             {categories.length > 0 ? (
@@ -134,9 +164,15 @@ export default async function DomainPage({ params }: { params: { code: string } 
             <h2 className="mb-2 text-base font-semibold">If you are struggling</h2>
             <ul className="space-y-1 text-sm">
               {domain.family.supportResources.map((r) => (
-                <li key={r.value} className="flex justify-between gap-2">
+                <li key={r.value} className="flex items-center justify-between gap-2">
                   <span className="text-ink-muted">{r.label}</span>
-                  <a href={`tel:${r.value}`} className="font-medium underline">
+                  {/* A number worth calling in a bad moment deserves a
+                      thumb-sized target, not the bare text-line height a
+                      dense list otherwise gives it. */}
+                  <a
+                    href={`tel:${r.value}`}
+                    className="inline-flex min-h-[44px] items-center font-medium underline"
+                  >
                     {r.value}
                   </a>
                 </li>

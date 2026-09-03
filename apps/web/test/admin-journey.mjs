@@ -13,6 +13,14 @@
 import { execFileSync } from 'node:child_process';
 import { launchBrowser } from './browser.mjs';
 import { totp } from './totp.mjs';
+import { fileURLToPath } from 'node:url';
+
+// A file: URL's pathname is `/E:/...` on Windows, which is not a usable
+// cwd; and `npx` resolves only as `npx.cmd`, which Node refuses to spawn
+// without a shell. Running ts-node's own entry point under this Node
+// avoids both, on every platform.
+const API_DIR = fileURLToPath(new URL('../../api', import.meta.url));
+const TS_NODE = fileURLToPath(new URL('../../api/node_modules/ts-node/dist/bin.js', import.meta.url));
 
 const WEB = 'http://localhost:3001';
 const PASS = 'correct-horse-battery-1';
@@ -51,10 +59,10 @@ function sqlValue(q) {
  */
 console.log('\n0. Fixture');
 execFileSync(
-  'npx',
-  ['ts-node', 'seed/demo-engagements.ts', '--fresh-dispute'],
+  process.execPath,
+  [TS_NODE, 'seed/demo-engagements.ts', '--fresh-dispute'],
   {
-    cwd: new URL('../../api', import.meta.url).pathname,
+    cwd: API_DIR,
     env: { ...process.env, DATABASE_URL: 'postgres://sankalp:sankalp@localhost:5432/sankalp_dev' },
     stdio: 'pipe',
   },

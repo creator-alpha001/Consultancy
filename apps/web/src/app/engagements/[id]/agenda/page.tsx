@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, Lifecycle, PageTitle, Section, Status } from '@/components/ui';
+import { BackLink, Card, Lifecycle, PageTitle, Section, Status } from '@/components/ui';
 import { getAgenda, getEngagement } from '@/lib/engagements';
 import { getDomain } from '@/lib/pack';
 import { currentUser } from '@/lib/session';
@@ -28,9 +27,7 @@ export default async function AgendaPage({ params }: { params: { id: string } })
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <Status value={engagement.status} />
-        <Link href={`/engagements/${params.id}`} className="text-sm text-accent underline">
-          Back to the engagement
-        </Link>
+        <BackLink href={`/engagements/${params.id}`}>Back to the engagement</BackLink>
       </div>
 
       {!agenda && (

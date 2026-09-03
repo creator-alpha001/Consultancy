@@ -7,7 +7,7 @@ import { apiPublic } from '@/lib/api';
 import { getProvider } from '@/lib/engagements';
 import { getDomain, label } from '@/lib/pack';
 import { languageName } from '@/lib/words';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,17 +37,18 @@ export default async function MentorProfile({
   const provider = await getProvider(params.id).catch(() => null);
   if (!provider) notFound();
 
-  const domainCode = searchParams.domain ?? 'upsc_cse';
-  const [actor, domain, reportReasons] = await Promise.all([
-    currentUser(),
-    getDomain(domainCode).catch(() => null),
-    // Pack data, resolved on the server: the reasons a person may give
-    // are the family's, and no client code names one.
-    apiPublic<Array<{ code: string; labels: Record<string, string>; isWelfareConcern: boolean }>>(
-      `/report-reasons?domainCode=${domainCode}`,
-    ).catch(() => []),
-  ]);
-  const language = searchParams.language ?? domain?.defaultLanguage ?? 'en';
+  const { user: actor, domain, available, language, languageOptions } =
+    await viewerContext(searchParams);
+  // Pack data, resolved on the server: the reasons a person may give are
+  // the family's, and no client code names one. With no field resolved
+  // there are none to offer, and the report form says so rather than
+  // borrowing another family's reasons.
+  const reportReasons = domain
+    ? await apiPublic<Array<{ code: string; labels: Record<string, string>; isWelfareConcern: boolean }>>(
+        `/report-reasons?domainCode=${encodeURIComponent(domain.domainCode)}`,
+      ).catch(() => [])
+    : [];
+  const domainCode = domain?.domainCode ?? '';
   const reviews = (provider.reviews ?? []) as ReviewRow[];
 
   const bookHref = `/mentors/${provider.providerId}/book?domain=${domainCode}${
@@ -55,7 +56,13 @@ export default async function MentorProfile({
   }&language=${language}`;
 
   return (
-    <PackShell domain={domain} lang={language} actor={actor}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={actor}
+      available={available}
+      languageOptions={languageOptions}
+    >
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <Avatar name={provider.displayName} />
         <div className="min-w-0 flex-1">

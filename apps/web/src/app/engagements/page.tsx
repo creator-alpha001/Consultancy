@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
-import { Card, EmptyState, PageTitle, Section, Status } from '@/components/ui';
+import { ActionLink, Card, EmptyState, PageTitle, Section, Status } from '@/components/ui';
 import { listEngagements, rupees, when } from '@/lib/engagements';
 import { currentUser } from '@/lib/session';
 
@@ -48,9 +48,7 @@ export default async function EngagementsPage(): Promise<JSX.Element> {
         {open.length === 0 ? (
           <EmptyState
             action={
-              <Link href="/mentors" className="text-sm text-accent underline">
-                Find a mentor
-              </Link>
+              <ActionLink href="/mentors">Find a mentor</ActionLink>
             }
           >
             Nothing in flight.

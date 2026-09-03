@@ -5,7 +5,7 @@ import { PackShell } from '@/components/pack-shell';
 import { Card, PageTitle } from '@/components/ui';
 import { getProvider } from '@/lib/engagements';
 import { CategoryNode, getCategories, getDomain, label } from '@/lib/pack';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 import { BookingForm } from './booking-form';
 
 export const dynamic = 'force-dynamic';
@@ -35,13 +35,12 @@ export default async function BookPage({
   params: { id: string };
   searchParams: { domain?: string; category?: string; language?: string };
 }): Promise<JSX.Element> {
-  const actor = await currentUser();
+  const { user: actor, domain, available, language, languageOptions } =
+    await viewerContext(searchParams);
   if (!actor) redirect(`/login?next=/mentors/${params.id}/book`);
 
   const provider = await getProvider(params.id).catch(() => null);
   if (!provider) notFound();
-
-  const domainCode = searchParams.domain ?? 'upsc_cse';
   // The provider's real free slots for the next fortnight. Loaded here
   // rather than in the form so the page renders with them already
   // resolved — a slot list that arrives after the form is a form that
@@ -50,17 +49,21 @@ export default async function BookPage({
     `/providers/${params.id}/slots`,
   ).catch(() => [] as Array<{ start: string; end: string }>);
 
-  const [domain, tree] = await Promise.all([
-    getDomain(domainCode).catch(() => null),
-    getCategories(domainCode).catch(() => [] as CategoryNode[]),
-  ]);
+  const tree = domain
+    ? await getCategories(domain.domainCode).catch(() => [] as CategoryNode[])
+    : ([] as CategoryNode[]);
 
   const category = searchParams.category ? findCategory(tree, searchParams.category) : firstLeaf(tree);
-  const language = searchParams.language ?? domain?.defaultLanguage ?? 'en';
 
   if (!domain || !category) {
     return (
-      <PackShell domain={domain} lang={language} actor={actor}>
+      <PackShell
+        domain={domain}
+        lang={language}
+        actor={actor}
+        available={available}
+        languageOptions={languageOptions}
+      >
         <PageTitle>Cannot book yet</PageTitle>
         <Card>
           <p className="text-sm">
@@ -76,7 +79,13 @@ export default async function BookPage({
   }
 
   return (
-    <PackShell domain={domain} lang={language} actor={actor}>
+    <PackShell
+        domain={domain}
+        lang={language}
+        actor={actor}
+        available={available}
+        languageOptions={languageOptions}
+      >
       <PageTitle
         sub={
           <>
@@ -103,13 +112,14 @@ export default async function BookPage({
           providerId={provider.providerId}
           providerName={provider.displayName}
           availableSlots={availableSlots}
-          domainCode={domainCode}
+          domainCode={domain?.domainCode ?? ''}
           categoryId={category.id}
           categoryLabel={label(category.labels, language)}
           language={language}
           languages={domain.languages}
           engagementTypes={domain.engagementTypes}
           priceBands={domain.priceBands ?? {}}
+          rates={provider.rates ?? []}
         />
       )}
     </PackShell>

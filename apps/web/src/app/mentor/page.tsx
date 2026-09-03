@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PackShell } from '@/components/pack-shell';
+import { ProviderReadiness, ReadinessChecklist } from '@/components/readiness-checklist';
 import { Card, EmptyState, PageTitle, Section, Status, TierChip } from '@/components/ui';
 import { WorkingLanguages } from '@/components/working-languages';
 import { ReplyPanel } from '@/app/engagements/[id]/actions-panel';
@@ -8,7 +9,7 @@ import { apiAsUser } from '@/lib/api';
 import { duration, listEngagements, rupees, searchBoard, when } from '@/lib/engagements';
 import { getDomain, label } from '@/lib/pack';
 import { pluralWord } from '@/lib/words';
-import { currentUser } from '@/lib/session';
+import { viewerContext } from '@/lib/viewer-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,31 +45,44 @@ interface SessionListRow {
  * dashboard that invented one would be the first place it drifted.
  */
 export default async function MentorDashboard(): Promise<JSX.Element> {
-  const actor = await currentUser();
+  const { user: actor, domain, available, language, languageOptions } = await viewerContext();
   if (!actor) redirect('/login?next=/mentor');
 
-  const [stats, engagements, sessions, board, domain, reviews] = await Promise.all([
+  // A provider's domains are derived from the skills they are verified
+  // on (#5), so a mentor with no verified skill yet resolves to none.
+  // Everything domain-scoped below degrades to empty rather than falling
+  // back to somebody else's field.
+  const domainCode = domain?.domainCode ?? null;
+
+  const [stats, engagements, sessions, board, reviews, readiness] = await Promise.all([
     apiAsUser<SkillStat[]>('/me/skill-stats').catch(() => [] as SkillStat[]),
     listEngagements().catch(() => []),
     apiAsUser<SessionListRow[]>('/sessions').catch(() => [] as SessionListRow[]),
     searchBoard().catch(() => []),
-    getDomain('upsc_cse').catch(() => null),
     apiAsUser<ReviewAboutMe[]>(`/users/${actor.id}/reviews`).catch(() => [] as ReviewAboutMe[]),
+    domainCode
+      ? apiAsUser<ProviderReadiness>(
+          `/me/readiness?domain=${encodeURIComponent(domainCode)}`,
+        ).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   // Languages are loaded separately because a failure here must not
   // blank the whole dashboard — and an empty list is a real, meaningful
   // state (it means this provider appears in no search at all).
   const [offerableLangs, myLangs] = await Promise.all([
-    apiAsUser<{ languages: string[] }>('/domains/upsc_cse/working-languages')
-      .then((r) => r.languages)
-      .catch(() => [] as string[]),
+    domainCode
+      ? apiAsUser<{ languages: string[] }>(
+          `/domains/${encodeURIComponent(domainCode)}/working-languages`,
+        )
+          .then((r) => r.languages)
+          .catch(() => [] as string[])
+      : Promise.resolve([] as string[]),
     apiAsUser<Array<{ langCode: string; canEvaluate: boolean }>>('/me/languages').catch(
       () => [] as Array<{ langCode: string; canEvaluate: boolean }>,
     ),
   ]);
 
-  const language = domain?.defaultLanguage ?? 'en';
   const providerWord = label(domain?.labels.provider, language) || 'Mentor';
   const active = engagements.filter((e) =>
     ['agreed', 'working', 'delivered', 'assessed'].includes(e.status),
@@ -80,12 +94,18 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
 
   if (actor.role !== 'provider') {
     return (
-      <PackShell domain={domain} lang={language} actor={actor}>
+      <PackShell
+      domain={domain}
+      lang={language}
+      actor={actor}
+      available={available}
+      languageOptions={languageOptions}
+    >
         <PageTitle>Not a {providerWord.toLowerCase()} account</PageTitle>
         <Card>
           <p className="text-sm text-ink-muted">
             This area is for verified {pluralWord(providerWord.toLowerCase())}.{' '}
-            <Link href="/dashboard" className="text-accent underline">
+            <Link href="/dashboard" className="inline-flex min-h-[44px] items-center underline underline-offset-4">
               Your dashboard
             </Link>
           </p>
@@ -95,10 +115,24 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
   }
 
   return (
-    <PackShell domain={domain} lang={language} actor={actor}>
+    <PackShell
+      domain={domain}
+      lang={language}
+      actor={actor}
+      available={available}
+      languageOptions={languageOptions}
+    >
       <PageTitle sub="What needs you, and what you are verified to take on.">
         {providerWord} workspace
       </PageTitle>
+
+      {/*
+          Above everything else on purpose.
+          Someone who cannot be booked has no engagements to look at, so
+          the first thing they saw was an empty "nothing waiting on you"
+          — which is true and useless. This tells them why.
+      */}
+      {readiness && <ReadinessChecklist readiness={readiness} providerWord={providerWord} />}
 
       <Section title={`Needs your attention (${needsMarking.length})`}>
         {needsMarking.length === 0 ? (
@@ -115,7 +149,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
                     </div>
                     <div className="flex items-center gap-3">
                       <Status value={e.status} />
-                      <Link href={`/engagements/${e.id}/evaluate`} className="text-sm text-accent underline">
+                      <Link href={`/engagements/${e.id}/evaluate`} className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">
                         Mark it
                       </Link>
                     </div>
@@ -130,7 +164,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
       <Section
         title={`Upcoming sessions (${upcoming.length})`}
         action={
-          <Link href="/sessions" className="text-sm text-accent underline">
+          <Link href="/sessions" className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">
             All sessions
           </Link>
         }
@@ -149,7 +183,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
                         {duration(s.scheduled_start, s.scheduled_end)}
                       </p>
                     </div>
-                    <Link href={`/sessions/${s.id}`} className="text-sm text-accent underline">
+                    <Link href={`/sessions/${s.id}`} className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">
                       Open
                     </Link>
                   </div>
@@ -160,7 +194,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
         )}
       </Section>
 
-      <Section title="Open requests you could take" action={<Link href="/board" className="text-sm text-accent underline">The board</Link>}>
+      <Section title="Open requests you could take" action={<Link href="/board" className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">The board</Link>}>
         {board.length === 0 ? (
           <EmptyState>Nothing open right now.</EmptyState>
         ) : (
@@ -170,7 +204,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
                 <Card>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <Link href={`/board/${p.id}`} className="text-sm font-medium hover:underline">
+                      <Link href={`/board/${p.id}`} className="inline-flex min-h-[44px] items-center text-small font-medium underline-offset-4 hover:underline">
                         {p.titleText || p.engagementType?.replace(/_/g, ' ')}
                       </Link>
                       <p className="mt-0.5 text-xs text-ink-muted">
@@ -223,10 +257,85 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
         )}
       </Section>
 
+      {/*
+          Earnings was the largest hole on the supply side: a mentor could
+          do the work and had no screen anywhere that said what they were
+          owed. The ledger always knew; nothing asked it.
+      */}
+      <Section title="Money">
+        <Card tone="outline">
+          <p className="text-body">
+            What you have earned, what is still held against work in progress, and where your payouts
+            go.
+          </p>
+          <Link
+            href="/mentor/earnings"
+            className="mt-lg inline-flex min-h-[44px] items-center rounded-pill bg-accent px-xl text-small font-medium text-accent-ink transition-opacity hover:opacity-85"
+          >
+            Open earnings
+          </Link>
+        </Card>
+      </Section>
+
+      {/*
+          The slot engine has existed since the booking milestone and had
+          no UI, so every provider had an empty calendar and could not be
+          booked at all.
+      */}
+      <Section title="Before you start">
+        <Card tone="outline">
+          <p className="text-body">
+            How this platform works, and what to do when someone is struggling. Required before you
+            can take paid work.
+          </p>
+          <Link
+            href="/mentor/training"
+            className="mt-lg inline-flex min-h-[44px] items-center rounded-pill border border-rule px-xl text-small font-medium transition-colors hover:bg-surface-sunk"
+          >
+            Open the training
+          </Link>
+        </Card>
+      </Section>
+
+      <Section title="Availability">
+        <Card tone="outline">
+          <p className="text-body">
+            The hours you are usually free, the dates you are not, and how much notice you need.
+            Without these nobody can book you.
+          </p>
+          <Link
+            href="/mentor/availability"
+            className="mt-lg inline-flex min-h-[44px] items-center rounded-pill border border-rule px-xl text-small font-medium transition-colors hover:bg-surface-sunk"
+          >
+            Set your hours
+          </Link>
+        </Card>
+      </Section>
+
+      {/*
+          Until this existed the price came entirely from the seeker: an
+          empty box under the domain's typical band. A provider could only
+          accept or decline a number they had never agreed to.
+      */}
+      <Section title="What you offer">
+        <Card tone="outline">
+          <p className="text-body">
+            Your services and packages — what you do, what it costs, and how long it takes. Nobody
+            can book you for something you have not published.
+          </p>
+          <Link
+            href="/mentor/services"
+            className="mt-lg inline-flex min-h-[44px] items-center rounded-pill border border-rule px-xl text-small font-medium transition-colors hover:bg-surface-sunk"
+          >
+            Set your rates
+          </Link>
+        </Card>
+      </Section>
+
       <Section
         title="Your verified skills"
         action={
-          <Link href="/mentor/credentials" className="text-small underline">
+          <Link href="/mentor/credentials" className="inline-flex min-h-[44px] items-center text-small underline underline-offset-4">
             Credentials
           </Link>
         }
@@ -270,7 +379,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
               <li key={e.id}>
                 <Card>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Link href={`/engagements/${e.id}`} className="text-sm font-medium hover:underline">
+                    <Link href={`/engagements/${e.id}`} className="inline-flex min-h-[44px] items-center text-small font-medium underline-offset-4 hover:underline">
                       {e.engagementType?.replace(/_/g, ' ')}
                     </Link>
                     <div className="flex items-center gap-3">
@@ -293,7 +402,7 @@ export default async function MentorDashboard(): Promise<JSX.Element> {
           </EmptyState>
         ) : (
           <WorkingLanguages
-            domainCode="upsc_cse"
+            domainCode={domainCode ?? ''}
             offerable={offerableLangs}
             current={myLangs}
             displayLang={language}

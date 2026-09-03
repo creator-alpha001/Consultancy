@@ -100,10 +100,11 @@ await page.click('label:has-text("live session")');
 await page.waitForTimeout(1600);
 await shotHere('booking-slot-picker');
 
-// Change the duration so the video shows the slots rebuild.
-await page.selectOption('select', '90');
-await page.waitForTimeout(1600);
-await shotHere('booking-duration-90');
+// There is no duration to choose any more. The provider publishes a
+// price for a stated length, and the seeker picks a time, not a size —
+// so the old "change the duration and watch the slots rebuild" shot has
+// nothing left to change. (It was selecting the language dropdown by
+// then, which is how it came to fail rather than to lie.)
 
 await page.locator('button[aria-pressed]').nth(7).click();
 await page.waitForTimeout(1400);
