@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-09-04 · apps/web removed; the frontend seam is now FULLY connected and `mock.ts` is deleted; 320 unit tests, which found the clock frozen, the refund rail lying, and the rubric drawn on a scale that does not exist
+Last updated: 2026-09-05 · `apps/web` removed and the live rows below now name `apps/frontend`, which is where the code actually is; `dev.sh` starts on Git Bash again. The frontend seam is FULLY connected and `mock.ts` is deleted; 320 frontend unit tests (which found the clock frozen, the refund rail lying, and the rubric drawn on a scale that does not exist) and 456 API tests, all green against a real Postgres.
 
 ---
 
@@ -25,9 +25,9 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M6 | Board | **Complete, with debt** | Yes — a seeker finds a provider they never met and completes an engagement (see D13 on "waves") |
 | M7 | Trust: reviews, disputes, appeals | **Complete** | Yes — a dispute is raised, ruled, appealed, settled, and a differently-shaped ladder needs no code change |
 | M8 | Seed 15 more domains as data only | **Complete** | Yes — 19 domains seeded, `git diff -- apps/api/src/` empty. *The architecture's exam, passed.* |
-| M9 | Hardening | **Partial — not complete** | Mostly. Reconciliation, restore drill and the DB perf baseline are real and verified. **3G and accessibility now are too** — `apps/web/test/hardening.mjs` drives the real pages over a throttled Fast-3G profile with a 4× CPU slowdown and runs axe-core against WCAG 2.1 A/AA, in CI on every push. **The security review has now been run** and the one finding it produced is fixed. See below. |
+| M9 | Hardening | **Partial — not complete** | Mostly. Reconciliation, restore drill and the DB perf baseline are real and verified. **3G and accessibility now are too** — `apps/frontend/test/hardening.mjs` drives the real pages over a throttled Fast-3G profile with a 4× CPU slowdown and runs axe-core against WCAG 2.1 A/AA, in CI on every push. **The security review has now been run** and the one finding it produced is fixed. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
-| — | **apps/web** (frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see below |
+| — | **apps/frontend** (web frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see "apps/frontend — connecting to the API" below. This row named `apps/web` until 2026-09-05; that app is deleted and the section describing it is now marked historical. |
 | — | **apps/mobile** (React Native, unscheduled) | **Both journeys working — the primary client** | n/a — see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
@@ -714,7 +714,11 @@ it is CRLF against the script's LF. There is no `.gitattributes`, so a
 Linux CI checkout is LF and the check passes there. Not a real drift,
 and deliberately not "fixed" by committing a line-ending-only change.
 
-### The frontend (apps/web) — what exists
+### The frontend (apps/web) — what existed *(historical — app deleted)*
+
+> `apps/web` was removed in `9a370ee`. Its successor is `apps/frontend`;
+> the live account is under "apps/frontend — connecting to the API"
+> above. This section is kept for the reasoning, not as current state.
 
 Built so the product could be *seen* before more backend goes in. Next.js
 App Router, server-rendered, talking to the real API against the seeded
@@ -1769,7 +1773,17 @@ Two consequences worth knowing:
   exits. `dev.sh` stops services by recorded PID, signalling the whole
   process group because `ts-node-dev` and `next` fork children that
   otherwise survive and keep holding the port.
-- **Always rebuild `apps/web` before serving it.** A stale `.next` served
+- **`dev.sh` no longer requires `setsid`.** It is a util-linux program;
+  Git Bash on Windows — the shell this repo is actually developed in —
+  does not ship it, so every `dev.sh up` died at the first service with
+  nothing but `setsid: command not found`. The script now probes for it
+  and falls back to bare `nohup`, and `stop_bg` falls back from a
+  process-group kill to a single-process kill. The cost is a less tidy
+  shutdown on Windows (a forked `next` child can outlive its parent and
+  keep holding the port); the alternative was a script that did not run
+  at all on the primary development platform. CI is Linux and still gets
+  the group behaviour.
+- **Always rebuild `apps/frontend` before serving it.** A stale `.next` served
   on an already-bound port looks exactly like a working app and produces a
   confident, wrong verdict about a change you just made. `dev.sh up`
   rebuilds unconditionally for this reason; the fifteen seconds are cheap

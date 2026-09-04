@@ -53,10 +53,23 @@ alive() {
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
+# setsid puts the service in its own process group, so stop_bg can signal
+# the whole tree — ts-node-dev and next both fork children that outlive a
+# bare kill on the parent. Git Bash on Windows has no setsid, and without
+# this fallback `up` failed at the first service with nothing but
+# "setsid: command not found", on the platform this repo is developed on.
+# Losing group-kill costs a tidier shutdown; not starting at all costs
+# everything.
+if command -v setsid >/dev/null 2>&1; then
+  spawn() { setsid nohup "$@"; }
+else
+  spawn() { nohup "$@"; }
+fi
+
 start_bg() { # name, logfile, command...
   local name=$1 log=$2; shift 2
   if alive "$name"; then ok "$name already running (pid $(pid_of "$name"))"; return 0; fi
-  ( setsid nohup "$@" > "$log" 2>&1 < /dev/null & echo $! > "$RUN/$name.pid" )
+  ( spawn "$@" > "$log" 2>&1 < /dev/null & echo $! > "$RUN/$name.pid" )
   sleep 1
   alive "$name" || { warn "$name exited immediately — last lines:"; tail -5 "$log" >&2; return 1; }
 }
@@ -65,10 +78,14 @@ stop_bg() {
   local name=$1 pid; pid=$(pid_of "$name")
   if [ -z "$pid" ]; then return 0; fi
   if kill -0 "$pid" 2>/dev/null; then
-    # The whole process group: ts-node-dev and next both fork children.
+    # The whole process group where there is one, the bare process
+    # otherwise: ts-node-dev and next both fork children, so the group is
+    # what we want, but Git Bash has no process groups to signal.
     kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
     for _ in $(seq 1 20); do kill -0 "$pid" 2>/dev/null || break; sleep 0.25; done
-    kill -0 "$pid" 2>/dev/null && kill -KILL -- "-$pid" 2>/dev/null
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
+    fi
     ok "stopped $name"
   fi
   rm -f "$RUN/$name.pid"
