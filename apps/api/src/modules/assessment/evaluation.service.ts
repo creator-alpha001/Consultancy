@@ -11,7 +11,7 @@ import {
   evaluationNotFound,
   unknownDimension,
 } from './errors';
-import { AnnotationRow, EvaluationRow, TemplateDimension } from './types';
+import { AnnotationRow, AssessmentTemplateView, EvaluationRow, TemplateDimension } from './types';
 
 interface AnnotationDbRow {
   id: string;
@@ -82,6 +82,36 @@ export class EvaluationService {
       [input.engagementId, input.submissionId, input.providerId, templateId],
     );
     return this.hydrate(res.rows[0]);
+  }
+
+  /**
+   * The rubric an engagement will be marked against, resolved from its
+   * frozen required skills — the SAME path `open()` takes, deliberately
+   * calling the same resolver rather than reimplementing it, so a
+   * provider can never be shown one rubric and marked against another.
+   *
+   * Null when the engagement's skills carry no template. That is a
+   * legitimate state (hard rule #3), not a missing row.
+   */
+  async templateForEngagement(engagementId: string): Promise<AssessmentTemplateView | null> {
+    const skillsRes = await this.pool.query<{ skill_id: string }>(
+      `SELECT skill_id FROM engagement_skills WHERE engagement_id = $1`,
+      [engagementId],
+    );
+    const templateId = await this.families.resolveTemplateForSkillIds(skillsRes.rows.map((r) => r.skill_id));
+    if (templateId === null) return null;
+
+    const res = await this.pool.query<{
+      id: string;
+      code: string;
+      labels: Record<string, string>;
+      dimensions: TemplateDimension[];
+    }>(
+      `SELECT id, code, labels, dimensions FROM assessment_templates WHERE id = $1 AND active`,
+      [templateId],
+    );
+    const row = res.rows[0];
+    return row ? { id: row.id, code: row.code, labels: row.labels, dimensions: row.dimensions } : null;
   }
 
   async get(evaluationId: string): Promise<EvaluationRow> {

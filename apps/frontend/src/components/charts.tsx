@@ -1,4 +1,5 @@
 import type { AssessmentDimension, ProgressPoint } from '@/lib/types';
+import { SCORE_MIN, SCORE_MAX } from '@/lib/types';
 import { dateShort } from '@/lib/format';
 import { Eyebrow } from './ui';
 
@@ -44,20 +45,27 @@ export function RubricBars({
       {dimensions.map((d) => {
         const value = scores[d.code];
         const before = previous?.[d.code];
-        const pct = value === undefined ? 0 : ((value - d.min) / (d.max - d.min)) * 100;
-        const beforePct = before === undefined ? null : ((before - d.min) / (d.max - d.min)) * 100;
+        /*
+         * One scale for every dimension, because the platform has one:
+         * `assessment_scores.score` is checked BETWEEN 0 AND 100 and
+         * nothing declares a per-dimension range. This used to read a
+         * `min`/`max` off the dimension that no API ever sent.
+         */
+        const pct = value === undefined ? 0 : ((value - SCORE_MIN) / (SCORE_MAX - SCORE_MIN)) * 100;
+        const beforePct =
+          before === undefined ? null : ((before - SCORE_MIN) / (SCORE_MAX - SCORE_MIN)) * 100;
         const delta = value !== undefined && before !== undefined ? value - before : null;
         return (
           <li key={d.code}>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-small font-medium">{d.labelKey}</span>
               <span className="figure text-small">
-                <span className="font-semibold">{value === undefined ? '—' : value.toFixed(1)}</span>
-                <span className="text-ink-muted"> / {d.max}</span>
+                <span className="font-semibold">{value === undefined ? '—' : value}</span>
+                <span className="text-ink-muted"> / {SCORE_MAX}</span>
                 {delta !== null && delta !== 0 && (
                   <span className={`ml-2 ${delta > 0 ? 'text-verified' : 'text-ink-muted'}`}>
                     {delta > 0 ? '+' : ''}
-                    {delta.toFixed(1)}
+                    {delta}
                   </span>
                 )}
               </span>
@@ -79,7 +87,6 @@ export function RubricBars({
               />
             </div>
 
-            <p className="mt-1.5 text-caption text-ink-muted">{d.descriptionKey}</p>
           </li>
         );
       })}
@@ -121,11 +128,17 @@ function Sparkline({ label, points }: { label: string; points: ProgressPoint[] }
   const last = sorted[sorted.length - 1];
   if (!first || !last) return <div />;
 
-  // A fixed 0–10 domain, not a domain fitted to the data: an auto-fitted
-  // axis turns a 0.5 drift into a cliff, and this is a screen someone
-  // reads about their own progress.
-  const lo = 0;
-  const hi = 10;
+  /*
+   * The platform's own fixed domain, not one fitted to the data: an
+   * auto-fitted axis turns a small drift into a cliff, and this is a
+   * screen someone reads about their own progress.
+   *
+   * It was hardcoded to 0–10 while scores are stored 0–100, so every
+   * real mark plotted off the top of the chart and every line was flat
+   * against the ceiling.
+   */
+  const lo = SCORE_MIN;
+  const hi = SCORE_MAX;
   const x = (i: number) => PAD + (i / Math.max(1, sorted.length - 1)) * (W - PAD * 2);
   const y = (v: number) => H - PAD - ((v - lo) / (hi - lo)) * (H - PAD * 2);
 
@@ -137,11 +150,11 @@ function Sparkline({ label, points }: { label: string; points: ProgressPoint[] }
       <figcaption className="flex items-baseline justify-between gap-2">
         <Eyebrow>{label}</Eyebrow>
         <span className="figure text-small">
-          <span className="font-semibold">{last.score.toFixed(1)}</span>
+          <span className="font-semibold">{last.score}</span>
           {delta !== 0 && (
             <span className={delta > 0 ? 'ml-1.5 text-verified' : 'ml-1.5 text-ink-muted'}>
               {delta > 0 ? '+' : ''}
-              {delta.toFixed(1)}
+              {delta}
             </span>
           )}
         </span>
@@ -151,12 +164,12 @@ function Sparkline({ label, points }: { label: string; points: ProgressPoint[] }
         viewBox={`0 0 ${W} ${H}`}
         className="mt-2 w-full"
         role="img"
-        aria-label={`${label}: ${first.score.toFixed(1)} on ${dateShort(first.at)} to ${last.score.toFixed(
-          1,
-        )} on ${dateShort(last.at)}, across ${sorted.length} pieces of your own work.`}
+        aria-label={`${label}: ${first.score} on ${dateShort(first.at)} to ${last.score} on ${dateShort(
+          last.at,
+        )} out of ${SCORE_MAX}, across ${sorted.length} pieces of your own work.`}
       >
         {/* Recessive reference lines at the quartiles. No axis furniture. */}
-        {[2.5, 5, 7.5].map((v) => (
+        {[0.25, 0.5, 0.75].map((f) => hi * f).map((v) => (
           <line
             key={v}
             x1={PAD}
@@ -200,7 +213,7 @@ function Sparkline({ label, points }: { label: string; points: ProgressPoint[] }
             {sorted.map((p) => (
               <tr key={p.at} className="border-t border-line">
                 <td className="py-1 text-ink-muted">{dateShort(p.at)}</td>
-                <td className="figure py-1 text-right font-medium">{p.score.toFixed(1)}</td>
+                <td className="figure py-1 text-right font-medium">{p.score}</td>
               </tr>
             ))}
           </tbody>

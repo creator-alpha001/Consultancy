@@ -1,6 +1,7 @@
 import type {
+  ActionItem, Assessment, AssessmentDimension, AssessmentTemplate,
   BoardRequest, CredentialSubmission, Dispute, Engagement, EscrowOutcome, EscrowStage, LedgerLine, Money,
-  Proposal, ProviderProfile, ProviderSummary, SafetyItem, SessionRecord, VerificationTier,
+  ProgressPoint, Proposal, ProviderProfile, ProviderSummary, SafetyItem, SessionRecord, VerificationTier,
 } from '../types';
 import { allFamilies, domainByCode } from '../pack';
 
@@ -440,6 +441,118 @@ function humaniseCode(code: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/* ------------------------------------------------------------------ */
+/* Assessment                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A dimension, as a template declares it: a code and its labels.
+ *
+ * The label map is keyed by language. There is no scale here and no
+ * description — see `AssessmentDimension` for why the client no longer
+ * pretends there is.
+ */
+export interface ApiTemplateDimension {
+  code: string;
+  labels: Record<string, string>;
+}
+
+/** `GET /engagements/:id/assessment-template`, which may answer null. */
+export interface ApiAssessmentTemplate {
+  id: string;
+  code: string;
+  labels: Record<string, string>;
+  dimensions: ApiTemplateDimension[];
+}
+
+/** `GET /engagements/:id/evaluations/latest`, which may answer null. */
+export interface ApiEvaluation {
+  id: string;
+  engagementId: string;
+  templateId: string | null;
+  dimensions: ApiTemplateDimension[];
+  overallNote: string;
+  returnedAt: string | null;
+  scores: Array<{ dimensionCode: string; score: number; comment: string }>;
+}
+
+/**
+ * A label out of a language-keyed map.
+ *
+ * Falls back to English, then to any language the map has, then to a
+ * humanised form of the code. A dimension rendered as its raw code
+ * ("overall_structure") is ugly; a dimension rendered as an empty
+ * string is a form field nobody can answer.
+ */
+function labelIn(labels: Record<string, string> | undefined, lang: string, code: string): string {
+  if (!labels) return humaniseCode(code);
+  return labels[lang] ?? labels.en ?? Object.values(labels)[0] ?? humaniseCode(code);
+}
+
+export function toDimensions(dimensions: ApiTemplateDimension[], lang = 'en'): AssessmentDimension[] {
+  return dimensions.map((d) => ({ code: d.code, labelKey: labelIn(d.labels, lang, d.code) }));
+}
+
+export function toAssessmentTemplate(t: ApiAssessmentTemplate, lang = 'en'): AssessmentTemplate {
+  return {
+    id: t.id,
+    code: t.code,
+    label: labelIn(t.labels, lang, t.code),
+    dimensions: toDimensions(t.dimensions, lang),
+  };
+}
+
+/**
+ * An evaluation as the screens read it.
+ *
+ * `dimensions` comes from the evaluation itself rather than being looked
+ * up again: it is the set this piece of work was ACTUALLY bound to, and
+ * a template edited since would otherwise relabel a mark that was
+ * already given.
+ */
+export function toAssessment(e: ApiEvaluation, lang = 'en'): Assessment {
+  return {
+    id: e.id,
+    engagementId: e.engagementId,
+    templateId: e.templateId,
+    scores: Object.fromEntries(e.scores.map((s) => [s.dimensionCode, s.score])),
+    comments: Object.fromEntries(e.scores.filter((s) => s.comment).map((s) => [s.dimensionCode, s.comment])),
+    remarks: e.overallNote ? { original: e.overallNote, originalLanguage: lang } : null,
+    dimensions: toDimensions(e.dimensions, lang),
+    returnedAt: e.returnedAt,
+  };
+}
+
+/** One thing a reviewer asked this person to work on. */
+export interface ApiActionItem {
+  annotationId: string;
+  engagementId: string;
+  ordinal: number;
+  bodyText: string;
+  bodyLang: string;
+  returnedAt: string;
+  doneAt: string | null;
+}
+
+/*
+ * An action item has no due date, and is not given one.
+ *
+ * `dueAt` stays null because nothing in the platform sets a deadline on
+ * a reviewer's remark. Inventing one — "due in 7 days" — would turn
+ * advice into an obligation and a missed obligation into a failure,
+ * which is exactly the pressure CLAUDE.md #24 exists to keep off this
+ * screen.
+ */
+export function toActionItem(a: ApiActionItem): ActionItem {
+  return {
+    id: a.annotationId,
+    text: a.bodyText,
+    fromEngagement: a.engagementId,
+    dueAt: null,
+    done: a.doneAt !== null,
+  };
+}
+
 /** `/me/progress`: a person's own scores over time, grouped by dimension. */
 export interface ApiProgress {
   trends: Array<{
@@ -447,6 +560,42 @@ export interface ApiProgress {
     labels: Record<string, string>;
     points: Array<{ engagementId: string; score: number; at: string }>;
   }>;
+  evaluationsReturned: number;
+  actionItems: ApiActionItem[];
+}
+
+/**
+ * Everything `/me/progress` answers, in the shapes the screen wants.
+ *
+ * One response, not three calls: the trends, the labels those trends
+ * are named by, and the action items all arrive together, and splitting
+ * them into separate seam functions meant fetching the same endpoint
+ * twice for one page.
+ *
+ * `labels` is the reason the progress screen no longer asks for a
+ * template. It used to look one up by a hardcoded category slug — real
+ * domain knowledge in a core screen, which the API had made
+ * unnecessary by sending each trend's own labels.
+ */
+export interface Progress {
+  points: ProgressPoint[];
+  labels: Record<string, string>;
+  actions: ActionItem[];
+  evaluationsReturned: number;
+}
+
+export function toProgress(p: ApiProgress | null, lang = 'en'): Progress {
+  const trends = p?.trends ?? [];
+  return {
+    points: trends.flatMap((trend) =>
+      trend.points.map((point) => ({ at: point.at, dimension: trend.dimensionCode, score: point.score })),
+    ),
+    labels: Object.fromEntries(
+      trends.map((trend) => [trend.dimensionCode, labelIn(trend.labels, lang, trend.dimensionCode)]),
+    ),
+    actions: (p?.actionItems ?? []).map(toActionItem),
+    evaluationsReturned: p?.evaluationsReturned ?? 0,
+  };
 }
 
 /* ------------------------------------------------------------------ */

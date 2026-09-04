@@ -1,28 +1,28 @@
-import * as mock from './mock';
 import { api, apiListOrEmpty, apiOrNull } from '../api';
 import {
   toEngagement, toProviderProfile, toProviderSummary, categoryIdFor,
   toLedgerLine, toCredentialSubmission, toDispute, toSafetyItem, toBoardRequest, toProposal,
-  toSessionRecord,
+  toSessionRecord, toAssessment, toAssessmentTemplate, toProgress,
   type ApiEngagement, type ApiMoney, type ApiProgress, type ApiProviderCard, type ApiProviderProfile,
   type ApiBoardPost, type ApiCredentialQueueItem, type ApiDisputeQueueItem, type ApiProposal,
-  type ApiSession,
+  type ApiSession, type ApiEvaluation, type ApiAssessmentTemplate, type Progress,
   type ApiReport, type Reconciliation,
 } from './adapt';
 import type {
-  Actor, Assessment, AssessmentTemplate, BoardRequest, CredentialSubmission, Dispute,
-  Engagement, LedgerLine, ProgressPoint, Proposal, ProviderProfile, ProviderSummary,
-  Role, SafetyItem, SessionRecord, ActionItem,
+  Assessment, AssessmentTemplate, BoardRequest, CredentialSubmission, Dispute, Role,
+  Engagement, LedgerLine, Proposal, ProviderProfile, ProviderSummary,
+  SafetyItem, SessionRecord,
 } from '../types';
+
+export type { Progress };
 
 /**
  * THE SEAM.
  *
  * Every screen in this app reads through this module and nothing else.
- * No component imports `./mock`, and no component calls `fetch`. That is
- * the whole point of the file: when the backend is connected, each
- * function body below becomes a call to @sankalp/api and not one screen
- * changes.
+ * No component calls `fetch`. That is the whole point of the file: when
+ * the backend was connected, each function body below became a real
+ * call and not one screen changed — which is what actually happened.
  *
  * Two rules carried forward from apps/web, because they are the reason
  * that app is safe and they are cheaper to keep than to reintroduce:
@@ -34,23 +34,17 @@ import type {
  *     typed to return conclusions — tier, issuer summary — and there is
  *     no field on it that could carry a document (CLAUDE.md #30).
  *
- * The functions are async today even though the mock is synchronous.
- * That is deliberate: making them async later would ripple through every
- * caller, and this way it does not.
+ * FULLY CONNECTED. Every function here reads the API; none invents
+ * anything. `./mock` is gone — while it existed, a screen could mix
+ * real and invented data without saying so, and the last four functions
+ * still on it (the assessment, its rubric, the action items and the
+ * dispute on an engagement) were exactly the ones nobody noticed were
+ * fake, because they looked plausible.
  *
- * CONNECTING IS IN PROGRESS. Functions that read the API say so; the
- * rest still answer from `./mock` and are marked. That split is
- * deliberate and temporary — a half-connected seam where you can see
- * which half is which beats one where every screen silently mixes real
- * and invented data. TRACKER.md carries the running list.
+ * What replaces "not connected yet" is honest absence: a null template,
+ * an empty list, a rating that says "no reviews yet". Every function
+ * below either returns what the API said or says nothing.
  */
-
-export type Viewer = Actor;
-
-/** Which of the three products the shell is rendering. */
-export async function getViewer(role: Role): Promise<Viewer> {
-  return mock.ACTORS[role] as Viewer;
-}
 
 /**
  * Search, across every family by default.
@@ -146,17 +140,37 @@ export async function getEngagement(id: string): Promise<Engagement | null> {
   return e ? toEngagement(e) : null;
 }
 
-export async function getAssessment(engagementId: string): Promise<Assessment | null> {
-  return mock.ASSESSMENTS[engagementId] ?? null;
+export async function getAssessment(engagementId: string, lang = 'en'): Promise<Assessment | null> {
+  /*
+   * CONNECTED. Null is the ordinary answer for work not yet marked, so
+   * `apiOrNull` and a null body are the same outcome here.
+   */
+  const e = await apiOrNull<ApiEvaluation | null>(
+    `/engagements/${encodeURIComponent(engagementId)}/evaluations/latest`,
+  );
+  return e ? toAssessment(e, lang) : null;
 }
 
 /**
- * A category may legitimately have no template — an objective paper has
- * nothing to mark against a rubric. Callers must handle null; never
- * assume a template exists (CLAUDE.md #3).
+ * The rubric this engagement will be marked against.
+ *
+ * CONNECTED. Keyed by ENGAGEMENT, not by category: the platform
+ * resolves a template from an engagement's frozen required skills, and
+ * asking by category was a second resolution path that would eventually
+ * have disagreed with the one doing the marking.
+ *
+ * Null is legitimate and common — an objective paper has nothing to
+ * mark against a rubric. Callers must handle it; never assume a
+ * template exists (CLAUDE.md #3).
  */
-export async function getAssessmentTemplate(category: string): Promise<AssessmentTemplate | null> {
-  return mock.ASSESSMENT_TEMPLATES[category] ?? null;
+export async function getAssessmentTemplate(
+  engagementId: string,
+  lang = 'en',
+): Promise<AssessmentTemplate | null> {
+  const t = await apiOrNull<ApiAssessmentTemplate | null>(
+    `/engagements/${encodeURIComponent(engagementId)}/assessment-template`,
+  );
+  return t ? toAssessmentTemplate(t, lang) : null;
 }
 
 export async function listBoard(
@@ -304,9 +318,18 @@ export async function getDispute(id: string): Promise<Dispute | null> {
   return toDispute({ ...flat, ...(enriched ?? {}) });
 }
 
-/** Same reasoning as getSessionByEngagement — the case tied to THIS engagement, not a fixed one. */
+/**
+ * The case raised on THIS engagement, if there is one.
+ *
+ * CONNECTED. The API scopes the route to a party, so "no dispute" and
+ * "not yours to see" arrive the same way — which is the right answer to
+ * both (#28).
+ */
 export async function getDisputeByEngagement(engagementId: string): Promise<Dispute | null> {
-  return mock.DISPUTES.find((d) => d.engagementId === engagementId) ?? null;
+  const d = await apiOrNull<ApiDisputeQueueItem | null>(
+    `/engagements/${encodeURIComponent(engagementId)}/disputes`,
+  );
+  return d ? toDispute(d) : null;
 }
 
 export async function listCredentialQueue(): Promise<CredentialSubmission[]> {
@@ -324,28 +347,25 @@ export async function listSafetyQueue(): Promise<SafetyItem[]> {
   return rows.map(toSafetyItem);
 }
 
-export async function listActionItems(): Promise<ActionItem[]> {
-  return mock.ACTION_ITEMS;
-}
-
-export async function listProgress(): Promise<ProgressPoint[]> {
-  /*
-   * CONNECTED. The API groups points by dimension; the chart wants them
-   * flat and groups them itself. `dimension` stays the CODE — the label
-   * comes from the template bound to the category, never from here
-   * (CLAUDE.md #3: dimensions are the template's, never assumed).
-   *
-   * This is a person's own trend against their own past work. There is
-   * no cohort, percentile or comparison anywhere in it (#17).
-   */
-  const progress = await apiOrNull<ApiProgress>('/me/progress');
-  return (progress?.trends ?? []).flatMap((trend) =>
-    trend.points.map((point) => ({
-      at: point.at,
-      dimension: trend.dimensionCode,
-      score: point.score,
-    })),
-  );
+/**
+ * A person's own work over time, and the things they were asked to
+ * change.
+ *
+ * CONNECTED, and deliberately ONE function over one endpoint. The
+ * trends, the labels naming them, and the action items all come back
+ * together; `listProgress()` and `listActionItems()` were two seam
+ * functions fetching the same response twice for one screen, and the
+ * second of them never left the mock.
+ *
+ * The labels are why the progress screen no longer looks up a template:
+ * each trend carries its own, so nothing has to name a category to draw
+ * an axis.
+ *
+ * This is a person against their own past work. There is no cohort,
+ * percentile or comparison anywhere in it (#17).
+ */
+export async function getProgress(lang = 'en'): Promise<Progress> {
+  return toProgress(await apiOrNull<ApiProgress>('/me/progress'), lang);
 }
 
 /**

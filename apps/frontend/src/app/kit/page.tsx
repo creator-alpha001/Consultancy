@@ -253,11 +253,11 @@ export default async function KitPage(): Promise<JSX.Element> {
             <Panel title="Rubric bars" note="The number is always in text. A bar is never the only carrier of its value.">
               <RubricBars
                 dimensions={[
-                  { code: 'demand', labelKey: 'Answered the demand', descriptionKey: 'Did it do what the directive word asked?', min: 0, max: 10, step: 0.5 },
-                  { code: 'structure', labelKey: 'Structure', descriptionKey: 'Introduction, body and conclusion each doing work.', min: 0, max: 10, step: 0.5 },
+                  { code: 'demand', labelKey: 'Answered the demand' },
+                  { code: 'structure', labelKey: 'Structure' },
                 ]}
-                scores={{ demand: 7, structure: 7.5 }}
-                previous={{ demand: 6.5, structure: 7 }}
+                scores={{ demand: 68, structure: 74 }}
+                previous={{ demand: 61, structure: 70 }}
               />
             </Panel>
           </div>

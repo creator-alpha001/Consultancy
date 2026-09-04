@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { RubricBars, ProgressSmallMultiples, RatingDistribution } from './charts';
 import type { AssessmentDimension, ProgressPoint } from '@/lib/types';
+import { SCORE_MAX } from '@/lib/types';
 
 /**
  * The charts, which are where the duty-of-care rules either hold or do
@@ -16,15 +17,7 @@ import type { AssessmentDimension, ProgressPoint } from '@/lib/types';
  */
 
 function dim(over: Partial<AssessmentDimension> = {}): AssessmentDimension {
-  return {
-    code: 'structure',
-    labelKey: 'Structure',
-    descriptionKey: 'Does the answer answer the question asked?',
-    min: 0,
-    max: 10,
-    step: 0.5,
-    ...over,
-  };
+  return { code: 'structure', labelKey: 'Structure', ...over };
 }
 
 afterEach(cleanup);
@@ -48,12 +41,23 @@ describe('RubricBars — the dimensions are the template’s', () => {
     expect(container.querySelectorAll('li')).toHaveLength(0);
   });
 
-  it('honours each dimension’s own scale rather than assuming ten', () => {
+  /*
+   * One scale, because the platform has exactly one: `score numeric
+   * CHECK (score BETWEEN 0 AND 100)`. The dimension type used to carry
+   * `min`/`max`/`step` that no API ever sent, and the delivery screen
+   * drew half-point sliders on a 0–10 range the database would have
+   * rejected.
+   */
+  it('marks every dimension against the platform’s one scale', () => {
+    const { container } = render(<RubricBars dimensions={[dim()]} scores={{ structure: 68 }} />);
+    expect(container.textContent).toContain(`/ ${SCORE_MAX}`);
+    expect(container.textContent).toContain('68');
+  });
+
+  it('draws full marks as a full bar', () => {
     const { container } = render(
-      <RubricBars dimensions={[dim({ min: 0, max: 5 })]} scores={{ structure: 5 }} />,
+      <RubricBars dimensions={[dim()]} scores={{ structure: SCORE_MAX }} />,
     );
-    expect(container.textContent).toContain('/ 5');
-    // Full marks on a 0–5 scale is a full bar, not a half one.
     expect(container.querySelector('[style*="width"]')?.getAttribute('style')).toContain('100%');
   });
 
@@ -62,7 +66,7 @@ describe('RubricBars — the dimensions are the template’s', () => {
     // somebody's work being called worthless.
     const { container } = render(<RubricBars dimensions={[dim()]} scores={{}} />);
     expect(container.textContent).toContain('—');
-    expect(container.textContent).not.toContain('0.0');
+    expect(container.textContent).not.toMatch(/0/);
   });
 
   /*
@@ -73,9 +77,9 @@ describe('RubricBars — the dimensions are the template’s', () => {
    */
   it('compares only against the same person’s previous score', () => {
     const { container } = render(
-      <RubricBars dimensions={[dim()]} scores={{ structure: 7 }} previous={{ structure: 5.5 }} />,
+      <RubricBars dimensions={[dim()]} scores={{ structure: 70 }} previous={{ structure: 55 }} />,
     );
-    expect(container.textContent).toContain('+1.5');
+    expect(container.textContent).toContain('+15');
     const text = (container.textContent ?? '').toLowerCase();
     for (const word of ['average', 'others', 'peers', 'percentile', 'rank', 'cohort']) {
       expect(text).not.toContain(word);
@@ -83,7 +87,7 @@ describe('RubricBars — the dimensions are the template’s', () => {
   });
 
   it('says nothing about change when there is no earlier work', () => {
-    const { container } = render(<RubricBars dimensions={[dim()]} scores={{ structure: 7 }} />);
+    const { container } = render(<RubricBars dimensions={[dim()]} scores={{ structure: 70 }} />);
     expect(container.textContent).not.toContain('+');
   });
 
@@ -91,24 +95,24 @@ describe('RubricBars — the dimensions are the template’s', () => {
     // Shown in the muted ink, not the danger red: a lower score on one
     // piece of work is information, not an alarm.
     const { container } = render(
-      <RubricBars dimensions={[dim()]} scores={{ structure: 5 }} previous={{ structure: 7 }} />,
+      <RubricBars dimensions={[dim()]} scores={{ structure: 50 }} previous={{ structure: 70 }} />,
     );
-    expect(container.textContent).toContain('-2.0');
+    expect(container.textContent).toContain('-20');
     expect(container.querySelector('.text-danger')).toBeNull();
   });
 
   it('carries every value as text, not only as a bar', () => {
-    const { container } = render(<RubricBars dimensions={[dim()]} scores={{ structure: 7.5 }} />);
-    expect(container.textContent).toContain('7.5');
+    const { container } = render(<RubricBars dimensions={[dim()]} scores={{ structure: 75 }} />);
+    expect(container.textContent).toContain('75');
   });
 });
 
 describe('ProgressSmallMultiples — one series per plot', () => {
   const points: ProgressPoint[] = [
-    { at: '2026-06-01', dimension: 'structure', score: 5 },
-    { at: '2026-07-01', dimension: 'structure', score: 6.5 },
-    { at: '2026-06-01', dimension: 'content', score: 4 },
-    { at: '2026-07-01', dimension: 'content', score: 4.5 },
+    { at: '2026-06-01', dimension: 'structure', score: 50 },
+    { at: '2026-07-01', dimension: 'structure', score: 65 },
+    { at: '2026-06-01', dimension: 'content', score: 40 },
+    { at: '2026-07-01', dimension: 'content', score: 45 },
   ];
 
   /*
@@ -150,15 +154,33 @@ describe('ProgressSmallMultiples — one series per plot', () => {
    */
   it('keeps a fixed scale, so a small drift does not read as a cliff', () => {
     const flat: ProgressPoint[] = [
-      { at: '2026-06-01', dimension: 'structure', score: 5.0 },
-      { at: '2026-07-01', dimension: 'structure', score: 5.5 },
+      { at: '2026-06-01', dimension: 'structure', score: 50 },
+      { at: '2026-07-01', dimension: 'structure', score: 55 },
     ];
     const { container } = render(<ProgressSmallMultiples points={flat} dimensionLabels={{}} />);
     const d = container.querySelector('path')?.getAttribute('d') ?? '';
     const ys = [...d.matchAll(/,(\d+\.\d)/g)].map((m) => Number(m[1]));
-    // Half a point out of ten, on a 72px plot: a few pixels, not the
-    // full height it would be on a fitted axis.
+    // Five points out of a hundred, on a 72px plot: a few pixels, not
+    // the full height it would be on a fitted axis.
     expect(Math.abs((ys[0] ?? 0) - (ys[1] ?? 0))).toBeLessThan(6);
+  });
+
+  /*
+   * The domain is the platform's, not a guess. It was hardcoded to
+   * 0–10 while scores are stored 0–100, so every real mark plotted
+   * above the top of the plot and every line sat flat on the ceiling.
+   */
+  it('plots a real score inside the chart, not above it', () => {
+    const high: ProgressPoint[] = [
+      { at: '2026-06-01', dimension: 'structure', score: 20 },
+      { at: '2026-07-01', dimension: 'structure', score: 95 },
+    ];
+    const { container } = render(<ProgressSmallMultiples points={high} dimensionLabels={{}} />);
+    const d = container.querySelector('path')?.getAttribute('d') ?? '';
+    const ys = [...d.matchAll(/,(-?\d+\.\d)/g)].map((m) => Number(m[1]));
+    // Inside the 72px viewBox, and the two marks clearly apart.
+    expect(ys.every((y) => y >= 0 && y <= 72)).toBe(true);
+    expect(Math.abs((ys[0] ?? 0) - (ys[1] ?? 0))).toBeGreaterThan(20);
   });
 
   it('describes the trend in the chart’s accessible name', () => {
@@ -175,7 +197,7 @@ describe('ProgressSmallMultiples — one series per plot', () => {
       <ProgressSmallMultiples points={points} dimensionLabels={{ structure: 'Structure' }} />,
     );
     expect(container.querySelectorAll('table').length).toBeGreaterThan(0);
-    expect(container.querySelector('table')?.textContent).toContain('5.0');
+    expect(container.querySelector('table')?.textContent).toContain('50');
     expect(container.querySelectorAll('svg title')).toHaveLength(0);
   });
 

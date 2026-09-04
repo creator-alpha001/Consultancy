@@ -172,29 +172,58 @@ export interface Engagement {
   unreadMessages: number;
 }
 
+/**
+ * One thing a piece of work is marked on.
+ *
+ * A code and a label, and nothing else — that is the whole of what a
+ * template declares. There is deliberately no `min`, `max`, `step` or
+ * description: earlier versions of this type carried all four, the API
+ * had no source for any of them, and the delivery screen drew sliders
+ * on a 0–10 scale in half-point steps that the database would have
+ * rejected outright. The platform has ONE scale (`SCORE_MIN`…
+ * `SCORE_MAX`, integers), enforced by a check constraint.
+ *
+ * How many dimensions there are is still never assumed. Never six,
+ * never any particular set, and never that a template exists at all
+ * (CLAUDE.md #3).
+ */
 export interface AssessmentDimension {
   code: string;
   labelKey: string;
-  descriptionKey: string;
-  /** The scale comes from the template. Never assume five, never assume six. */
-  min: number;
-  max: number;
-  step: number;
 }
+
+/**
+ * The one scale every dimension is marked on.
+ *
+ * Mirrors `assessment_scores.score numeric CHECK (score BETWEEN 0 AND
+ * 100)` and the integer check in the API's scoring route. Defined once
+ * here so no screen invents its own axis — the progress chart used a
+ * fixed 0–10 domain, which drew a score of 62 off the top of the plot.
+ */
+export const SCORE_MIN = 0;
+export const SCORE_MAX = 100;
 
 export interface AssessmentTemplate {
   id: string;
-  category: string;
+  code: string;
+  /** The template's own name, from the pack. Not a category. */
+  label: string;
   dimensions: AssessmentDimension[];
 }
 
 export interface Assessment {
   id: string;
   engagementId: string;
-  templateId: string;
+  templateId: string | null;
+  /** Keyed by dimension code. A dimension not yet marked is absent. */
   scores: Record<string, number>;
+  /** Per-dimension remarks the provider left alongside the score. */
+  comments: Record<string, string>;
   remarks: LocalisedText | null;
-  submittedAt: string | null;
+  /** The dimensions THIS assessment was marked against, as bound. */
+  dimensions: AssessmentDimension[];
+  /** Null while the provider is still working on it. */
+  returnedAt: string | null;
 }
 
 export interface Review {

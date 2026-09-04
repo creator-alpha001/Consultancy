@@ -3,8 +3,11 @@ import { Chip, Divider, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { ProgressSmallMultiples } from '@/components/charts';
 import { preview } from '@/lib/preview';
 import { tl } from '@/lib/pack';
-import { listProgress, listActionItems, getAssessmentTemplate } from '@/lib/data';
-import { dateLong } from '@/lib/format';
+import { SCORE_MAX } from '@/lib/types';
+import { getProgress } from '@/lib/data';
+import { referenceFor } from '@/lib/data/adapt';
+import { setActionDone } from '@/app/actions/progress';
+import { EmptyState } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,15 +30,17 @@ export const dynamic = 'force-dynamic';
  */
 export default async function ProgressPage(): Promise<JSX.Element> {
   const { fam, lang } = await preview('seeker');
-  const [points, actions, template] = await Promise.all([
-    listProgress(),
-    listActionItems(),
-    getAssessmentTemplate('gs2'),
-  ]);
 
-  const dimensionLabels = Object.fromEntries(
-    (template?.dimensions ?? []).map((d) => [d.code, d.labelKey]),
-  );
+  /*
+   * One call. The trends, the labels naming them and the action items
+   * all come from `/me/progress` together.
+   *
+   * This screen used to ask for an assessment template by a hardcoded
+   * category slug — 'gs2' — to get its axis labels: real domain
+   * knowledge sitting in core, which CLAUDE.md forbids outright, and
+   * unnecessary besides, because every trend already carries its own.
+   */
+  const { points, labels: dimensionLabels, actions } = await getProgress(lang);
   const open = actions.filter((a) => !a.done);
   const done = actions.filter((a) => a.done);
 
@@ -50,11 +55,23 @@ export default async function ProgressPage(): Promise<JSX.Element> {
         title="Rubric scores"
         note="Each piece of work is marked against the same dimensions, which is what makes a trend mean anything."
       >
-        <ProgressSmallMultiples points={points} dimensionLabels={dimensionLabels} />
-        <p className="mt-5 border-t border-line pt-4 text-small text-ink-muted">
-          Scores sit on a fixed 0&ndash;10 scale, not one fitted to your own range. A chart that rescales itself turns
-          a half-point drift into a cliff, and that is not information — it is anxiety with axes.
-        </p>
+        {points.length > 0 ? (
+          <>
+            <ProgressSmallMultiples points={points} dimensionLabels={dimensionLabels} />
+            <p className="mt-5 border-t border-line pt-4 text-small text-ink-muted">
+              Scores sit on a fixed 0&ndash;{SCORE_MAX} scale, not one fitted to your own range. A chart that rescales
+              itself turns a small drift into a cliff, and that is not information — it is anxiety with axes.
+            </p>
+          </>
+        ) : (
+          /*
+           * Nothing marked yet is not a failure and is not phrased as
+           * one. No "you have not started", no empty streak, no nudge.
+           */
+          <EmptyState title="Nothing marked yet">
+            A trend needs at least two pieces of work back from a reviewer. Once they are, they appear here.
+          </EmptyState>
+        )}
       </Panel>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -67,15 +84,34 @@ export default async function ProgressPage(): Promise<JSX.Element> {
               <Eyebrow>Still open</Eyebrow>
               <ul className="mt-3 space-y-2.5">
                 {open.map((a) => (
-                  <li key={a.id} className="flex gap-3 rounded-md border border-line p-3.5">
-                    <input type="checkbox" className="mt-1 h-4 w-4 flex-none accent-[color:var(--brand)]" />
-                    <span className="min-w-0">
-                      <span className="block text-body">{a.text}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-2 text-caption text-ink-muted">
-                        <span className="figure">from {a.fromEngagement}</span>
-                        {a.dueAt && <Chip tone="neutral">by {dateLong(a.dueAt)}</Chip>}
-                      </span>
-                    </span>
+                  <li key={a.id} className="rounded-md border border-line p-3.5">
+                    {/*
+                      A real form, not a decorative box. This was an
+                      unwired <input> that could be ticked and recorded
+                      nothing — the one interaction on the screen whose
+                      entire value is that it persists.
+                    */}
+                    <form action={setActionDone} className="flex gap-3">
+                      <input type="hidden" name="annotationId" value={a.id} />
+                      <input
+                        id={`a-${a.id}`}
+                        type="checkbox"
+                        name="done"
+                        className="mt-1 h-4 w-4 flex-none accent-[color:var(--brand)]"
+                      />
+                      <label htmlFor={`a-${a.id}`} className="min-w-0 cursor-pointer">
+                        <span className="block text-body">{a.text}</span>
+                        <span className="mt-1 flex flex-wrap items-center gap-2 text-caption text-ink-muted">
+                          <span className="figure">from {referenceFor(a.fromEngagement)}</span>
+                        </span>
+                      </label>
+                      <button
+                        type="submit"
+                        className="ml-auto min-h-touch self-start rounded-md px-2.5 text-caption font-medium text-brand hover:bg-surface-sunk"
+                      >
+                        Save
+                      </button>
+                    </form>
                   </li>
                 ))}
               </ul>
@@ -88,11 +124,25 @@ export default async function ProgressPage(): Promise<JSX.Element> {
               <Eyebrow>Done</Eyebrow>
               <ul className="mt-3 space-y-2">
                 {done.map((a) => (
-                  <li key={a.id} className="flex gap-3 text-small text-ink-muted">
-                    <span aria-hidden="true" className="text-verified">
-                      ✓
-                    </span>
-                    <span className="line-through">{a.text}</span>
+                  <li key={a.id}>
+                    {/*
+                      Reversible, and worded as a plain correction. There
+                      is no count to lose and nothing to break by
+                      un-ticking something (#17).
+                    */}
+                    <form action={setActionDone} className="flex items-start gap-3 text-small text-ink-muted">
+                      <input type="hidden" name="annotationId" value={a.id} />
+                      <span aria-hidden="true" className="text-verified">
+                        ✓
+                      </span>
+                      <span className="line-through">{a.text}</span>
+                      <button
+                        type="submit"
+                        className="ml-auto min-h-touch flex-none self-start rounded-md px-2.5 text-caption hover:bg-surface-sunk hover:text-ink"
+                      >
+                        Not done after all
+                      </button>
+                    </form>
                   </li>
                 ))}
               </ul>

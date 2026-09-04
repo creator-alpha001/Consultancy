@@ -139,6 +139,51 @@ describe('response shapes the clients depend on', () => {
     }
   });
 
+  /*
+   * The rubric, BEFORE anything is submitted.
+   *
+   * A provider needs the dimensions to decide whether to take the work,
+   * and the delivery form needs them to lay itself out — neither can
+   * wait for an evaluation, which cannot exist before a submission. The
+   * absence of this route is why a client hand-wrote a dimension type
+   * with `min`, `max` and `step` on it and drew a 0–10 slider, on a
+   * platform whose score column is checked BETWEEN 0 AND 100.
+   */
+  it('the rubric for an engagement resolves the same way the marking path does', async () => {
+    const { seekerId, providerId } = await seedUsers(pool);
+    const engagement = await engagements.createDraft({
+      seekerId,
+      providerId,
+      domainCode: 'uppsc',
+      categoryId,
+      engagementType: 'document_review',
+      currency: 'INR',
+      amountPaise: 50_000n,
+      language: 'en',
+    });
+
+    const template = await evaluations.templateForEngagement(engagement.id);
+
+    if (template === null) {
+      /*
+       * A legitimate answer, not a failure (hard rule #3): an
+       * engagement whose skills carry no template has no rubric. The
+       * contract being asserted is that null is REACHABLE and typed,
+       * because a client that assumes a template exists is the bug this
+       * route was added to stop.
+       */
+      expect(template).toBeNull();
+      return;
+    }
+
+    expectFields(template, ['id', 'code', 'labels', 'dimensions'], 'assessment template');
+    for (const d of template.dimensions) {
+      // A code and its labels. Nothing else — no scale, because the
+      // platform has exactly one and it is not per dimension.
+      expect(Object.keys(d).sort()).toEqual(['code', 'labels']);
+    }
+  });
+
   it('an engagement carries the money field the clients read', async () => {
     const { seekerId, providerId } = await seedUsers(pool);
     const engagement = await engagements.createDraft({

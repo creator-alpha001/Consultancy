@@ -34,8 +34,9 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
   const fam = contextFor(e.family);
 
   const [assessment, template, session, dispute] = await Promise.all([
-    getAssessment(e.id),
-    getAssessmentTemplate(e.category),
+    getAssessment(e.id, lang),
+    /* Resolved for this engagement, not looked up by category. */
+    getAssessmentTemplate(e.id, lang),
     getSessionByEngagement(e.id),
     getDisputeByEngagement(e.id),
   ]);
@@ -79,7 +80,16 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
               title={t(fam.labels.assessment, lang)}
               note={`Marked against the ${template.dimensions.length} dimensions this ${tl(fam.labels.category, lang)} uses. The same ones every time, so the trend means something.`}
             >
-              <RubricBars dimensions={template.dimensions} scores={assessment.scores} />
+              {/*
+                The dimensions this assessment was ACTUALLY bound to,
+                taken from the assessment rather than the live template.
+                A template edited since would otherwise relabel a mark
+                that has already been given and argued over.
+              */}
+              <RubricBars
+                dimensions={assessment.dimensions.length > 0 ? assessment.dimensions : template.dimensions}
+                scores={assessment.scores}
+              />
               {assessment.remarks && (
                 <>
                   <Divider className="my-5" />

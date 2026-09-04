@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-09-04 · apps/web removed; board and sessions connected; 276 frontend unit tests, which found the clock frozen and the refund rail lying
+Last updated: 2026-09-04 · apps/web removed; the frontend seam is now FULLY connected and `mock.ts` is deleted; 317 unit tests, which found the clock frozen, the refund rail lying, and the rubric drawn on a scale that does not exist
 
 ---
 
@@ -272,9 +272,86 @@ rather than as an invented value, and each is a real decision:
   unrecognised status reports as *no outcome yet* rather than guessing a
   direction. Tested in `components/escrow.test.ts`.
 
+### The seam is fully connected, and `mock.ts` is gone
+
+The last four functions still answering from a fixture — the
+assessment, its rubric, the action items and the dispute on an
+engagement — now read the API. Nothing imports `./mock`, so the 882-line
+module was deleted. Those four were precisely the ones nobody noticed
+were fake, because a plausible fixture looks exactly like real data.
+
+Connecting them surfaced four defects that had been invisible while the
+data was invented:
+
+- **The rubric resolved by the wrong key.** `getAssessmentTemplate` took
+  a CATEGORY. The platform resolves a template from an engagement's
+  frozen required skills (`EvaluationService.open`), and a category's
+  own `assessment_template_id` is an override that is usually null. Two
+  resolution paths would eventually have shown a provider one rubric and
+  marked them against another. There was no route to ask the right
+  question, so **`GET /engagements/:id/assessment-template` is new** —
+  it calls the same `resolveTemplateForSkillIds` the marking path does,
+  deliberately, so the two cannot diverge. Null stays a legitimate
+  answer, not a 404 (#3).
+- **`AssessmentDimension` carried a scale the platform does not have.**
+  `min`, `max`, `step` and `descriptionKey` were hand-written fields no
+  API ever filled — the D44 class of bug exactly. The delivery screen
+  drew 0–10 sliders in half-point steps; `assessment_scores.score` is
+  `numeric CHECK (score BETWEEN 0 AND 100)` and the scoring route
+  requires an integer, so **every mark that form could produce would
+  have been rejected**. A template declares `{ code, labels }` and
+  nothing else. `SCORE_MIN`/`SCORE_MAX` now live in one place.
+- **The progress chart plotted on a 0–10 axis.** Same root cause. Real
+  scores are 0–100, so every point sat above the top of the plot and
+  every line lay flat against the ceiling.
+- **The progress screen hardcoded a category slug.** It called
+  `getAssessmentTemplate('gs2')` purely to get axis labels — real domain
+  knowledge in core, which CLAUDE.md forbids outright — when
+  `/me/progress` had been sending each trend's own labels all along.
+  `listProgress` and `listActionItems` are now one `getProgress()` over
+  one response.
+
 **Still to reconcile:** sessions come back in snake_case with none of the
-consent/transcript fields the screens show, and the board and
-assessment-template shapes have not been mapped yet.
+consent/transcript fields the screens show, and the board shape has not
+been fully mapped.
+
+**Open question for a product decision, not invented here:** a template
+declares no per-dimension scale, so everything is marked out of 100. A
+UPSC GS answer is conventionally marked out of 10 or 15. If a template
+should declare its own range, that is a manifest field, a validation
+rule and a migration — deliberately not guessed at.
+
+### Three screens that did nothing, now wired
+
+- **The delivery screen had no `<form>`.** `/provider/work/[id]`
+  rendered the rubric and a "Deliver and start the review window"
+  button inside no form element at all. A provider could mark every
+  dimension, press it, and send nothing — the product's core loop, and
+  its most expensive silent failure. `actions/assessment.ts` now walks
+  the four API steps (submit → open evaluation → score each dimension →
+  return) behind one button. It reads every mark before writing any of
+  them, because an assessment cannot be returned unless all dimensions
+  are scored and a validate-as-you-go run would leave a half-scored
+  evaluation the provider cannot see. It reuses an open evaluation
+  rather than opening a second, since opening INSERTs.
+- **The action-item checkbox recorded nothing.** A bare `<input
+  type="checkbox">` with no handler, on the one screen whose entire
+  value is that ticking persists. `POST /me/action-items/:id` existed
+  the whole time. It is reversible — a one-way tick makes the list lie —
+  and un-ticking is worded as a plain correction, with no count to
+  protect (#17).
+- **The delivery screen invented a seeker's history.** A "earlier work
+  with you" panel listed "Essay, 21 Aug. Thesis 6.5, structure 7.0" —
+  hardcoded, and shown against whoever was actually on the screen.
+  Invented history about a real person, on the screen where their work
+  is judged. Removed; nothing reads a provider-scoped history of one
+  seeker yet.
+
+**Found while writing the tests for the above:** `redirect()` works by
+throwing, so the first version of `actions/assessment.ts` caught its own
+redirects in the `catch` meant for API failures and reported every
+refusal as the generic fallback. The specific reason was lost every
+time. Nothing in that file redirects from inside a `try` now.
 
 ### The pack editor — categories are now editable
 
@@ -448,7 +525,7 @@ fine:
 All three are fixed, and hardening passes with zero WCAG violations and
 every route inside the 3G budget.
 
-**Unit tests exist now — 276 of them, in under six seconds.**
+**Unit tests exist now — 317 of them, in under six seconds.**
 `apps/frontend` had none: the 455 tests were all API-side, and the only
 frontend coverage was two browser suites that need Postgres and a build.
 The adapters and the pack loader carry real logic, and the project's own
@@ -458,7 +535,7 @@ gap rather than a choice.
 `vitest.config.ts` scopes them to `src/**/*.test.{ts,tsx}`, which
 deliberately excludes `test/`, where the browser suites live. A DOM is
 opt-in per file (`@vitest-environment happy-dom`), so the pure-function
-files do not pay for a document to check arithmetic. Sixteen files, in
+files do not pay for a document to check arithmetic. Eighteen files, in
 three layers.
 
 **The pure layer:**
@@ -540,6 +617,22 @@ the rule rather than a presentation of it:
   come from the pack, carry their hours, and offer rather than instruct
   (#24–26); navigation is scoped to the surface, with no admin route
   reachable from a seeker's frame.
+
+**The assessment layer**, added when the seam was finished:
+
+- **`data/assessment.test.ts`** — the rubric is asked for by ENGAGEMENT;
+  null is an answer and not a failure (#3); a dimension carries a code
+  and a label and nothing else; the marks travel with the dimensions
+  they were bound to, so a template edited since cannot relabel a mark
+  already argued over; an action item is given no due date, because
+  nothing in the platform sets one and inventing one would turn advice
+  into an obligation (#24).
+- **`actions/assessment.test.ts`** — the four steps in the order the API
+  requires; a partly marked assessment is refused and NOTHING is
+  written; only the dimensions the evaluation is bound to are scored,
+  read back from the API rather than trusted from the form (#16); an
+  already-open evaluation is reused rather than a second one INSERTed;
+  the API's own refusal is reported rather than a generic failure.
 
 **Writing them found a real bug immediately.** `format.now()` returned a
 pinned instant — `2026-09-01T09:30:00+05:30` — with its own comment

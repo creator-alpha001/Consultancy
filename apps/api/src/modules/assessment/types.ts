@@ -16,6 +16,27 @@ export interface TemplateDimension {
   labels: Record<string, string>;
 }
 
+/**
+ * A rubric, on its own, before any work exists to mark against it.
+ *
+ * `dimensions` is what a template actually declares: a code and its
+ * labels, and nothing else. There is deliberately no per-dimension
+ * minimum, maximum or step here — the platform scores every dimension
+ * on one integer scale, which `assessment_scores.score` enforces as
+ * 0..100. A client that invents a per-dimension range is drawing a form
+ * the database will reject.
+ */
+export interface AssessmentTemplateView {
+  id: string;
+  code: string;
+  labels: Record<string, string>;
+  dimensions: TemplateDimension[];
+}
+
+/** The one scale, as the 0013 check constraint defines it. */
+export const SCORE_MIN = 0;
+export const SCORE_MAX = 100;
+
 export interface EvaluationRow {
   id: string;
   engagementId: string;

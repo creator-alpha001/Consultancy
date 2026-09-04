@@ -5,7 +5,9 @@ import { EscrowRail } from '@/components/escrow';
 import { GoalsContract } from '@/components/goals';
 import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel } from '@/lib/pack';
-import { getEngagement, getAssessmentTemplate } from '@/lib/data';
+import { getEngagement, getAssessmentTemplate, getAssessment } from '@/lib/data';
+import { returnAssessment } from '@/app/actions/assessment';
+import { SCORE_MIN, SCORE_MAX } from '@/lib/types';
 import { until, dateLong } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +30,18 @@ export default async function ProviderWorkDetail({ params }: { params: Promise<{
   const e = await getEngagement(id);
   if (!e) notFound();
   const fam = contextFor(e.family);
-  const template = await getAssessmentTemplate(e.category);
+  /*
+   * The rubric is resolved for THIS ENGAGEMENT, from its frozen
+   * required skills — the same path the API takes when it opens an
+   * evaluation. Asking by category was a second resolution path that
+   * could have shown a provider one rubric and marked them against
+   * another.
+   */
+  const [template, existing] = await Promise.all([
+    getAssessmentTemplate(e.id, lang),
+    getAssessment(e.id, lang),
+  ]);
+  const marked = existing?.returnedAt !== null && existing !== null;
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider/work">
@@ -39,7 +52,15 @@ export default async function ProviderWorkDetail({ params }: { params: Promise<{
         action={e.dueAt ? <SlaClock text={until(e.dueAt)} /> : undefined}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      {/*
+        One form over the rubric and the send button, which sit in
+        different columns — hence the form wrapping the whole grid
+        rather than a Panel. Before this the page had no form element at
+        all: a provider could fill in every dimension, press deliver,
+        and nothing was sent anywhere.
+      */}
+      <form action={returnAssessment} className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <input type="hidden" name="engagementId" value={e.id} />
         <div className="min-w-0 space-y-5">
           {e.agenda && (
             <GoalsContract
@@ -62,18 +83,37 @@ export default async function ProviderWorkDetail({ params }: { params: Promise<{
                         {d.labelKey}
                       </label>
                       <span className="figure text-small text-ink-muted">
-                        0 – {d.max}, in steps of {d.step}
+                        out of {SCORE_MAX}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-small text-ink-muted">{d.descriptionKey}</p>
+                    {/*
+                      A number, not a slider.
+                      
+                      The slider it replaced ran 0–10 in half-point
+                      steps, which is a scale the platform does not
+                      have: scores are whole numbers 0–100, checked by
+                      the database, and every mark that form could
+                      produce would have been rejected. A marker also
+                      wants to type 62, not drag towards it.
+                    */}
                     <input
                       id={`d-${d.code}`}
-                      type="range"
-                      min={d.min}
-                      max={d.max}
-                      step={d.step}
-                      defaultValue={(d.max - d.min) / 2}
-                      className="mt-2.5 w-full accent-[color:var(--brand)]"
+                      name={`score_${d.code}`}
+                      type="number"
+                      inputMode="numeric"
+                      min={SCORE_MIN}
+                      max={SCORE_MAX}
+                      step={1}
+                      required
+                      defaultValue={existing?.scores[d.code] ?? ''}
+                      className="mt-2.5 min-h-touch w-28 rounded-md border border-line-strong bg-surface px-3 text-body figure focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--e-focus)]"
+                    />
+                    <input
+                      type="text"
+                      name={`comment_${d.code}`}
+                      defaultValue={existing?.comments[d.code] ?? ''}
+                      placeholder="Why that mark (optional)"
+                      className="mt-2 min-h-touch w-full rounded-md border border-line bg-surface px-3 text-small focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--e-focus)]"
                     />
                   </li>
                 ))}
@@ -85,6 +125,7 @@ export default async function ProviderWorkDetail({ params }: { params: Promise<{
                 label="Remarks"
                 name="remarks"
                 rows={6}
+                defaultValue={existing?.remarks?.original ?? ''}
                 placeholder="Name the behaviour, not the person. 'You describe where the question asks you to examine' lands; 'you are weak at ethics' does not."
                 hint="This is the part they will read twice. It is also what a dispute is read against."
               />
@@ -123,44 +164,38 @@ export default async function ProviderWorkDetail({ params }: { params: Promise<{
               releases to you automatically.
             </p>
             <div className="mt-4 space-y-2">
-              <Button full size="lg">
-                Deliver and start the review window
-              </Button>
-              <Button tone="secondary" full>
-                Save a draft
+              <Button full size="lg" type="submit" disabled={marked}>
+                {marked ? 'Already returned' : 'Deliver and start the review window'}
               </Button>
             </div>
             <Divider className="my-4" />
             <p className="text-caption text-ink-muted">
-              Nothing is sent until you press deliver. Drafts are yours alone and are not visible to them.
+              {marked
+                ? 'This has been returned. A change now goes through a change order, not an edit.'
+                : 'Nothing is sent until you press deliver. Every dimension has to carry a mark first — a partly marked assessment is not comparable, which is the whole point of a shared rubric.'}
             </p>
           </Panel>
 
           {/*
-            The prep brief: what this person's earlier work said, so the
-            provider is not starting from nothing. Their history with
-            THIS provider, not a profile of them for anyone to browse.
+            The prep brief.
+            
+            It used to list two pieces of earlier work — "Essay, 21 Aug.
+            Thesis 6.5, structure 7.0" — that were hardcoded and had
+            nothing to do with whoever was on the screen. Invented
+            history about a real person, on the screen where their work
+            is being judged, is the worst place in the product to put
+            plausible fiction, so it is gone. Nothing reads a
+            provider-scoped history of one seeker yet; when something
+            does, it belongs here.
           */}
-          <Panel title={`${e.seeker.displayName.split(' ')[0]}'s earlier work with you`}>
-            <ul className="space-y-3 text-small">
-              <li>
-                <p className="font-medium">Essay, 21 Aug</p>
-                <p className="mt-0.5 text-ink-muted">
-                  Thesis 6.5, structure 7.0. You noted the position arrives too late.
-                </p>
-              </li>
-              <li>
-                <p className="font-medium">GS-II, 2 Jul</p>
-                <p className="mt-0.5 text-ink-muted">Demand 5.5. Same pattern — describing where asked to examine.</p>
-              </li>
-            </ul>
-            <p className="mt-3 border-t border-line pt-3 text-caption text-ink-muted">
+          <Panel title="Before you write">
+            <p className="text-small text-ink-muted">
               If the same remark is landing a third time, it is worth saying so directly. Repetition without a change
               of approach is what makes people give up.
             </p>
           </Panel>
         </aside>
-      </div>
+      </form>
     </AppShell>
   );
 }

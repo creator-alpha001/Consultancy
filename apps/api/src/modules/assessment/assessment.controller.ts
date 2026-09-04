@@ -8,7 +8,7 @@ import { evaluationNotFound } from './errors';
 import { EvaluationService } from './evaluation.service';
 import { ProgressService, SeekerProgress } from './progress.service';
 import { SubmissionService } from './submission.service';
-import { AnnotationRow, EvaluationRow, SubmissionRow } from './types';
+import { AnnotationRow, AssessmentTemplateView, EvaluationRow, SubmissionRow } from './types';
 
 /**
  * Submissions and evaluations over HTTP.
@@ -91,6 +91,35 @@ export class AssessmentController {
       [engagementId],
     );
     return res.rows[0] ? this.evaluations.get(res.rows[0].id) : null;
+  }
+
+  /**
+   * The rubric an engagement will be marked against, BEFORE anything has
+   * been submitted.
+   *
+   * A provider needs to see the dimensions to decide whether to take the
+   * work, and the delivery screen needs them to lay out the form. Until
+   * now the only way to learn them was to open an evaluation, which
+   * cannot happen before a submission exists — so every client that
+   * needed a rubric early had to invent one.
+   *
+   * Resolution goes through the engagement's FROZEN required skills,
+   * exactly as `EvaluationService.open` does. Not through the category:
+   * a category may carry an override but usually does not, and two
+   * different resolution paths would eventually disagree about what a
+   * piece of work was marked against.
+   *
+   * Null is a legitimate answer, not a 404 (hard rule #3). An
+   * objective-exam category has no rubric at all, and a caller must
+   * handle that rather than assume a template exists.
+   */
+  @Get('engagements/:engagementId/assessment-template')
+  async templateForEngagement(
+    @Param('engagementId') engagementId: string,
+    @CurrentActor() actor: Actor,
+  ): Promise<AssessmentTemplateView | null> {
+    await this.access.assertParty(engagementId, actor);
+    return this.evaluations.templateForEngagement(engagementId);
   }
 
   /**
