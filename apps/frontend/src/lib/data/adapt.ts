@@ -1,7 +1,7 @@
 import type {
   ActionItem, Assessment, AssessmentDimension, AssessmentTemplate,
   BoardRequest, CredentialSubmission, Dispute, Engagement, EscrowOutcome, EscrowStage, LedgerLine, Money,
-  ProgressPoint, Proposal, ProviderProfile, ProviderSummary, SafetyItem, SessionRecord, VerificationTier,
+  ProgressPoint, Proposal, ProviderProfile, ProviderSummary, SafetyItem, SessionRecord, Submission, VerificationTier,
 } from '../types';
 import { allFamilies, domainByCode } from '../pack';
 
@@ -463,6 +463,27 @@ export interface ApiAssessmentTemplate {
   code: string;
   labels: Record<string, string>;
   dimensions: ApiTemplateDimension[];
+}
+
+/** `GET /engagements/:id/submissions/latest`, which may answer null. */
+export interface ApiSubmission {
+  id: string;
+  engagementId: string;
+  contentRef: string;
+  attachmentId: string | null;
+  note: string;
+  submittedAt: string;
+}
+
+export function toSubmission(s: ApiSubmission): Submission {
+  return {
+    id: s.id,
+    engagementId: s.engagementId,
+    contentRef: s.contentRef,
+    attachmentId: s.attachmentId,
+    note: s.note,
+    submittedAt: s.submittedAt,
+  };
 }
 
 /** `GET /engagements/:id/evaluations/latest`, which may answer null. */

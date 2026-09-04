@@ -2,14 +2,20 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import {
-  Avatar, Button, ButtonLink, Card, Chip, Divider, Eyebrow, GlyphArrow, PageHead, Panel, SlaClock, StatusChip,
+  Avatar, Button, ButtonLink, Card, Chip, Divider, Eyebrow, Field, GlyphArrow, PageHead, Panel, SlaClock,
+  StatusChip, TextArea,
 } from '@/components/ui';
 import { EscrowRail } from '@/components/escrow';
 import { GoalsContract, OriginalLanguageNote } from '@/components/goals';
 import { RubricBars } from '@/components/charts';
 import { preview, contextFor } from '@/lib/preview';
 import { t, tl, plural, categoryLabel } from '@/lib/pack';
-import { getEngagement, getAssessment, getAssessmentTemplate, getSessionByEngagement, getDisputeByEngagement } from '@/lib/data';
+import {
+  getEngagement, getAssessment, getAssessmentTemplate, getSessionByEngagement, getDisputeByEngagement,
+  getSubmission,
+} from '@/lib/data';
+import { submitWork } from '@/app/actions/assessment';
+import type { Submission } from '@/lib/types';
 import { dateTime, until } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -33,12 +39,13 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
   /* The field is the engagement's, so this screen speaks its language. */
   const fam = contextFor(e.family);
 
-  const [assessment, template, session, dispute] = await Promise.all([
+  const [assessment, template, session, dispute, submission] = await Promise.all([
     getAssessment(e.id, lang),
     /* Resolved for this engagement, not looked up by category. */
     getAssessmentTemplate(e.id, lang),
     getSessionByEngagement(e.id),
     getDisputeByEngagement(e.id),
+    getSubmission(e.id),
   ]);
   const type = fam.engagementTypes.find((x) => x.code === e.type);
 
@@ -134,7 +141,14 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <EscrowRail escrow={e.escrow} audience="seeker" />
 
-          <ActionPanel e={e} fam={fam} lang={lang} sessionId={session?.id ?? null} disputeId={dispute?.id ?? null} />
+          <ActionPanel
+            e={e}
+            fam={fam}
+            lang={lang}
+            sessionId={session?.id ?? null}
+            disputeId={dispute?.id ?? null}
+            submission={submission}
+          />
 
           <Card className="p-5">
             <Eyebrow>Working with</Eyebrow>
@@ -186,12 +200,14 @@ function ActionPanel({
   lang,
   sessionId,
   disputeId,
+  submission,
 }: {
   e: NonNullable<Awaited<ReturnType<typeof getEngagement>>>;
   fam: Awaited<ReturnType<typeof preview>>['fam'];
   lang: Awaited<ReturnType<typeof preview>>['lang'];
   sessionId: string | null;
   disputeId: string | null;
+  submission: Submission | null;
 }): JSX.Element | null {
   if (e.status === 'assessed' || e.status === 'delivered') {
     return (
@@ -245,10 +261,46 @@ function ActionPanel({
   }
 
   if (e.status === 'working') {
+    /*
+     * Whether the ball is in their court is a fact, not a guess.
+     *
+     * This panel used to say "Nothing needed from you" on every working
+     * engagement — including a work review, where the seeker has to
+     * send the work before anything can happen at all. Someone could
+     * sit on that screen indefinitely being told there was nothing to
+     * do, while the provider waited for a file. There is no flag on an
+     * engagement type saying a submission is required, and inventing
+     * one would be a manifest change; the API already answers the
+     * question directly, so the presence of a submission decides it.
+     */
+    if (!submission) {
+      return (
+        <Panel tone="caution" title="Send your work">
+          <p className="text-body">
+            {e.provider?.displayName?.split(' ')[0]} is waiting for this. Attach the file, or link to where it
+            already is.
+          </p>
+          <form action={submitWork} className="mt-4 space-y-3">
+            <input type="hidden" name="engagementId" value={e.id} />
+            <Field
+              label="Link to your work"
+              name="contentRef"
+              placeholder="https://…"
+              hint="A private file upload is coming; for now, a link they can open."
+            />
+            <TextArea label="Anything they should know" name="note" rows={3} />
+            <Button full size="lg" type="submit">
+              Send it
+            </Button>
+          </form>
+        </Panel>
+      );
+    }
+
     return (
       <Panel title="Under way">
         <p className="text-body text-ink-muted">
-          Nothing needed from you. {e.provider?.displayName?.split(' ')[0]} has until{' '}
+          Sent {dateTime(submission.submittedAt)}. {e.provider?.displayName?.split(' ')[0]} has until{' '}
           <span className="font-medium text-ink">{dateTime(e.dueAt)}</span>.
         </p>
         <div className="mt-4">

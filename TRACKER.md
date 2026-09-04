@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-09-04 · apps/web removed; the frontend seam is now FULLY connected and `mock.ts` is deleted; 317 unit tests, which found the clock frozen, the refund rail lying, and the rubric drawn on a scale that does not exist
+Last updated: 2026-09-04 · apps/web removed; the frontend seam is now FULLY connected and `mock.ts` is deleted; 320 unit tests, which found the clock frozen, the refund rail lying, and the rubric drawn on a scale that does not exist
 
 ---
 
@@ -340,6 +340,15 @@ rule and a migration — deliberately not guessed at.
   the whole time. It is reversible — a one-way tick makes the list lie —
   and un-ticking is worded as a plain correction, with no count to
   protect (#17).
+- **The seeker had no way to send their work.** `/engagements/[id]`
+  said "Nothing needed from you" on EVERY working engagement —
+  including a work review, where nothing can happen until the seeker
+  sends the work. Someone could sit on that screen indefinitely being
+  told there was nothing to do while the provider waited for a file.
+  There is no flag on an engagement type saying a submission is
+  required, and adding one would be a manifest change; the API answers
+  the question directly, so `getSubmission()` decides it and the panel
+  now says whose turn it actually is.
 - **The delivery screen invented a seeker's history.** A "earlier work
   with you" panel listed "Essay, 21 Aug. Thesis 6.5, structure 7.0" —
   hardcoded, and shown against whoever was actually on the screen.
@@ -525,7 +534,7 @@ fine:
 All three are fixed, and hardening passes with zero WCAG violations and
 every route inside the 3G budget.
 
-**Unit tests exist now — 317 of them, in under six seconds.**
+**Unit tests exist now — 320 of them, in under ten seconds.**
 `apps/frontend` had none: the 455 tests were all API-side, and the only
 frontend coverage was two browser suites that need Postgres and a build.
 The adapters and the pack loader carry real logic, and the project's own

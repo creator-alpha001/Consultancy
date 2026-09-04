@@ -217,9 +217,19 @@ an authenticator app to hand.
 ## 5. Checking it works
 
 ```bash
-cd apps/api  && npm test            # 411 tests
+cd apps/api      && npm test        # 456 tests, against sankalp_test
+cd apps/frontend && npm test        # 317 unit tests, no database needed
 cd apps/frontend && npm run typecheck && npm run build
 ```
+
+The API suites TRUNCATE, so they refuse to run against anything that is
+not visibly a test database — `.env.example` sets `TEST_DATABASE_URL`
+for exactly this, and it is read in preference to `DATABASE_URL` when
+testing. If `npm test` refuses, copy that line into your `.env`.
+
+Run one API suite at a time. They share `sankalp_test` and each one
+truncates it, so two `vitest` processes at once will fail each other in
+ways that look like real regressions.
 
 Browser journeys, all needing the full stack running and seeded. The
 simplest way to run the lot is `./scripts/dev.sh test`; individually:

@@ -211,6 +211,23 @@ export interface AssessmentTemplate {
   dimensions: AssessmentDimension[];
 }
 
+/**
+ * Work a seeker has sent for review.
+ *
+ * Either a private file or a pointer to something they hold elsewhere —
+ * never both, because which one applies decides who may read it.
+ */
+export interface Submission {
+  id: string;
+  engagementId: string;
+  /** A pointer to work held elsewhere. Empty when there is a file. */
+  contentRef: string;
+  /** The private file, reached through grants and signed URLs (#29). */
+  attachmentId: string | null;
+  note: string;
+  submittedAt: string;
+}
+
 export interface Assessment {
   id: string;
   engagementId: string;

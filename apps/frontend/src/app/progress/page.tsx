@@ -1,5 +1,5 @@
 import { AppShell } from '@/components/shell';
-import { Chip, Divider, Eyebrow, PageHead, Panel } from '@/components/ui';
+import { Divider, EmptyState, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { ProgressSmallMultiples } from '@/components/charts';
 import { preview } from '@/lib/preview';
 import { tl } from '@/lib/pack';
@@ -7,7 +7,6 @@ import { SCORE_MAX } from '@/lib/types';
 import { getProgress } from '@/lib/data';
 import { referenceFor } from '@/lib/data/adapt';
 import { setActionDone } from '@/app/actions/progress';
-import { EmptyState } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 

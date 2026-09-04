@@ -2,16 +2,16 @@ import { api, apiListOrEmpty, apiOrNull } from '../api';
 import {
   toEngagement, toProviderProfile, toProviderSummary, categoryIdFor,
   toLedgerLine, toCredentialSubmission, toDispute, toSafetyItem, toBoardRequest, toProposal,
-  toSessionRecord, toAssessment, toAssessmentTemplate, toProgress,
+  toSessionRecord, toAssessment, toAssessmentTemplate, toProgress, toSubmission,
   type ApiEngagement, type ApiMoney, type ApiProgress, type ApiProviderCard, type ApiProviderProfile,
   type ApiBoardPost, type ApiCredentialQueueItem, type ApiDisputeQueueItem, type ApiProposal,
-  type ApiSession, type ApiEvaluation, type ApiAssessmentTemplate, type Progress,
+  type ApiSession, type ApiEvaluation, type ApiAssessmentTemplate, type Progress, type ApiSubmission,
   type ApiReport, type Reconciliation,
 } from './adapt';
 import type {
   Assessment, AssessmentTemplate, BoardRequest, CredentialSubmission, Dispute, Role,
   Engagement, LedgerLine, Proposal, ProviderProfile, ProviderSummary,
-  SafetyItem, SessionRecord,
+  SafetyItem, SessionRecord, Submission,
 } from '../types';
 
 export type { Progress };
@@ -138,6 +138,20 @@ export async function getEngagement(id: string): Promise<Engagement | null> {
   /* CONNECTED. 404 and "not a party to it" are the same answer here (#28). */
   const e = await apiOrNull<ApiEngagement>(`/engagements/${encodeURIComponent(id)}`);
   return e ? toEngagement(e) : null;
+}
+
+/**
+ * The work a seeker has sent, if any.
+ *
+ * CONNECTED. Null means nothing has been submitted — which is the
+ * difference between "waiting on the provider" and "waiting on you",
+ * and the engagement screen was telling every seeker the former.
+ */
+export async function getSubmission(engagementId: string): Promise<Submission | null> {
+  const s = await apiOrNull<ApiSubmission | null>(
+    `/engagements/${encodeURIComponent(engagementId)}/submissions/latest`,
+  );
+  return s ? toSubmission(s) : null;
 }
 
 export async function getAssessment(engagementId: string, lang = 'en'): Promise<Assessment | null> {

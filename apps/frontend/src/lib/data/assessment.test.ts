@@ -21,7 +21,8 @@ vi.mock('next/headers', () => ({
   }),
 }));
 
-const { getAssessment, getAssessmentTemplate, getProgress, getDisputeByEngagement } = await import('./index');
+const { getAssessment, getAssessmentTemplate, getProgress, getDisputeByEngagement, getSubmission } =
+  await import('./index');
 
 function answers(table: Record<string, unknown>, status = 200) {
   const spy = vi.fn(async (url: string) => {
@@ -107,6 +108,42 @@ describe('the rubric', () => {
     // The type used to carry min/max/step that no API ever sent.
     const dimension = toAssessmentTemplate(TEMPLATE).dimensions[0]!;
     expect(Object.keys(dimension).sort()).toEqual(['code', 'labelKey']);
+  });
+});
+
+describe('the work that was sent', () => {
+  const SUBMISSION = {
+    id: 'sub1',
+    engagementId: 'eng1',
+    contentRef: 'https://drive.example.com/answer.pdf',
+    attachmentId: null,
+    note: 'Second attempt at the same question.',
+    submittedAt: '2026-08-20T11:00:00Z',
+  };
+
+  /*
+   * Whether work has been sent is the difference between "waiting on
+   * the provider" and "waiting on you" — and the engagement screen told
+   * every seeker the former, on every working engagement, including a
+   * work review where nothing can happen until they send the work.
+   */
+  it('reports when work was sent', async () => {
+    answers({ '/submissions/latest': SUBMISSION });
+    expect((await getSubmission('eng1'))?.submittedAt).toBe('2026-08-20T11:00:00Z');
+  });
+
+  it('is null when nothing has been sent, so the screen can say whose turn it is', async () => {
+    answers({ '/submissions/latest': null });
+    expect(await getSubmission('eng1')).toBeNull();
+  });
+
+  it('keeps the file and the pointer distinct', async () => {
+    // Which of the two applies decides who may read it (#29), so they
+    // are never collapsed into one field.
+    answers({ '/submissions/latest': { ...SUBMISSION, attachmentId: 'att1', contentRef: '' } });
+    const sent = await getSubmission('eng1');
+    expect(sent?.attachmentId).toBe('att1');
+    expect(sent?.contentRef).toBe('');
   });
 });
 
