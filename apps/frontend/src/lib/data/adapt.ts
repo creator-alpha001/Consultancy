@@ -1,5 +1,5 @@
 import type {
-  BoardRequest, CredentialSubmission, Dispute, Engagement, EscrowStage, LedgerLine, Money,
+  BoardRequest, CredentialSubmission, Dispute, Engagement, EscrowOutcome, EscrowStage, LedgerLine, Money,
   Proposal, ProviderProfile, ProviderSummary, SafetyItem, SessionRecord, VerificationTier,
 } from '../types';
 import { allFamilies, domainByCode } from '../pack';
@@ -290,6 +290,29 @@ export interface ApiEngagement {
   } | null;
 }
 
+/**
+ * Which way a closed escrow went.
+ *
+ * The API's `stage` collapses every settlement onto one final node,
+ * because the rail is complete whichever way the money moved. This
+ * reads the underlying status instead, so the screen can say which way
+ * that was. An unrecognised status is reported as still open rather
+ * than guessed at — claiming the wrong direction is far worse than
+ * saying nothing.
+ */
+export function escrowOutcome(status: string | null): EscrowOutcome | null {
+  switch (status) {
+    case 'released':
+      return 'released';
+    case 'refunded':
+      return 'refunded';
+    case 'settled_split':
+      return 'split';
+    default:
+      return null;
+  }
+}
+
 export function toEngagement(e: ApiEngagement): Engagement {
   const currency = e.escrow?.currency ?? e.currency;
   return {
@@ -346,6 +369,7 @@ export function toEngagement(e: ApiEngagement): Engagement {
       // screens say "held until the goals are confirmed" for this.
       releasesOn: null,
       releasedOn: e.escrow?.releasedOn ?? null,
+      outcome: escrowOutcome(e.escrow?.status ?? null),
     },
     createdAt: e.createdAt ?? '',
     // Nothing server-side carries a due date yet.

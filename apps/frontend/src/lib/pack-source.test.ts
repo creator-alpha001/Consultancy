@@ -59,7 +59,15 @@ function serve(resolved: Record<string, unknown> | null, opts: { categories?: un
   });
 }
 
-beforeEach(() => api.mockReset());
+/*
+ * A block body: `mockReset()` returns the mock, and returning it from
+ * `beforeEach` makes vitest call it as a cleanup hook after each test.
+ * That phantom argument-less call is why `serve` below is written to
+ * tolerate a missing path.
+ */
+beforeEach(() => {
+  api.mockReset();
+});
 
 /**
  * The one family the catalogue serves.

@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-09-04 · apps/web removed; board and sessions connected; 82 frontend unit tests, which found the clock frozen
+Last updated: 2026-09-04 · apps/web removed; board and sessions connected; 276 frontend unit tests, which found the clock frozen and the refund rail lying
 
 ---
 
@@ -260,10 +260,17 @@ rather than as an invented value, and each is a real decision:
 - **Per-item `successCriteria`** — `success_criteria` is one field on the
   agenda, not one per item. Items carry none rather than being given
   words nobody wrote for them.
-- **A refunded escrow** maps to the rail's `released` stage (the escrow
-  is closed), so that rail reads "paid out to the provider" on a refunded
-  engagement. The status chip beside it says `refunded`. Minor display
-  inaccuracy, recorded rather than papered over.
+- ~~**A refunded escrow** reads "paid out to the provider".~~ **Fixed.**
+  The stage was never the problem: a refund and a payout both close the
+  escrow, so they legitimately share the rail's last POSITION. What was
+  missing is that the frontend adapter dropped the escrow `status` the
+  API was already sending. `EscrowState` now carries an `outcome`
+  (`released` / `refunded` / `split` / null), derived by
+  `escrowOutcome()` from that status, and the rail's final stop is worded
+  from it — audience-aware, so the seeker reads "Returned to you" and
+  the provider "Returned to the seeker" about the same event. An
+  unrecognised status reports as *no outcome yet* rather than guessing a
+  direction. Tested in `components/escrow.test.ts`.
 
 **Still to reconcile:** sessions come back in snake_case with none of the
 consent/transcript fields the screens show, and the board and
@@ -441,15 +448,20 @@ fine:
 All three are fixed, and hardening passes with zero WCAG violations and
 every route inside the 3G budget.
 
-**Unit tests exist now — 82 of them, in under two seconds.**
+**Unit tests exist now — 276 of them, in under six seconds.**
 `apps/frontend` had none: the 455 tests were all API-side, and the only
 frontend coverage was two browser suites that need Postgres and a build.
 The adapters and the pack loader carry real logic, and the project's own
 Definition of Done asks for unit tests on business rules, so this was a
 gap rather than a choice.
 
-`vitest.config.ts` scopes them to `src/**/*.test.ts`, which deliberately
-excludes `test/`, where the browser suites live. Four files:
+`vitest.config.ts` scopes them to `src/**/*.test.{ts,tsx}`, which
+deliberately excludes `test/`, where the browser suites live. A DOM is
+opt-in per file (`@vitest-environment happy-dom`), so the pure-function
+files do not pay for a document to check arithmetic. Sixteen files, in
+three layers.
+
+**The pure layer:**
 
 - **`format.test.ts`** — money never shows one paise digit ("₹382.5" is
   not a sum of money and a column of them does not align); absent money
@@ -469,6 +481,65 @@ excludes `test/`, where the browser suites live. Four files:
   because a refusal shifts the evidentiary burden (#21), the
   rating weighted by review count so one review cannot swing a profile,
   and every place an absent value must stay absent.
+- **`format.test.ts`**, **`preview.test.ts`** — and, in the latter, the
+  rule that a family theme may colour the accent and nothing else (#7):
+  the ground, the ink, the verified green and the danger red are the
+  platform's and are unreachable from a manifest.
+
+**The boundary layer** — what actually goes over the wire:
+
+- **`api.test.ts`** — the error envelope becomes a typed `ApiError`;
+  `apiOrNull` swallows 401/403/404 and lets 400/409/500/502 through, so
+  a server fault is never rendered as "nothing here"; an enrolment
+  ticket is never mistaken for a session.
+- **`session.test.ts`** — `requireRole`: a visitor is sent to sign in
+  with their destination kept, a seeker on an admin route is sent home
+  rather than told what exists there.
+- **`data/index.test.ts`** — which filters reach the server and which
+  are applied here; slug→uuid for categories; a category that cannot be
+  resolved is OMITTED rather than sent as a slug (which would silently
+  filter the search to nothing and read as "nobody is here"); no price
+  sort is ever built (#15); a proposal whose provider cannot be read is
+  dropped rather than shown against a blank person.
+- **`actions/auth.test.ts`** — the open-redirect guard on `?next=`;
+  a correct password for a role that must hold 2FA (#32) yields an
+  enrolment ticket and NO session; the 18+ gate refuses before the API
+  is called (#27).
+- **`actions/provider.test.ts`** — rupees→paise as a string, never a
+  float, and a fractional price refused rather than rounded on someone's
+  behalf; wall clock→minutes with a named IANA zone, never an offset;
+  the training quiz reports its score rather than claiming a pass.
+- **`actions/pack.test.ts`** — the patch version is bumped so a publish
+  is recorded rather than silently overwriting; a retirement is refused
+  unless acknowledged, counting retired CHILDREN too; an empty tree is
+  refused outright.
+
+**The component layer** — five components where the rendered output IS
+the rule rather than a presentation of it:
+
+- **`escrow.test.ts`** — where the money is, in words. See the refund
+  fix above.
+- **`goals.test.tsx`** — the locked agenda a dispute is judged against:
+  no edit affordance exists in any mode (#11), the ORIGINAL-language
+  text renders (#20), the evidence hash appears only once there is
+  something it attests to, each goal's state is in words and not only a
+  tick, and every audience sees the same list in the same order.
+- **`charts.test.tsx`** — the duty-of-care rules wearing a visual form:
+  the rubric renders exactly the dimensions it is given and nothing at
+  all where a category has no template (#3), an unscored dimension shows
+  an em dash rather than a zero, progress is small multiples with one
+  series each so no cross-dimension comparison is implied (#17), and the
+  0–10 domain is fixed so a 0.5 drift cannot be drawn as a cliff.
+- **`provider-card.test.tsx`** — tier is attached to the skill it was
+  granted for and never shown bare (#5); the conclusion appears and the
+  evidence never does (#30); each provider is labelled by THEIR OWN
+  family's vocabulary, which is what lets one list hold an agronomist
+  beside an exam evaluator; no response history is "no history yet", not
+  0 min.
+- **`shell.test.tsx`** — the helplines reach a seeker from every page,
+  come from the pack, carry their hours, and offer rather than instruct
+  (#24–26); navigation is scoped to the surface, with no admin route
+  reachable from a seeker's frame.
 
 **Writing them found a real bug immediately.** `format.now()` returned a
 pinned instant — `2026-09-01T09:30:00+05:30` — with its own comment

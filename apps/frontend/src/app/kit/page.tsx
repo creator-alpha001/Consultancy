@@ -245,6 +245,7 @@ export default async function KitPage(): Promise<JSX.Element> {
                   platformFee: { amountPaise: 6750, currency: 'INR' },
                   releasesOn: '2026-09-04T18:00:00+05:30',
                   releasedOn: null,
+                  outcome: null,
                 }}
               />
             </Panel>

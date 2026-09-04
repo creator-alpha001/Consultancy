@@ -137,7 +137,21 @@ export interface EscrowState {
   platformFee: Money | null;
   releasesOn: string | null;
   releasedOn: string | null;
+  /**
+   * Which way the money went once the escrow closed, or null while it
+   * is still open.
+   *
+   * The rail's last node is the same POSITION whichever way it went —
+   * the escrow is finished either way — so the stage alone cannot say
+   * whether the provider was paid or the seeker was refunded. Without
+   * this the rail told a refunded seeker their money had been "paid out
+   * to the provider", which is the exact opposite of what happened.
+   */
+  outcome: EscrowOutcome | null;
 }
+
+/** How a closed escrow closed. Mirrors the settlement statuses. */
+export type EscrowOutcome = 'released' | 'refunded' | 'split';
 
 export interface Engagement {
   id: string;
