@@ -9,6 +9,7 @@
     "start": "next start -p 3002",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
+    "test": "vitest run",
     "journey": "node test/journey.mjs",
     "hardening": "node test/hardening.mjs"
   },
@@ -24,10 +25,11 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
+    "axe-core": "^4.13.0",
+    "playwright": "^1.62.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
-    "playwright": "^1.62.1",
-    "axe-core": "^4.13.0"
+    "vitest": "^2.1.9"
   }
 }

@@ -20,8 +20,6 @@ export function money(m: Money | null | undefined, opts: { compact?: boolean } =
   }).format(rupees);
 }
 
-const FIXED_NOW = new Date('2026-09-01T09:30:00+05:30');
-
 /**
  * Times are stored as instants and rendered in a named IANA zone, never
  * a fixed offset — an offset is wrong twice a year in half the world and
@@ -35,12 +33,22 @@ const FIXED_NOW = new Date('2026-09-01T09:30:00+05:30');
 const DISPLAY_TZ = 'Asia/Kolkata';
 
 /**
- * "Now" is pinned in the mock source so that every relative time on
- * every screen is stable between renders. When this app is wired to the
- * API, delete the constant — nothing else here changes.
+ * Now.
+ *
+ * This used to return a pinned instant, so that relative times were
+ * stable while the app ran on fixtures. Its own comment said to delete
+ * the constant once the API was connected, and that has happened — with
+ * it still pinned, every "3 days left" and "posted 2 days ago" on every
+ * screen was measured against a frozen 1 September while the data
+ * underneath was real.
+ *
+ * Still a function rather than an inline `new Date()`, because
+ * `until()` and `ago()` take an explicit `from` and the tests pass one:
+ * a relative-time helper that cannot be told what "now" is cannot be
+ * tested without waiting.
  */
 export function now(): Date {
-  return FIXED_NOW;
+  return new Date();
 }
 
 export function dateShort(iso: string | null | undefined): string {

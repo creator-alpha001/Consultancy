@@ -65,6 +65,13 @@ jobs:
       - name: Typecheck (frontend)
         working-directory: apps/frontend
         run: npm run typecheck
+      # Unit tests for the logic below the browser: the adapters, the
+      # pack loader and the label rules. Seconds, no database, no build
+      # — so they run here in the build job rather than beside the
+      # browser suites, and fail fast.
+      - name: Unit tests (frontend)
+        working-directory: apps/frontend
+        run: npm test
       - name: Build (frontend)
         working-directory: apps/frontend
         run: npm run build

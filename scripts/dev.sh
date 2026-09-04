@@ -297,6 +297,8 @@ cmd_test() {
   ( cd "$ROOT/apps/api" && npm run --silent typecheck ) || die "api typecheck failed"
   ok "api"
   ( cd "$ROOT/apps/frontend" && npm run --silent typecheck ) || die "frontend typecheck failed"
+  bold "Frontend unit tests"
+  ( cd "$ROOT/apps/frontend" && npm run --silent test ) || die "frontend unit tests failed"
   ok "web"
   if [ -d "$ROOT/apps/mobile/node_modules" ]; then
     ( cd "$ROOT/apps/mobile" && npx tsc --noEmit ) || die "mobile typecheck failed"

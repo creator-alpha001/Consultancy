@@ -7,7 +7,7 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-09-02 · journeys and hardening ported and passing; apps/web unreferenced but NOT deleted — it holds uncommitted work
+Last updated: 2026-09-04 · apps/web removed; board and sessions connected; 82 frontend unit tests, which found the clock frozen
 
 ---
 
@@ -440,6 +440,47 @@ fine:
 
 All three are fixed, and hardening passes with zero WCAG violations and
 every route inside the 3G budget.
+
+**Unit tests exist now — 82 of them, in under two seconds.**
+`apps/frontend` had none: the 455 tests were all API-side, and the only
+frontend coverage was two browser suites that need Postgres and a build.
+The adapters and the pack loader carry real logic, and the project's own
+Definition of Done asks for unit tests on business rules, so this was a
+gap rather than a choice.
+
+`vitest.config.ts` scopes them to `src/**/*.test.ts`, which deliberately
+excludes `test/`, where the browser suites live. Four files:
+
+- **`format.test.ts`** — money never shows one paise digit ("₹382.5" is
+  not a sum of money and a column of them does not align); absent money
+  renders as absent, not as ₹0.
+- **`pack.test.ts`** — the label rules that make domain-neutrality true
+  rather than claimed: no "s" appended to a Devanagari plural, no
+  article in a language without articles, no lower-casing a caseless
+  script, a category resolvable by slug OR uuid, and an unresolvable
+  uuid rendering as empty rather than printing itself on screen.
+- **`pack-source.test.ts`** — inheritance and the helpline rule: a
+  family may add a line, never remove the platform's (#24–25); a
+  manifest that omits a word inherits it; a whole accent relation is
+  derived from one published colour; a family whose manifest cannot be
+  read still renders.
+- **`adapt.test.ts`** — the anti-corruption layer, where D44 lives:
+  bigint-as-string money, the escrow split, consent kept as THREE states
+  because a refusal shifts the evidentiary burden (#21), the
+  rating weighted by review count so one review cannot swing a profile,
+  and every place an absent value must stay absent.
+
+**Writing them found a real bug immediately.** `format.now()` returned a
+pinned instant — `2026-09-01T09:30:00+05:30` — with its own comment
+saying to delete the constant once the API was connected. It was still
+pinned. Every "3 days left", "posted 2 days ago" and SLA clock in the
+app was being measured against a frozen 1 September while the data under
+it was real. It now returns the actual time, and `until`/`ago` keep
+their explicit `from` parameter so the tests stay deterministic without
+waiting.
+
+`npm test` is wired into `ci.yml` (in the build job, so it fails fast
+before the browser suites) and into `scripts/dev.sh`.
 
 **Tap targets at 360px — found by the port, and fixed.** The ported
 check reported every control on the app as under the floor: nav 35px,
