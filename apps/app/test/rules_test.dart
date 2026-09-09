@@ -168,7 +168,7 @@ void main() {
       // point of the remaining slices.
       expect(
         count,
-        lessThanOrEqualTo(9),
+        lessThanOrEqualTo(7),
         reason:
             'There are $count screens still stubbed. If a slice added one, '
             'say why in TRACKER.md and raise this number on purpose.',

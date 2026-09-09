@@ -24,6 +24,8 @@ import 'features/provider/services_screen.dart';
 import 'features/provider/standing_screen.dart';
 import 'features/session/room_screen.dart';
 import 'features/session/sessions_screen.dart';
+import 'features/trust/dispute_screen.dart';
+import 'features/trust/review_screen.dart';
 import 'pack/pack.dart';
 import 'providers.dart';
 import 'session/auth_controller.dart';
@@ -191,17 +193,13 @@ GoRouter buildRouter(WidgetRef ref) {
                   ),
                   GoRoute(
                     path: 'review',
-                    builder: (_, _) => const NotBuiltScreen(
-                      title: 'Leave a review',
-                      slice: 'Slice 9',
-                    ),
+                    builder: (_, GoRouterState s) =>
+                        ReviewScreen(engagementId: s.pathParameters['id']!),
                   ),
                   GoRoute(
                     path: 'dispute',
-                    builder: (_, _) => const NotBuiltScreen(
-                      title: 'Raise a problem',
-                      slice: 'Slice 9',
-                    ),
+                    builder: (_, GoRouterState s) =>
+                        DisputeScreen(engagementId: s.pathParameters['id']!),
                   ),
                 ],
               ),

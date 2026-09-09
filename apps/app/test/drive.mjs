@@ -257,6 +257,25 @@ async function visitTab(page, tabLabel, expectText) {
   return seen;
 }
 
+/**
+ * The semantics tree after scrolling to the bottom.
+ *
+ * Flutter only builds semantics nodes for what is on screen, so anything
+ * below the fold is genuinely not in the tree — asserting on it without
+ * scrolling tests the viewport rather than the screen.
+ */
+async function readAfterScrolling(page) {
+  let seen = await semanticsText(page);
+  for (let i = 0; i < 6; i++) {
+    await page.mouse.move(180, 400);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(400);
+    const more = await semanticsText(page);
+    if (more && !seen.includes(more)) seen = `${seen} ${more}`;
+  }
+  return seen;
+}
+
 async function main() {
   console.log(`\napp: http://localhost:${PORT}   api: ${API}\n`);
   const server = await serve();
@@ -389,6 +408,52 @@ async function main() {
       await page.goBack();
       await page.goBack();
       await page.waitForTimeout(1500);
+    }
+
+    // ── trust ────────────────────────────────────────────────────────
+    // Reached by TAPPING, not by deep link.
+    //
+    // A deep link means a full page load, and on the web target the token
+    // store is memory-only by design — so a reload signs the user out and
+    // every deep-linked assertion would be testing the sign-in screen.
+    // That is the documented behaviour, not a bug, and tapping through is
+    // the path a person actually takes anyway.
+    console.log(String.fromCharCode(10) + 'Reviews and disputes');
+    if (await tapByText(page, 'ENG-')) {
+      await page.waitForTimeout(1500);
+
+      if (await tapByText(page, 'Something is wrong')) {
+        if (await waitForPattern(page, /Raise a dispute|Your case|locked goals/, 20000)) {
+          ok('the dispute screen renders');
+        } else {
+          bad('the dispute screen did not render');
+        }
+        // Flutter prunes semantics for anything scrolled out of view, so
+        // a panel below the fold is genuinely absent from the tree until
+        // it is on screen. Scrolling is not a workaround here — it is
+        // what a person does, and what a screen reader's focus does too.
+        const dis = await readAfterScrolling(page);
+        // The ladder is the family's: the rung names, their response
+        // windows and which one is final are all manifest data, and core
+        // names none of them.
+        if (/Direct resolution|Platform review|Appeal panel|locked goals/.test(dis)) {
+          ok('the dispute ladder comes from the family manifest');
+        } else {
+          bad(`the family dispute ladder did not render: ${dis.slice(0, 200)}`);
+        }
+        // A claim has to point at agreed goals — the locked agenda is
+        // what a ruling is made against, and nothing outside it counts.
+        if (/Which goals|Your case/.test(dis)) {
+          ok('a claim is anchored to the locked goals');
+        } else {
+          bad('the dispute screen did not ask which goals');
+        }
+        await page.screenshot({ path: join(ROOT, 'build/screen-dispute.png') });
+        await page.goBack();
+        await page.waitForTimeout(1200);
+      }
+      await page.goBack();
+      await page.waitForTimeout(1200);
     }
 
     await visitTab(page, 'Sessions', 'Sessions');

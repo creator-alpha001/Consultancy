@@ -6,6 +6,7 @@ import 'api/models/money.dart';
 import 'api/models/provider.dart';
 import 'api/models/session.dart';
 import 'api/models/supply.dart';
+import 'api/models/trust.dart';
 import 'providers.dart';
 
 /// The fetches every screen shares.
@@ -183,3 +184,83 @@ final FutureProvider<List<ServicePackage>> myPackagesProvider =
     FutureProvider<List<ServicePackage>>(
       (Ref ref) => ref.watch(repositoryProvider).myPackages(),
     );
+
+// ── trust ────────────────────────────────────────────────────────────
+
+/// The resolved family. Its review dimensions, its dispute ladder and
+/// its helplines are all manifest data, and core knows none of them.
+final FutureProviderFamily<Map<String, dynamic>, String> familyProvider =
+    FutureProvider.family<Map<String, dynamic>, String>(
+      (Ref ref, String code) => ref.watch(repositoryProvider).family(code),
+    );
+
+/// What this family asks a seeker to rate a person on.
+///
+/// A family that declares none gets a single overall rating — so an
+/// empty list here is a complete answer, not a failure, and every screen
+/// that reads it renders that case.
+final FutureProviderFamily<List<ReviewDimension>, String>
+reviewDimensionsProvider = FutureProvider.family<List<ReviewDimension>, String>(
+  (Ref ref, String familyCode) async {
+    final Map<String, dynamic> family = await ref.watch(
+      familyProvider(familyCode).future,
+    );
+    final Object? raw = family['reviewDimensions'];
+    return <ReviewDimension>[
+      for (final Object? d in (raw as List<Object?>? ?? const <Object?>[]))
+        if (d is Map<String, dynamic>) ReviewDimension.fromJson(d),
+    ];
+  },
+);
+
+/// The family's dispute ladder: how many rungs, what each is called, how
+/// long it has, and which is final.
+final FutureProviderFamily<List<DisputeTier>, String> disputeTiersProvider =
+    FutureProvider.family<List<DisputeTier>, String>((
+      Ref ref,
+      String familyCode,
+    ) async {
+      final Map<String, dynamic> family = await ref.watch(
+        familyProvider(familyCode).future,
+      );
+      final Object? policy = family['policy'];
+      final Object? raw = policy is Map<String, dynamic>
+          ? policy['disputeTiers']
+          : null;
+      return <DisputeTier>[
+        for (final Object? t in (raw as List<Object?>? ?? const <Object?>[]))
+          if (t is Map<String, dynamic>) DisputeTier.fromJson(t),
+      ]..sort((DisputeTier a, DisputeTier b) => a.tier.compareTo(b.tier));
+    });
+
+final FutureProviderFamily<List<Review>, String> engagementReviewsProvider =
+    FutureProvider.family<List<Review>, String>((
+      Ref ref,
+      String engagementId,
+    ) async {
+      final List<Map<String, dynamic>> raw = await ref
+          .watch(repositoryProvider)
+          .reviewsForEngagement(engagementId);
+      return <Review>[for (final Map<String, dynamic> r in raw) Review.fromJson(r)];
+    });
+
+/// The dispute on an engagement, or null. Singular despite the plural
+/// path — an engagement has at most one live dispute.
+final FutureProviderFamily<Dispute?, String> disputeForEngagementProvider =
+    FutureProvider.family<Dispute?, String>((
+      Ref ref,
+      String engagementId,
+    ) async {
+      final Map<String, dynamic>? raw = await ref
+          .watch(repositoryProvider)
+          .disputeFor(engagementId);
+      return raw == null ? null : Dispute.fromJson(raw);
+    });
+
+final FutureProviderFamily<List<Ruling>, String> disputeRulingsProvider =
+    FutureProvider.family<List<Ruling>, String>((Ref ref, String id) async {
+      final List<Map<String, dynamic>> raw = await ref
+          .watch(repositoryProvider)
+          .disputeRulings(id);
+      return <Ruling>[for (final Map<String, dynamic> r in raw) Ruling.fromJson(r)];
+    });

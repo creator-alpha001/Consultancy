@@ -6,6 +6,7 @@ import 'models/money.dart';
 import 'models/provider.dart';
 import 'models/session.dart';
 import 'models/supply.dart';
+import 'models/trust.dart';
 
 /// Every API call the app makes, in one typed place.
 ///
@@ -763,16 +764,28 @@ class Repository {
 
   // ── trust and safety ───────────────────────────────────────────────
 
+  /// Leaves a review.
+  ///
+  /// The wire names are `bodyOriginal` and `bodyLang`, not `body` — the
+  /// original wording and the language it was written in are kept
+  /// together, because a translation never replaces the original
+  /// (CLAUDE.md #20). `direction` says which way the review points; the
+  /// SUBJECT is derived from the engagement by the API, so a client
+  /// cannot nominate who its review is about (#28).
   Future<void> review(
     String engagementId, {
     required int rating,
     required String body,
+    required String lang,
+    required ReviewDirection direction,
     Map<String, int> dimensions = const <String, int>{},
   }) => _api.post<void>(
     '/engagements/$engagementId/reviews',
     body: <String, dynamic>{
+      'direction': direction.wire,
       'rating': rating,
-      'body': body,
+      'bodyOriginal': body,
+      'bodyLang': lang,
       if (dimensions.isNotEmpty)
         'dimensionScores': <Map<String, dynamic>>[
           for (final MapEntry<String, int> e in dimensions.entries)
@@ -783,9 +796,13 @@ class Repository {
 
   /// One reply, by the subject only, append-only. A review the reviewed
   /// party cannot answer is a weapon; one they could rewrite is worthless.
-  Future<void> replyToReview(String reviewId, String body) => _api.post<void>(
+  Future<void> replyToReview(
+    String reviewId, {
+    required String body,
+    required String lang,
+  }) => _api.post<void>(
     '/reviews/$reviewId/reply',
-    body: <String, dynamic>{'body': body},
+    body: <String, dynamic>{'bodyOriginal': body, 'bodyLang': lang},
   );
 
   Future<List<Map<String, dynamic>>> reviewsFor(String userId) =>
@@ -794,13 +811,24 @@ class Repository {
   Future<List<Map<String, dynamic>>> reviewsForEngagement(String engagementId) =>
       _objects('/engagements/$engagementId/reviews');
 
+  /// Raises a dispute.
+  ///
+  /// [body] carries the substance and is what a ruling is actually made
+  /// against, together with the locked agenda. [reasonCode] is a free
+  /// string as far as core is concerned — there is no declared taxonomy
+  /// for it anywhere, which is recorded as owed in TRACKER.md.
   Future<Map<String, dynamic>> raiseDispute(
     String engagementId, {
-    required String reason,
-    required String detail,
+    required String reasonCode,
+    required String body,
+    required String lang,
   }) => _api.post<Map<String, dynamic>>(
     '/engagements/$engagementId/disputes',
-    body: <String, dynamic>{'reason': reason, 'detail': detail},
+    body: <String, dynamic>{
+      'reasonCode': reasonCode,
+      'bodyOriginal': body,
+      'bodyLang': lang,
+    },
   );
 
   /// The dispute on an engagement, or null.
@@ -824,11 +852,22 @@ class Repository {
   Future<List<Map<String, dynamic>>> disputeEvidence(String id) =>
       _objects('/disputes/$id/evidence');
 
-  Future<void> appealDispute(String id, {required String reason}) =>
-      _api.post<void>(
-        '/disputes/$id/appeal',
-        body: <String, dynamic>{'reason': reason},
-      );
+  Future<void> appealDispute(
+    String id, {
+    required String body,
+    required String lang,
+  }) => _api.post<void>(
+    '/disputes/$id/appeal',
+    body: <String, dynamic>{'bodyOriginal': body, 'bodyLang': lang},
+  );
+
+  Future<void> withdrawDispute(String id) =>
+      _api.post<void>('/disputes/$id/withdraw');
+
+  /// The resolved family: its review dimensions, its dispute ladder, its
+  /// helplines and its agreement wording. All of it manifest data.
+  Future<Map<String, dynamic>> family(String code) =>
+      _api.get<Map<String, dynamic>>('/families/$code');
 
   /// The reasons a person may report something. Family data — core names
   /// none of them.
