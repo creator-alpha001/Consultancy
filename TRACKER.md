@@ -791,8 +791,23 @@ credential submission. See D25.
 
 ### apps/app — the Flutter client
 
+> **Screen-by-screen state lives in `apps/app/TRACKER.md`.** That file
+> owns which screens exist and which are stubbed — detail that was
+> crowding this one out of proportion. **This file stays the authority**
+> for milestone status and for every numbered decision, because a
+> decision about money or the API is not "a mobile thing" and must not
+> be findable only in an app subdirectory.
+>
+> The two cannot silently disagree: `apps/app/test/tracker_test.dart`
+> reads that file against `lib/` and fails when its stub table is wrong
+> in either direction — a stub with no row, or a row left behind after a
+> screen is built. Verified against manufactured drift both ways. That
+> check is the whole reason a second tracker is safe to have here, given
+> D51 and D56 are both live examples of a document saying something the
+> code does not.
+
 Added 2026-09-09 on the product owner's decision. The plan is
-`docs/PLAN-FLUTTER.md`; it names ten slices and **only Slice 0 is built.**
+`docs/PLAN-FLUTTER.md`.
 
 **What was decided.** One Flutter app with two shells, chosen from
 `user.role` at sign-in — `user_role` holds exactly one role, so there is
