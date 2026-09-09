@@ -803,8 +803,17 @@ class Repository {
     body: <String, dynamic>{'reason': reason, 'detail': detail},
   );
 
-  Future<List<Map<String, dynamic>>> disputesFor(String engagementId) =>
-      _objects('/engagements/$engagementId/disputes');
+  /// The dispute on an engagement, or null.
+  ///
+  /// Singular, despite the plural path: the API returns one row or
+  /// nothing, because an engagement has at most one live dispute. An
+  /// earlier version of this client read it as a list and would have
+  /// thrown the moment a dispute actually existed — the endpoint only
+  /// looked list-shaped while it was empty.
+  Future<Map<String, dynamic>?> disputeFor(String engagementId) =>
+      _api.getOrNull<Map<String, dynamic>>(
+        '/engagements/$engagementId/disputes',
+      );
 
   Future<Map<String, dynamic>> dispute(String id) =>
       _api.get<Map<String, dynamic>>('/disputes/$id');

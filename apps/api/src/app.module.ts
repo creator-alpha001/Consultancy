@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditModule } from './common/audit/audit.module';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
+import { AbsentAsNoContentInterceptor } from './common/serialization/absent.interceptor';
 import { BigIntSerializerInterceptor } from './common/serialization/bigint.interceptor';
 import { DbModule } from './database/db.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -52,6 +53,10 @@ import { VerificationModule } from './modules/verification/verification.module';
     // Money is bigint paise everywhere; JSON.stringify throws on those.
     // Convert once at the boundary rather than per controller.
     { provide: APP_INTERCEPTOR, useClass: BigIntSerializerInterceptor },
+    // A GET whose honest answer is "nothing" replies 204, not an empty
+    // 200 that no client can parse. See the interceptor for the crash
+    // that prompted it.
+    { provide: APP_INTERCEPTOR, useClass: AbsentAsNoContentInterceptor },
   ],
 })
 export class AppModule {}

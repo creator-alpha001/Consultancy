@@ -152,19 +152,20 @@ class ApiClient {
           status: status,
         );
       }
-      // "Nothing here" — and it arrives in more shapes than a 204.
+      // "Nothing here."
       //
-      // Several endpoints answer an EMPTY STRING rather than null or a
-      // 404: `/engagements/:id/assessment-template` does exactly that
-      // for a category with no template, which is the normal case for an
-      // objective category (CLAUDE.md #3), and so do the latest-
-      // evaluation and disputes routes when there is nothing yet.
+      // The API now says this with a 204 — `assessment-template` for a
+      // category that has no template (the normal case for an objective
+      // category, CLAUDE.md #3), `evaluations/latest` before anything is
+      // written, `disputes` when none was raised.
       //
-      // An earlier version returned `null as T` here unconditionally.
-      // That is a TypeError the moment T is non-nullable — so the client
-      // crashed on precisely the case the rule says must render
-      // normally. The check below is what makes "no template" a value
-      // rather than an exception.
+      // It used to say it with an empty 200 body, and an earlier version
+      // of this method returned `null as T` unconditionally: a TypeError
+      // the moment T is non-nullable, so the client crashed on precisely
+      // the case the rule says must render normally (TRACKER D59). The
+      // API side is fixed; the empty-body branch stays because a 204 has
+      // no body either, and because a client should not fall over if
+      // some other route answers that way tomorrow.
       if (null is T) return null as T;
       throw ApiException(
         code: kEmptyBody,

@@ -435,10 +435,14 @@ async function main() {
     } else {
       bad('earnings did not render');
     }
-    const earn = await semanticsText(page);
-    // Stated, never netted off in silence.
-    if (/Platform fee/.test(earn)) ok('the platform fee is shown, not hidden');
-    else bad('the platform fee is not shown');
+    // Stated, never netted off in silence. Waited for rather than read
+    // once: the summary panel fills in a beat after its title, and an
+    // assertion that races it is a flake, which is worse than no check.
+    if (await waitForPattern(page, /Platform fee/)) {
+      ok('the platform fee is shown, not hidden');
+    } else {
+      bad('the platform fee is not shown');
+    }
     await page.screenshot({ path: join(ROOT, 'build/screen-earnings.png') });
 
     console.log('\nConsole');

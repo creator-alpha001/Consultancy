@@ -1,8 +1,10 @@
 import { DynamicModule, INestApplication, Type } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { Pool } from 'pg';
 import { ErrorEnvelopeFilter } from '../src/common/errors/error-envelope.filter';
+import { AbsentAsNoContentInterceptor } from '../src/common/serialization/absent.interceptor';
+import { BigIntSerializerInterceptor } from '../src/common/serialization/bigint.interceptor';
 import { AgreementsModule } from '../src/common/agreements/agreements.module';
 import { StorageModule } from '../src/common/storage/storage.module';
 import { AuditModule } from '../src/common/audit/audit.module';
@@ -27,7 +29,17 @@ export async function createTestApp(
     // app where every route is open would prove nothing about the routes
     // that matter.
     imports: [DbModule, IdempotencyModule, AuditModule, StorageModule, AgreementsModule, IdentityModule, ...extraModules],
-    providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
+    providers: [
+      { provide: APP_GUARD, useClass: AuthGuard },
+      // The response boundary, for the same reason the guard is here: a
+      // test app that serializes differently from production proves
+      // nothing about what a client actually receives. Both of these
+      // change the bytes on the wire — bigint paise become strings, and
+      // a GET with nothing to say becomes a 204 — and both have already
+      // broken a client that assumed otherwise (TRACKER D58, D59).
+      { provide: APP_INTERCEPTOR, useClass: BigIntSerializerInterceptor },
+      { provide: APP_INTERCEPTOR, useClass: AbsentAsNoContentInterceptor },
+    ],
   });
   for (const override of overrides) {
     builder = builder.overrideProvider(override.token).useValue(override.useValue);
