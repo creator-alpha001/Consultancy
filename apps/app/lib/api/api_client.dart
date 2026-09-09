@@ -42,6 +42,10 @@ class ApiClient {
     );
   }
 
+  /// An empty body where one was required. Rare, and always a contract
+  /// problem rather than something a user can act on.
+  static const String kEmptyBody = 'EMPTY_BODY';
+
   final Dio _dio;
   final TokenStore _tokens;
   final Random _random = Random.secure();
@@ -76,12 +80,22 @@ class ApiClient {
     idempotencyKey: idempotencyKey ?? _newIdempotencyKey(),
   );
 
-  /// Returns null instead of throwing when the caller may not see the
-  /// resource. Most screens render for a visitor as well as a member, and
-  /// a 401 on one panel should not blank the page.
+  /// Returns null instead of throwing when there is nothing to return.
+  ///
+  /// Two different "nothings" fold together here, deliberately:
+  ///
+  ///   *You may not see this* — 401, 403 and 404 are one answer to a
+  ///   client on purpose (CLAUDE.md #28), and most screens render for a
+  ///   visitor as well as a member, so a 401 on one panel must not blank
+  ///   the page.
+  ///
+  ///   *There is nothing yet* — an empty body, which is how this API says
+  ///   "this category has no assessment template" and "no evaluation has
+  ///   been written". Requesting `T?` rather than `T` is what makes that
+  ///   a value instead of a TypeError.
   Future<T?> getOrNull<T>(String path, {Map<String, dynamic>? query}) async {
     try {
-      return await get<T>(path, query: query);
+      return await _send<T?>('GET', path, query: query);
     } on ApiException catch (e) {
       if (e.isInvisible) return null;
       rethrow;
@@ -138,9 +152,25 @@ class ApiClient {
           status: status,
         );
       }
-      // A void endpoint. `null as T` is correct when T is nullable or
-      // void, and a caller asking for a body from a 204 is the bug.
-      return null as T;
+      // "Nothing here" — and it arrives in more shapes than a 204.
+      //
+      // Several endpoints answer an EMPTY STRING rather than null or a
+      // 404: `/engagements/:id/assessment-template` does exactly that
+      // for a category with no template, which is the normal case for an
+      // objective category (CLAUDE.md #3), and so do the latest-
+      // evaluation and disputes routes when there is nothing yet.
+      //
+      // An earlier version returned `null as T` here unconditionally.
+      // That is a TypeError the moment T is non-nullable — so the client
+      // crashed on precisely the case the rule says must render
+      // normally. The check below is what makes "no template" a value
+      // rather than an exception.
+      if (null is T) return null as T;
+      throw ApiException(
+        code: kEmptyBody,
+        message: 'The server sent nothing where $T was expected.',
+        status: status,
+      );
     }
 
     if (status >= 400) {

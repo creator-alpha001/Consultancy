@@ -53,7 +53,8 @@ class EngagementScreen extends ConsumerWidget {
         emptyWhen: (_) => false,
         emptyMessage: '',
         builder: (Engagement e) => PageBody(
-          onRefresh: () async => ref.invalidate(engagementProvider(engagementId)),
+          onRefresh: () async =>
+              ref.invalidate(engagementProvider(engagementId)),
           children: <Widget>[
             _Summary(engagement: e),
             _NextStep(engagement: e),
@@ -98,7 +99,10 @@ class _Summary extends StatelessWidget {
             children: <Widget>[
               Field(
                 label: 'Price',
-                value: Money(engagement.amount, style: theme.textTheme.titleLarge),
+                value: Money(
+                  engagement.amount,
+                  style: theme.textTheme.titleLarge,
+                ),
               ),
               Field(
                 label: 'Working language',
@@ -300,29 +304,43 @@ class _NextStepState extends ConsumerState<_NextStep> {
   }
 }
 
-class _Links extends StatelessWidget {
+class _Links extends ConsumerWidget {
   const _Links({required this.engagement});
 
   final Engagement engagement;
 
   @override
-  Widget build(BuildContext context) => Panel(
-    child: Column(
-      children: <Widget>[
-        NavRow(
-          title: 'The goals',
-          subtitle: engagement.agenda?.isLocked ?? false
-              ? 'Locked · version ${engagement.agenda!.version}'
-              : 'Not agreed yet',
-          leading: const Icon(Icons.checklist_outlined, size: 20),
-          onTap: () => context.push('/work/${engagement.id}/agenda'),
-        ),
-        NavRow(
-          title: 'The work and its assessment',
-          leading: const Icon(Icons.description_outlined, size: 20),
-          onTap: () => context.push('/work/${engagement.id}/assessment'),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isProvider = ref.watch(authProvider).user?.isProvider ?? false;
+    return Panel(
+      child: Column(
+        children: <Widget>[
+          NavRow(
+            title: 'The goals',
+            subtitle: engagement.agenda?.isLocked ?? false
+                ? 'Locked · version ${engagement.agenda!.version}'
+                : 'Not agreed yet',
+            leading: const Icon(Icons.checklist_outlined, size: 20),
+            onTap: () => context.push('/work/${engagement.id}/agenda'),
+          ),
+          NavRow(
+            title: 'The work and its assessment',
+            leading: const Icon(Icons.description_outlined, size: 20),
+            onTap: () => context.push('/work/${engagement.id}/assessment'),
+          ),
+          // The provider's own way in. A seeker never sees it — and the API
+          // refuses it for them regardless, because the redirect decides
+          // what to draw and never what is allowed (CLAUDE.md #28).
+          if (isProvider)
+            NavRow(
+              title: 'Assess this work',
+              subtitle: 'Score it against the category and mark it up',
+              leading: const Icon(Icons.rate_review_outlined, size: 20),
+              onTap: () =>
+                  context.push('/provider/work/${engagement.id}/evaluate'),
+            ),
+        ],
+      ),
+    );
+  }
 }

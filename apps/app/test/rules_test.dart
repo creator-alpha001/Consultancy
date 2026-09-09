@@ -63,23 +63,21 @@ void main() {
 
     test('"exam" appears nowhere in lib/ as a word', () {
       // A whole word only, so `examine` and `example` do not trip it.
-      final List<String> offenders = _grep(
-        byPath,
+      final List<String> offenders = _grep(byPath, <RegExp>[
         RegExp(r'\bexams?\b', caseSensitive: false),
-      );
+      ]);
       expect(offenders, isEmpty, reason: offenders.join('\n'));
     });
   });
 
   group('no price sort, at any layer (CLAUDE.md #15)', () {
     test('nothing sorts by price', () {
-      final List<String> offenders = _grep(
-        byPath,
+      final List<String> offenders = _grep(byPath, <RegExp>[
         RegExp(
           r'''sort\s*[:=(]\s*['"]?price|sortBy.*price|price.*[Ss]ort|orderBy.*price''',
           caseSensitive: false,
         ),
-      );
+      ]);
       expect(
         offenders,
         isEmpty,
@@ -116,7 +114,7 @@ void main() {
     test('no file outside money/ does arithmetic on a paise field', () {
       final List<String> offenders = _grep(
         byPath,
-        RegExp(r'amountPaise\s*[/*]|\bpaise\s*/\s*100\b'),
+        <RegExp>[RegExp(r'amountPaise\s*[/*]|\bpaise\s*/\s*100\b')],
         // Paise itself is where the one legitimate division happens, at
         // the very edge, for a string that never returns to a calculation.
         skipPath: (String p) => p.contains('/money/'),
@@ -133,10 +131,9 @@ void main() {
 
   group('the client never names a user (CLAUDE.md #28)', () {
     test('no request builder sends a userId', () {
-      final List<String> offenders = _grep(
-        byPath,
+      final List<String> offenders = _grep(byPath, <RegExp>[
         RegExp('''['"]userId['"]\\s*:|\\?userId='''),
-      );
+      ]);
       expect(
         offenders,
         isEmpty,
@@ -171,7 +168,7 @@ void main() {
       // point of the remaining slices.
       expect(
         count,
-        lessThanOrEqualTo(10),
+        lessThanOrEqualTo(9),
         reason:
             'There are $count screens still stubbed. If a slice added one, '
             'say why in TRACKER.md and raise this number on purpose.',
@@ -180,26 +177,55 @@ void main() {
   });
 }
 
-/// A banned word, matched so it cannot hide inside a longer one.
+/// A banned word, matched so it cannot hide inside a longer one — and so
+/// it cannot hide inside camelCase either.
 ///
-/// A naive `contains` caught "mains" inside "do**mains**" on the first
-/// run — a false positive on the single most load-bearing word in the
-/// domain model. The lookbehind requires the match to begin an
-/// identifier, while still catching `mentorId` and `upsc_cse`.
-RegExp _identifierWord(String word) =>
-    RegExp('(?<![A-Za-z])$word', caseSensitive: false);
+/// Two false results shaped this, both found the hard way:
+///
+///   A naive `contains` caught "mains" inside "do**mains**" — a false
+///   POSITIVE on the most load-bearing word in the domain model. Hence
+///   the lookbehind: a match must begin an identifier.
+///
+///   That lookbehind then let `hasRubric` through — a false NEGATIVE, and
+///   the word went into real code because this test said the code was
+///   clean. So the second alternative catches a capitalised word after a
+///   lowercase letter, which is exactly where camelCase hides one.
+///
+/// Between them: `mentorId`, `upsc_cse` and `hasRubric` are all caught,
+/// and `domains` still is not.
+/// The two patterns have DIFFERENT case sensitivity, which is why they
+/// cannot be one regex. A first attempt combined them with
+/// `caseSensitive: false` and the camelCase half immediately matched
+/// "d**omains**" again — case-insensitivity turns "preceded by a
+/// lowercase letter, and capitalised" into "preceded by any letter",
+/// which is the very thing the first pattern exists to exclude.
+List<RegExp> _identifierWord(String word) {
+  final String capitalised =
+      word[0].toUpperCase() + word.substring(1).toLowerCase();
+  return <RegExp>[
+    // Starts an identifier, in any case: mentor, Mentor, MENTOR,
+    // mentorId, upsc_cse. Not `domains`.
+    RegExp('(?<![A-Za-z])$word', caseSensitive: false),
+    // Hides in camelCase: hasRubric, myMentor. Case-SENSITIVE, so
+    // `domains` — a lowercase m — does not match.
+    RegExp('(?<=[a-z0-9])$capitalised'),
+  ];
+}
 
-/// Every code line in every file matching [pattern], as `path: line`.
+/// Every code line in every file matching ANY of [patterns], as
+/// `path: line`.
 List<String> _grep(
   Map<String, String> byPath,
-  RegExp pattern, {
+  List<RegExp> patterns, {
   bool Function(String path)? skipPath,
 }) {
   final List<String> offenders = <String>[];
   byPath.forEach((String path, String src) {
     if (skipPath != null && skipPath(path)) return;
     for (final String line in _codeLines(src)) {
-      if (pattern.hasMatch(line)) offenders.add('$path: ${line.trim()}');
+      if (patterns.any((RegExp p) => p.hasMatch(line))) {
+        offenders.add('$path: ${line.trim()}');
+      }
     }
   });
   return offenders;

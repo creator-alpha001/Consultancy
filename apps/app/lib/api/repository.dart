@@ -23,6 +23,27 @@ class Repository {
 
   final ApiClient _api;
 
+  /// A list endpoint that may answer with nothing.
+  ///
+  /// Some routes return an EMPTY STRING rather than `[]` when there is
+  /// nothing to list — `/engagements/:id/disputes` does. Treating that as
+  /// an empty list is right: "no disputes" and "an empty list of
+  /// disputes" are the same fact, and a screen should render its empty
+  /// state rather than an error.
+  Future<List<Map<String, dynamic>>> _objects(
+    String path, {
+    Map<String, dynamic>? query,
+  }) async {
+    final List<dynamic>? raw = await _api.getOrNull<List<dynamic>>(
+      path,
+      query: query,
+    );
+    return <Map<String, dynamic>>[
+      for (final Object? e in raw ?? const <Object?>[])
+        if (e is Map<String, dynamic>) e,
+    ];
+  }
+
   // ── discovery ──────────────────────────────────────────────────────
 
   /// Providers, filtered by the dimensions that actually gate matching:
@@ -267,6 +288,39 @@ class Repository {
       'comment': ?comment,
     },
   );
+
+  /// Ticks off something the seeker was told to do next. Private to
+  /// them — it is not reported to the provider.
+  Future<void> markActionItem(String annotationId) =>
+      _api.post<void>('/me/action-items/$annotationId');
+
+  /// A mark on the work, optionally tied to a dimension and a position.
+  ///
+  /// [body] is required and carries the whole meaning: an annotation is
+  /// pinned to a scan of handwriting, and a coordinate alone is not
+  /// something a screen reader user can act on.
+  Future<void> annotate(
+    String evaluationId, {
+    required String body,
+    String? dimensionCode,
+    int? page,
+    double? x,
+    double? y,
+    bool isActionItem = false,
+  }) => _api.post<void>(
+    '/evaluations/$evaluationId/annotations',
+    body: <String, dynamic>{
+      'body': body,
+      'dimensionCode': ?dimensionCode,
+      'page': ?page,
+      'x': ?x,
+      'y': ?y,
+      'isActionItem': isActionItem,
+    },
+  );
+
+  Future<void> removeAnnotation(String annotationId) =>
+      _api.delete<void>('/annotations/$annotationId');
 
   Future<void> returnEvaluation(String evaluationId) =>
       _api.post<void>('/evaluations/$evaluationId/return');
@@ -734,13 +788,11 @@ class Repository {
     body: <String, dynamic>{'body': body},
   );
 
-  Future<List<Map<String, dynamic>>> reviewsFor(String userId) async {
-    final List<dynamic> raw = await _api.get<List<dynamic>>('/users/$userId/reviews');
-    return <Map<String, dynamic>>[
-      for (final Object? r in raw)
-        if (r is Map<String, dynamic>) r,
-    ];
-  }
+  Future<List<Map<String, dynamic>>> reviewsFor(String userId) =>
+      _objects('/users/$userId/reviews');
+
+  Future<List<Map<String, dynamic>>> reviewsForEngagement(String engagementId) =>
+      _objects('/engagements/$engagementId/reviews');
 
   Future<Map<String, dynamic>> raiseDispute(
     String engagementId, {
@@ -751,25 +803,17 @@ class Repository {
     body: <String, dynamic>{'reason': reason, 'detail': detail},
   );
 
-  Future<List<Map<String, dynamic>>> disputesFor(String engagementId) async {
-    final List<dynamic> raw =
-        await _api.get<List<dynamic>>('/engagements/$engagementId/disputes');
-    return <Map<String, dynamic>>[
-      for (final Object? d in raw)
-        if (d is Map<String, dynamic>) d,
-    ];
-  }
+  Future<List<Map<String, dynamic>>> disputesFor(String engagementId) =>
+      _objects('/engagements/$engagementId/disputes');
 
   Future<Map<String, dynamic>> dispute(String id) =>
       _api.get<Map<String, dynamic>>('/disputes/$id');
 
-  Future<List<Map<String, dynamic>>> disputeRulings(String id) async {
-    final List<dynamic> raw = await _api.get<List<dynamic>>('/disputes/$id/rulings');
-    return <Map<String, dynamic>>[
-      for (final Object? r in raw)
-        if (r is Map<String, dynamic>) r,
-    ];
-  }
+  Future<List<Map<String, dynamic>>> disputeRulings(String id) =>
+      _objects('/disputes/$id/rulings');
+
+  Future<List<Map<String, dynamic>>> disputeEvidence(String id) =>
+      _objects('/disputes/$id/evidence');
 
   Future<void> appealDispute(String id, {required String reason}) =>
       _api.post<void>(
@@ -818,13 +862,10 @@ class Repository {
   /// The first move after a suspected compromise.
   Future<void> signOutOtherDevices() => _api.post<void>('/auth/logout-others');
 
-  Future<List<Map<String, dynamic>>> myAgreements() async {
-    final List<dynamic> raw = await _api.get<List<dynamic>>('/me/agreements');
-    return <Map<String, dynamic>>[
-      for (final Object? a in raw)
-        if (a is Map<String, dynamic>) a,
-    ];
-  }
+  Future<List<Map<String, dynamic>>> myAgreements() =>
+      _objects('/me/agreements');
+
+  Future<List<Map<String, dynamic>>> myReports() => _objects('/reports/mine');
 
   Future<Map<String, dynamic>> agreementDocument({
     required String code,

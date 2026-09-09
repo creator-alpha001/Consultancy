@@ -182,6 +182,54 @@ void main() {
     });
   });
 
+  group('an empty body is a value, not a crash', () {
+    // Several endpoints answer "" rather than null or a 404 — including
+    // /engagements/:id/assessment-template for a category that has no
+    // template, which is the NORMAL case for an objective category
+    // (CLAUDE.md #3). An earlier version did `null as T` unconditionally
+    // and threw a TypeError on exactly that path.
+    test('getOrNull returns null for an empty-string body', () async {
+      final Object? out = await client(
+        _dioReturning(''),
+      ).getOrNull<Map<String, dynamic>>('/engagements/e1/assessment-template');
+      expect(out, isNull);
+    });
+
+    test('getOrNull returns null for a null body', () async {
+      final Object? out = await client(
+        _dioReturning(null),
+      ).getOrNull<Map<String, dynamic>>('/engagements/e1/evaluations/latest');
+      expect(out, isNull);
+    });
+
+    test('getOrNull still returns a real body when there is one', () async {
+      final Map<String, dynamic>? out = await client(
+        _dioReturning(<String, dynamic>{'code': 'answer_writing.v1'}),
+      ).getOrNull<Map<String, dynamic>>('/engagements/e1/assessment-template');
+      expect(out?['code'], 'answer_writing.v1');
+    });
+
+    test('a REQUIRED body that arrives empty raises, rather than pretending', () async {
+      // The other half of the same rule: where a caller genuinely needs a
+      // body, an empty one is a contract problem and must be loud.
+      await expectLater(
+        client(_dioReturning('')).get<Map<String, dynamic>>('/auth/me'),
+        throwsA(
+          isA<ApiException>().having(
+            (ApiException e) => e.code,
+            'code',
+            ApiClient.kEmptyBody,
+          ),
+        ),
+      );
+    });
+
+    test('a void endpoint is still happy with nothing back', () async {
+      // 204 on a POST is normal and must not raise.
+      await client(_dioReturning('', status: 204)).post<void>('/auth/logout');
+    });
+  });
+
   group('getOrNull', () {
     test('returns null rather than blanking a page', () async {
       final Object? out = await client(

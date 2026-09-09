@@ -10,6 +10,7 @@ import 'features/board/board_screen.dart';
 import 'features/discover/find_screen.dart';
 import 'features/discover/provider_screen.dart';
 import 'features/engagement/agenda_screen.dart';
+import 'features/engagement/assessment_screen.dart';
 import 'features/engagement/engagement_screen.dart';
 import 'features/engagement/work_screen.dart';
 import 'features/home/home_screen.dart';
@@ -18,6 +19,7 @@ import 'features/placeholder/not_built_screen.dart';
 import 'features/progress/progress_screen.dart';
 import 'features/provider/dashboard_screen.dart';
 import 'features/provider/earnings_screen.dart';
+import 'features/provider/evaluate_screen.dart';
 import 'features/provider/services_screen.dart';
 import 'features/provider/standing_screen.dart';
 import 'features/session/room_screen.dart';
@@ -183,13 +185,8 @@ GoRouter buildRouter(WidgetRef ref) {
                   ),
                   GoRoute(
                     path: 'assessment',
-                    builder: (_, _) => const NotBuiltScreen(
-                      title: 'The work and its assessment',
-                      slice: 'Slice 3',
-                      note:
-                          'Uploading work, and reading an assessment scored '
-                          'against the template bound to this category — '
-                          'where there is one at all.',
+                    builder: (_, GoRouterState s) => AssessmentScreen(
+                      engagementId: s.pathParameters['id']!,
                     ),
                   ),
                   GoRoute(
@@ -229,6 +226,14 @@ GoRouter buildRouter(WidgetRef ref) {
                     path: ':id',
                     builder: (_, GoRouterState s) =>
                         EngagementScreen(engagementId: s.pathParameters['id']!),
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'evaluate',
+                        builder: (_, GoRouterState s) => EvaluateScreen(
+                          engagementId: s.pathParameters['id']!,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

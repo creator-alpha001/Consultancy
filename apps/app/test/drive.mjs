@@ -177,6 +177,33 @@ async function typeInto(page, label, text) {
 }
 
 /**
+ * Taps the tappable thing whose visible text contains [needle].
+ *
+ * Not everything is reachable by aria-label: a card's label lives in the
+ * Text widgets inside it, while the tap target is the InkWell wrapping
+ * them. Flutter marks those with `flt-tappable`, so this walks the
+ * tappable nodes and picks the innermost one containing the text —
+ * innermost, because a card sits inside a list which sits inside a
+ * scroll view, and clicking the outer one hits the wrong thing.
+ */
+async function tapByText(page, needle) {
+  const clicked = await page.evaluate((text) => {
+    const nodes = [
+      ...document.querySelectorAll('flt-semantics[flt-tappable]'),
+    ].filter((n) => (n.innerText || '').includes(text));
+    if (nodes.length === 0) return false;
+    // Innermost wins: the one containing no other candidate.
+    const target =
+      nodes.find((n) => !nodes.some((m) => m !== n && n.contains(m))) ??
+      nodes[nodes.length - 1];
+    target.click();
+    return true;
+  }, needle);
+  if (!clicked) bad(`nothing tappable contains ${JSON.stringify(needle)}`);
+  return clicked;
+}
+
+/**
  * Signs out and back in as a provider.
  *
  * A full reload rather than an in-app sign-out, because on the web target
@@ -327,6 +354,42 @@ async function main() {
     if (/Waiting on you/.test(work)) ok('the list says whose turn it is');
     else bad('no "waiting on you" nudge on a list that should have one');
     await page.screenshot({ path: join(ROOT, 'build/screen-work.png') });
+
+    // ── the assessment loop ──────────────────────────────────────────
+    // Open the first piece of work and walk into its assessment. The
+    // seeded database has a completed engagement scored against a real
+    // six-dimension template, and another whose category has NO template
+    // at all — the case CLAUDE.md #3 says must render normally.
+    console.log(String.fromCharCode(10) + 'The assessment loop');
+    if (await tapByText(page, 'ENG-')) {
+      if (await waitForPattern(page, /The goals|Agree the goals|Fund the work/)) {
+        ok('a piece of work opens on its hub');
+      } else {
+        bad('the engagement hub did not render');
+      }
+      await page.screenshot({ path: join(ROOT, 'build/screen-engagement.png') });
+
+      if (await tapByText(page, 'assessment')) {
+        if (await waitForPattern(page, /Your work|The assessment/, 15000)) {
+          ok('the assessment screen renders');
+        } else {
+          bad('the assessment screen did not render');
+        }
+        const a = await semanticsText(page);
+        // Either it was scored against a template, or it says plainly
+        // that this kind of work has no scale — both are correct, and a
+        // blank panel is not.
+        if (/Scored|no scale for it|No scores|Not written yet|without a written assessment/.test(a)) {
+          ok('the assessment states its scoring situation rather than showing a blank');
+        } else {
+          bad(`the assessment panel said nothing useful: ${a.slice(0, 200)}`);
+        }
+        await page.screenshot({ path: join(ROOT, 'build/screen-assessment.png') });
+      }
+      await page.goBack();
+      await page.goBack();
+      await page.waitForTimeout(1500);
+    }
 
     await visitTab(page, 'Sessions', 'Sessions');
     await page.screenshot({ path: join(ROOT, 'build/screen-sessions.png') });
