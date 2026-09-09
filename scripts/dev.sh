@@ -15,6 +15,7 @@
 #   ./scripts/dev.sh seed      re-seed the dev database (destructive-ish)
 #   ./scripts/dev.sh test      the full check: types, unit, browser journeys
 #   ./scripts/dev.sh mobile    export the mobile app and serve it
+#   ./scripts/dev.sh app-drive build the Flutter app and drive it for real
 #   ./scripts/dev.sh logs      tail everything
 #
 set -uo pipefail
@@ -322,6 +323,28 @@ cmd_test() {
     ok "mobile"
   fi
 
+  # The Flutter app. Seconds, no database, no browser — so it belongs
+  # here with the other fast checks rather than beside the browser lane.
+  if command -v flutter >/dev/null 2>&1; then
+    bold "The app (Flutter)"
+    ( cd "$ROOT/apps/app" && flutter analyze --no-pub ) || die "app analyze failed"
+    ok "analyze"
+    # Includes the rule tests, which read lib/ and enforce the CLAUDE.md
+    # constraints that have no function to call: no price sort, no
+    # comparison between users, no family vocabulary in core.
+    ( cd "$ROOT/apps/app" && flutter test ) || die "app tests failed"
+    ok "tests"
+  else
+    warn "flutter not on PATH — skipping the app's checks"
+  fi
+
+  # Which API routes each client actually calls. Not a pass/fail on
+  # coverage — apps/app is being built slice by slice — but a client that
+  # STOPS calling a route it used to has gone backwards, and that is the
+  # failure that paused apps/mobile.
+  bold "Route parity"
+  node "$ROOT/scripts/parity.mjs" --check || die "a client dropped a route it used to call"
+
   bold "API suite"
   ensure_postgres
   migrate "$TEST_URL"
@@ -346,6 +369,30 @@ cmd_test() {
   if curl -sf -o /dev/null "http://localhost:$MOBILE_PORT" 2>/dev/null; then
     ( cd "$ROOT/apps/mobile" && node test/shots.mjs ) || die "mobile journey failed"
   fi
+
+  # The app, driven for real against the running API. There is no Android
+  # emulator here, so this builds the web target and drives the SAME
+  # widgets through Chromium at a 360px viewport — the honest substitute,
+  # and the same one apps/mobile used. It needs a build, so it is opt-in
+  # rather than part of every run: ./scripts/dev.sh app-drive
+  if [ -d "$ROOT/apps/app/build/web" ] && [ -d "$ROOT/apps/app/node_modules" ]; then
+    ( cd "$ROOT/apps/app" && node test/drive.mjs ) || die "app journey failed"
+  else
+    warn "app not built — ./scripts/dev.sh app-drive to build and drive it"
+  fi
+}
+
+# Build the app's web target and drive it against the running API.
+cmd_app_drive() {
+  command -v flutter >/dev/null 2>&1 || die "flutter is not on PATH"
+  bold "Building the app for the web target"
+  # The web target exists so the app can be DRIVEN here; it is never
+  # shipped. A real build is Android or iOS.
+  ( cd "$ROOT/apps/app"       && flutter build web --dart-define=API_BASE_URL="http://localhost:$API_PORT" )     || die "app web build failed"
+  [ -d "$ROOT/apps/app/node_modules" ] || ( cd "$ROOT/apps/app" && npm install --no-audit --no-fund )
+  bold "Driving the app"
+  # MOBILE_PORT is already in the API's allowed origins — see start_api.
+  ( cd "$ROOT/apps/app" && APP_PORT="$MOBILE_PORT" API_BASE_URL="http://localhost:$API_PORT"       node test/drive.mjs ) || die "app journey failed"
 }
 
 cmd_logs() {
@@ -362,6 +409,7 @@ case "${1:-up}" in
   status)  cmd_status ;;
   seed)    ensure_postgres; migrate "$DEV_URL"; seed ;;
   mobile)  start_mobile ;;
+  app-drive) cmd_app_drive ;;
   test)    cmd_test ;;
   logs)    cmd_logs ;;
   *)       sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;

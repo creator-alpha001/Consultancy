@@ -1,0 +1,299 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'api/models/user.dart';
+import 'features/account/account_screen.dart';
+import 'features/auth/register_screen.dart';
+import 'features/auth/sign_in_screen.dart';
+import 'features/board/board_screen.dart';
+import 'features/discover/find_screen.dart';
+import 'features/discover/provider_screen.dart';
+import 'features/engagement/agenda_screen.dart';
+import 'features/engagement/engagement_screen.dart';
+import 'features/engagement/work_screen.dart';
+import 'features/home/home_screen.dart';
+import 'features/money/money_screen.dart';
+import 'features/placeholder/not_built_screen.dart';
+import 'features/progress/progress_screen.dart';
+import 'features/provider/dashboard_screen.dart';
+import 'features/provider/earnings_screen.dart';
+import 'features/provider/services_screen.dart';
+import 'features/provider/standing_screen.dart';
+import 'features/session/room_screen.dart';
+import 'features/session/sessions_screen.dart';
+import 'pack/pack.dart';
+import 'providers.dart';
+import 'session/auth_controller.dart';
+import 'shell/shell.dart';
+
+/// Routing, and the one redirect that decides which product a person is
+/// looking at.
+///
+/// Paths deliberately mirror the web app's so a link shared from a
+/// browser — a provider profile, a piece of work — can open the app on
+/// the same screen once App Links are configured. Two clients with
+/// different URL shapes cannot share a link at all.
+///
+/// **The redirect grants nothing.** It decides what to *draw*; the API
+/// re-checks the actor on every call it serves (CLAUDE.md #28). A bug
+/// here shows someone the wrong navigation bar, never someone else's
+/// data.
+GoRouter buildRouter(WidgetRef ref) {
+  final AuthController auth = ref.watch(authProvider);
+
+  return GoRouter(
+    initialLocation: '/home',
+    refreshListenable: auth,
+    redirect: (BuildContext context, GoRouterState state) {
+      final String path = state.uri.path;
+      final AuthState s = auth.state;
+
+      // Still asking the API who the stored token belongs to. Hold on the
+      // splash rather than flashing sign-in at someone who turns out to
+      // be signed in.
+      if (s is AuthUnknown) return path == '/' ? null : '/';
+
+      if (s is AuthSignedOut) {
+        return _signedOutPaths.contains(path) ? null : '/sign-in';
+      }
+
+      // An enrolment ticket authorises exactly one screen (#32).
+      if (s is AuthEnrolling) {
+        return path == '/mfa/enrol' ? null : '/mfa/enrol';
+      }
+
+      if (s is AuthSignedIn) {
+        if (path == '/sign-in' || path == '/' || path == '/mfa/enrol') {
+          return switch (s.user.role) {
+            Role.seeker => '/home',
+            Role.provider => '/provider',
+            Role.admin => '/admin-elsewhere',
+          };
+        }
+        final bool providerPath = path.startsWith('/provider/') ||
+            path == '/provider';
+        if (providerPath && s.user.role != Role.provider) return '/home';
+        if (!providerPath &&
+            s.user.role == Role.provider &&
+            !_sharedPaths.any(path.startsWith)) {
+          return '/provider';
+        }
+      }
+      return null;
+    },
+    routes: <RouteBase>[
+      GoRoute(path: '/', builder: (_, _) => const _Splash()),
+      GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(
+        path: '/mfa/enrol',
+        builder: (_, _) => const NotBuiltScreen(
+          title: 'Set up your second factor',
+          slice: 'Slice 9',
+          note:
+              'Providers and admins must hold a second factor before they can '
+              'sign in. The API side works; this screen does not exist yet — '
+              'enrol on the web for now.',
+        ),
+      ),
+      GoRoute(
+        path: '/admin-elsewhere',
+        builder: (_, _) => const AdminElsewhere(),
+      ),
+
+      // Full-screen routes: pushed over the shell rather than inside it,
+      // because each is a task with its own way out.
+      GoRoute(
+        path: '/providers/:id',
+        builder: (_, GoRouterState s) =>
+            ProviderScreen(providerId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/sessions/:id',
+        builder: (_, GoRouterState s) =>
+            RoomScreen(sessionId: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/board/new', builder: (_, _) => const AskScreen()),
+      GoRoute(
+        path: '/board/:id',
+        builder: (_, GoRouterState s) => NotBuiltScreen(
+          title: 'Request ${s.pathParameters['id']}',
+          slice: 'Slice 4',
+          note:
+              'Reading a request and its offers — including the rule that '
+              'they are never ordered by price — is the next piece of work '
+              'on the board.',
+        ),
+      ),
+      GoRoute(
+        path: '/legal',
+        builder: (_, _) => const NotBuiltScreen(
+          title: 'Legal',
+          slice: 'Slice 9',
+          note: 'The agreement wording you accepted, as you accepted it.',
+        ),
+      ),
+      GoRoute(
+        path: '/report',
+        builder: (_, _) => const NotBuiltScreen(
+          title: 'Report',
+          slice: 'Slice 9',
+          note:
+              'Reporting is built on the API, with reasons that come from the '
+              'family manifest. The screen is not.',
+        ),
+      ),
+
+      ShellRoute(
+        builder: (BuildContext context, GoRouterState state, Widget child) {
+          return Consumer(
+            builder: (BuildContext context, WidgetRef ref, _) {
+              final String lang = ref.watch(langProvider);
+              final Role role = auth.user?.role ?? Role.seeker;
+              // The platform's neutral vocabulary: the shell sits above
+              // every record and belongs to no field.
+              return AppShell(
+                tabs: Shells.forRole(role, Vocab.platform),
+                lang: lang,
+                child: child,
+              );
+            },
+          );
+        },
+        routes: <RouteBase>[
+          GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+          GoRoute(path: '/find', builder: (_, _) => const FindScreen()),
+          GoRoute(path: '/board', builder: (_, _) => const BoardScreen()),
+          GoRoute(path: '/money', builder: (_, _) => const MoneyScreen()),
+          GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen()),
+          GoRoute(
+            path: '/work',
+            builder: (_, _) => const WorkScreen(),
+            routes: <RouteBase>[
+              GoRoute(
+                path: ':id',
+                builder: (_, GoRouterState s) =>
+                    EngagementScreen(engagementId: s.pathParameters['id']!),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'agenda',
+                    builder: (_, GoRouterState s) =>
+                        AgendaScreen(engagementId: s.pathParameters['id']!),
+                  ),
+                  GoRoute(
+                    path: 'assessment',
+                    builder: (_, _) => const NotBuiltScreen(
+                      title: 'The work and its assessment',
+                      slice: 'Slice 3',
+                      note:
+                          'Uploading work, and reading an assessment scored '
+                          'against the template bound to this category — '
+                          'where there is one at all.',
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'review',
+                    builder: (_, _) => const NotBuiltScreen(
+                      title: 'Leave a review',
+                      slice: 'Slice 9',
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'dispute',
+                    builder: (_, _) => const NotBuiltScreen(
+                      title: 'Raise a problem',
+                      slice: 'Slice 9',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(path: '/sessions', builder: (_, _) => const SessionsScreen()),
+          GoRoute(path: '/you', builder: (_, _) => const AccountScreen()),
+
+          GoRoute(
+            path: '/provider',
+            builder: (_, _) => const ProviderDashboardScreen(),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'requests',
+                builder: (_, _) => const BoardScreen(),
+              ),
+              GoRoute(
+                path: 'work',
+                builder: (_, _) => const WorkScreen(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: ':id',
+                    builder: (_, GoRouterState s) =>
+                        EngagementScreen(engagementId: s.pathParameters['id']!),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'earnings',
+                builder: (_, _) => const ProviderEarningsScreen(),
+              ),
+              GoRoute(
+                path: 'standing',
+                builder: (_, _) => const ProviderStandingScreen(),
+              ),
+              GoRoute(
+                path: 'services',
+                builder: (_, _) => const ProviderServicesScreen(),
+              ),
+              GoRoute(
+                path: 'availability',
+                builder: (_, _) => const ProviderAvailabilityScreen(),
+              ),
+              GoRoute(
+                path: 'training',
+                builder: (_, _) => const NotBuiltScreen(
+                  title: 'Training',
+                  slice: 'Slice 8',
+                  note:
+                      'What you may and may not promise. Entirely pack data — '
+                      'a different family trains on different things with no '
+                      'code change.',
+                ),
+              ),
+              GoRoute(
+                path: 'languages',
+                builder: (_, _) => const NotBuiltScreen(
+                  title: 'Working languages',
+                  slice: 'Slice 8',
+                ),
+              ),
+              GoRoute(
+                path: 'payout',
+                builder: (_, _) => const NotBuiltScreen(
+                  title: 'Where you get paid',
+                  slice: 'Slice 8',
+                  note:
+                      'Bank details go straight to the payment aggregator. We '
+                      'keep the last four digits and the IFSC, nothing else.',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// The only screens reachable without a session.
+const List<String> _signedOutPaths = <String>['/sign-in', '/register'];
+
+/// Paths a provider may visit without being bounced to their dashboard.
+const List<String> _sharedPaths = <String>['/you', '/sessions', '/work'];
+
+class _Splash extends StatelessWidget {
+  const _Splash();
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: CircularProgressIndicator()));
+}

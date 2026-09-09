@@ -1,0 +1,13 @@
+{
+  "name": "@sankalp/app-harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node-side test harness for the Flutter app. The app itself is Dart; this exists only because there is no Android emulator here and driving the built web target through Chromium is the honest substitute — the same approach apps/mobile used.",
+  "type": "module",
+  "scripts": {
+    "drive": "node test/drive.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

@@ -1,0 +1,396 @@
+/**
+ * Drives the built app in a real browser against the real API.
+ *
+ * There is no Android emulator and no `/dev/kvm` in this environment, so
+ * the app cannot be RUN on the platform it is for. This is the honest
+ * substitute, and it is the same one the React Native app used: build the
+ * web target, serve it, and drive the *same widgets* through Chromium at
+ * a handset viewport.
+ *
+ * Everything below is driven through the ACCESSIBILITY TREE rather than
+ * by coordinates — Flutter renders to a canvas, so there is no DOM to
+ * query, and the semantics tree is what a screen reader sees. That makes
+ * this a stricter test than a DOM query would be: a control this script
+ * cannot find by its accessible name is a control a blind user cannot
+ * find either.
+ *
+ * What it proves: the screens compose, the pack loads over HTTP, sign-in
+ * establishes a real session, the role picks the right shell, and the
+ * vocabulary on screen came from a published manifest.
+ *
+ * What it does NOT prove: anything about a real device — the platform
+ * keystore, a real network, touch, or performance on a mid-range
+ * Android. On the web target the token store is memory-only BY DESIGN, so
+ * this deliberately exercises a different storage path from a shipped
+ * build.
+ *
+ *   node test/drive.mjs
+ *
+ * Needs the API up with this origin allowed:
+ *   WEB_ORIGIN is already set for this port by scripts/dev.sh (MOBILE_PORT=8082) ./scripts/dev.sh up
+ * and a build pointed at it:
+ *   flutter build web --dart-define=API_BASE_URL=http://localhost:3000
+ */
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+
+const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
+const BUILD = join(ROOT, 'build/web');
+const PORT = Number(process.env.APP_PORT ?? 8082);
+const API = process.env.API_BASE_URL ?? 'http://localhost:3000';
+const PASSWORD = 'demo-password-not-a-secret';
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.wasm': 'application/wasm',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+};
+
+let failures = 0;
+const ok = (m) => console.log(`  [32m✓[0m ${m}`);
+const bad = (m) => {
+  failures += 1;
+  console.error(`  [31m✗[0m ${m}`);
+};
+
+function serve() {
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    // Anything without a file extension is the app: this is a SPA and
+    // deep links must not 404.
+    let rel = normalize(url.pathname).replace(/^[/\\]+/, '');
+    if (rel === '' || !extname(rel)) rel = 'index.html';
+    try {
+      const body = await readFile(join(BUILD, rel));
+      res.writeHead(200, {
+        'content-type': MIME[extname(rel)] ?? 'application/octet-stream',
+      });
+      res.end(body);
+    } catch {
+      const body = await readFile(join(BUILD, 'index.html'));
+      res.writeHead(200, { 'content-type': MIME['.html'] });
+      res.end(body);
+    }
+  });
+  return new Promise((resolve) => server.listen(PORT, () => resolve(server)));
+}
+
+/**
+ * Everything a screen reader would announce: the text nodes AND the
+ * accessible names.
+ *
+ * Reading only `innerText` missed the whole bottom navigation bar, whose
+ * labels Flutter exposes as `aria-label` on tappable nodes rather than as
+ * text. A control that is visible but has no announced name is a real
+ * accessibility failure, so both are collected — and the two are joined
+ * so an assertion cannot pass on a label that exists only visually.
+ */
+const semanticsText = (page) =>
+  page.evaluate(() => {
+    const host = document.querySelector('flt-semantics-host');
+    if (!host) return '';
+    const labels = [...host.querySelectorAll('[aria-label]')].map((e) =>
+      e.getAttribute('aria-label'),
+    );
+    return [host.innerText, ...labels].join(' ').replace(/\s+/g, ' ').trim();
+  });
+
+/**
+ * Flutter only builds the semantics tree once something asks for it, and
+ * the placeholder that asks is not present until the engine has started.
+ * So: keep clicking it until a tree appears, rather than guessing a delay.
+ */
+async function enableSemantics(page, timeout = 30000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    await page.evaluate(() => {
+      document.querySelector('flt-semantics-placeholder')?.click();
+    });
+    await page.waitForTimeout(500);
+    if ((await semanticsText(page)).length > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * Waits until the semantics tree MATCHES a pattern.
+ *
+ * The text variant is not enough for a list: an app-bar title appears
+ * before its list has been fetched, so asserting right after a tap tests
+ * the spinner rather than the screen. This waits for the content itself.
+ */
+async function waitForPattern(page, re, timeout = 20000) {
+  const started = Date.now();
+  let last = '';
+  while (Date.now() - started < timeout) {
+    last = await semanticsText(page);
+    if (re.test(last)) return true;
+    await page.waitForTimeout(250);
+  }
+  console.error(`      (last saw: ${last.slice(0, 200)})`);
+  return false;
+}
+
+async function waitForText(page, text, timeout = 20000) {
+  const started = Date.now();
+  let last = '';
+  while (Date.now() - started < timeout) {
+    last = await semanticsText(page);
+    if (last.includes(text)) return true;
+    await page.waitForTimeout(250);
+  }
+  console.error(`      (last saw: ${last.slice(0, 200)})`);
+  return false;
+}
+
+/**
+ * Types into a Flutter text field, and checks it took.
+ *
+ * `fill()` sets the proxy input's value directly, and Flutter's editing
+ * layer does not always see it — a first version of this script passed
+ * once and then submitted an empty password on the next run. Clicking to
+ * focus and sending real keystrokes is what the framework is actually
+ * listening for, and reading the value back turns a silent flake into a
+ * failed assertion.
+ */
+async function typeInto(page, label, text) {
+  const field = page.locator(`input[aria-label="${label}"]`);
+  await field.click();
+  await field.fill('');
+  await page.keyboard.type(text, { delay: 10 });
+  const got = await field.inputValue();
+  if (got !== text) {
+    bad(`the ${label} field did not accept input (saw "${got}")`);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Signs out and back in as a provider.
+ *
+ * A full reload rather than an in-app sign-out, because on the web target
+ * the token store is memory-only and a reload is therefore the cleanest
+ * possible way to start from nothing — which is itself worth exercising.
+ *
+ * Provider 2FA is MANDATORY by CLAUDE.md #32 but is currently switched
+ * off by an explicit decision held in the `mfa_policy` row (TRACKER).
+ * This follows whatever the policy says rather than asserting one answer:
+ * if the code field appears, it is filled from nowhere and the run says
+ * so, because a provider who cannot sign in without a factor is a correct
+ * configuration, not a failure.
+ */
+async function providerSignIn(page) {
+  await page.goto(`http://localhost:${PORT}/?enable-accessibility=true`, {
+    waitUntil: 'domcontentloaded',
+  });
+  await enableSemantics(page);
+  await waitForText(page, 'Sign in');
+
+  await typeInto(page, 'Email', 'asha.rathore@demo.local');
+  await typeInto(page, 'Password', PASSWORD);
+  await page.locator('input[aria-label="Password"]').press('Enter');
+  await page.waitForTimeout(5000);
+
+  const code = page.locator('input[aria-label="Six-digit code"]');
+  if ((await code.count()) > 0) {
+    ok('provider 2FA is enforced — the app asks for a second factor (#32)');
+    console.log('      (this run cannot complete a provider sign-in without a TOTP secret)');
+  } else {
+    ok('provider 2FA is currently off by policy, and the app follows the policy');
+  }
+}
+
+/**
+ * Taps a bottom-tab by its accessible name and waits for the screen.
+ *
+ * Tapping the real control rather than pushing a route: a tab that is
+ * present in the tree but not reachable by tapping is still broken.
+ */
+async function visitTab(page, tabLabel, expectText) {
+  const tab = page.locator(`flt-semantics[aria-label="${tabLabel}"]`).first();
+  if ((await tab.count()) === 0) {
+    bad(`no tab named "${tabLabel}"`);
+    return false;
+  }
+  await tab.click();
+  const seen = await waitForText(page, expectText, 15000);
+  if (seen) ok(`the "${tabLabel}" tab opens ${JSON.stringify(expectText)}`);
+  else bad(`the "${tabLabel}" tab did not reach ${JSON.stringify(expectText)}`);
+  return seen;
+}
+
+async function main() {
+  console.log(`\napp: http://localhost:${PORT}   api: ${API}\n`);
+  const server = await serve();
+  const browser = await chromium.launch();
+  const page = await browser.newPage({
+    // 360px is the Definition of Done's floor — the smallest real handset.
+    viewport: { width: 360, height: 780 },
+    deviceScaleFactor: 2,
+  });
+
+  const consoleErrors = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error') consoleErrors.push(m.text());
+  });
+  page.on('pageerror', (e) => consoleErrors.push(String(e)));
+
+  try {
+    await page.goto(`http://localhost:${PORT}/?enable-accessibility=true`, {
+      waitUntil: 'domcontentloaded',
+    });
+
+    console.log('Starting up');
+    if (await enableSemantics(page)) ok('the app boots and exposes a semantics tree');
+    else return bad('the app never produced a semantics tree');
+
+    if (await waitForText(page, 'Sign in')) ok('the sign-in screen renders');
+    else bad('the sign-in screen never appeared');
+
+    // Located by accessible name, exactly as a screen reader would.
+    const email = page.locator('input[aria-label="Email"]');
+    const password = page.locator('input[aria-label="Password"]');
+
+    if ((await email.count()) === 1 && (await password.count()) === 1) {
+      ok('both fields are reachable by their accessible names');
+    } else {
+      bad('the email/password fields have no accessible names');
+    }
+
+    await typeInto(page, 'Email', 'priya.nair@demo.local');
+    await typeInto(page, 'Password', PASSWORD);
+    await password.press('Enter');
+
+    console.log('\nAfter sign-in');
+    // The catalogue has to come back over HTTP before this can pass, so
+    // waiting on it is waiting on the whole chain: session, bearer token,
+    // request, parse, render.
+    if (await waitForText(page, 'Civil Services Exams', 25000)) {
+      ok('a seeker signs in and reaches the signed-in shell');
+    } else {
+      bad('sign-in did not reach the catalogue');
+    }
+
+    const after = await semanticsText(page);
+
+    // These words are DATA. None of them appears anywhere in lib/ — they
+    // come from manifests the API published, which is the whole point of
+    // the domain-agnostic core.
+    for (const word of ['Civil Services Exams', 'Accountancy', 'Higher Education']) {
+      if (after.includes(word)) ok(`the catalogue renders "${word}" from the pack`);
+      else bad(`the catalogue is missing "${word}"`);
+    }
+
+    // The seeker's shell, in the platform's own neutral vocabulary — not
+    // any one family's, because this screen shows several at once.
+    for (const tab of ['Home', 'Provider', 'Engagement', 'Sessions', 'You']) {
+      if (after.includes(tab)) ok(`the seeker shell has a "${tab}" tab`);
+      else bad(`the seeker shell is missing the "${tab}" tab`);
+    }
+
+    await page.screenshot({ path: join(ROOT, 'build/screen-seeker-home.png') });
+    ok('screenshot written to build/screen-seeker-home.png');
+
+    // ── the seeker's real screens, against real data ─────────────────
+    console.log(String.fromCharCode(10) + 'The seeker journey');
+    await visitTab(page, 'Provider', 'Find a provider');
+    await page.screenshot({ path: join(ROOT, 'build/screen-find.png') });
+
+    await visitTab(page, 'Engagement', 'Your work');
+    // The seeded database has real engagements, so an empty list here
+    // means the fetch or the parse failed — not that there is nothing to
+    // show. Waiting on the CONTENT rather than the title, because a title
+    // renders before its list has been fetched.
+    if (await waitForPattern(page, /ENG-[0-9A-Z]{6}/)) {
+      ok('the work list renders real engagements');
+    } else {
+      bad('the work list showed no engagement reference');
+    }
+    const work = await semanticsText(page);
+    // Paise cross the wire as strings, because they are bigint in
+    // Postgres. A rupee figure here proves that parsed all the way
+    // through to a formatted amount.
+    if (/₹/.test(work)) ok('amounts parse and render (paise arrive as strings)');
+    else bad('no amount rendered on the work list');
+    // The list is ordered by whose turn it is, not by date.
+    if (/Waiting on you/.test(work)) ok('the list says whose turn it is');
+    else bad('no "waiting on you" nudge on a list that should have one');
+    await page.screenshot({ path: join(ROOT, 'build/screen-work.png') });
+
+    await visitTab(page, 'Sessions', 'Sessions');
+    await page.screenshot({ path: join(ROOT, 'build/screen-sessions.png') });
+
+    await visitTab(page, 'You', 'You');
+    const you = await semanticsText(page);
+    if (you.includes('priya.nair@demo.local')) ok('the account screen knows who is signed in');
+    else bad('the account screen did not show the signed-in email');
+    await page.screenshot({ path: join(ROOT, 'build/screen-account.png') });
+
+    // ── the other shell ──────────────────────────────────────────────
+    // The whole "one app, two shells" claim rests on this: the same
+    // binary, a different role, a different product. A user row holds
+    // exactly one role, so nothing switches — the shell is chosen from
+    // what /auth/me returned.
+    console.log('\nThe provider shell');
+    await providerSignIn(page);
+
+    const provider = await semanticsText(page);
+    for (const tab of ['Dashboard', 'Requests', 'Earnings']) {
+      if (provider.includes(tab)) ok(`the provider shell has a "${tab}" tab`);
+      else bad(`the provider shell is missing the "${tab}" tab`);
+    }
+    // A provider must NOT be given the seeker's discovery tabs — that is
+    // the shell being chosen, not merely relabelled.
+    if (!provider.includes('Home')) ok('the provider shell is not the seeker shell');
+    else bad('the provider was given the seeker shell');
+
+    await page.screenshot({ path: join(ROOT, 'build/screen-provider-home.png') });
+    ok('screenshot written to build/screen-provider-home.png');
+
+    // The dashboard answers three questions from real data: can I be
+    // booked, what needs me, what am I owed.
+    if (await waitForPattern(page, /₹/, 20000)) {
+      ok('the dashboard renders the provider’s real money');
+    } else {
+      bad('no amount on the provider dashboard');
+    }
+
+    await visitTab(page, 'Earnings', 'Earnings');
+    if (await waitForPattern(page, /Owed to you/)) {
+      ok('earnings renders, with the platform fee stated');
+    } else {
+      bad('earnings did not render');
+    }
+    const earn = await semanticsText(page);
+    // Stated, never netted off in silence.
+    if (/Platform fee/.test(earn)) ok('the platform fee is shown, not hidden');
+    else bad('the platform fee is not shown');
+    await page.screenshot({ path: join(ROOT, 'build/screen-earnings.png') });
+
+    console.log('\nConsole');
+    if (consoleErrors.length === 0) ok('no console errors');
+    else for (const e of consoleErrors.slice(0, 5)) bad(`console: ${e.slice(0, 200)}`);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+
+  console.log(failures === 0 ? '\nall checks passed\n' : `\n${failures} check(s) failed\n`);
+  process.exit(failures === 0 ? 0 : 1);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

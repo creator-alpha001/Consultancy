@@ -1,37 +1,43 @@
-# This app is paused — do not extend it
+# This app is superseded — do not extend it
 
-Decided 2026-08-31. **New work goes to `apps/web`.**
+Paused 2026-08-31. **Superseded 2026-09-09 by `apps/app`,** a Flutter client
+for both seekers and providers. New native work goes there; see
+`docs/PLAN-FLUTTER.md`.
 
-## Why
+## Why it was paused
 
-The plan puts the native app in **Phase 2**, and lists it under Phase 1's
-*"deliberately excluded: … mobile app (web-responsive first)"*. It was
-built in Phase 1 anyway, and drifted: by the date of this note it had
-none of payment, file upload, the annotation tool, mentor services,
-packages, earnings, payout details, availability, training, or the seeker
-money screen. Every slice shipped to web widened the gap.
+The plan put the native app in **Phase 2**, and listed it under Phase 1's
+*"deliberately excluded: … mobile app (web-responsive first)"*. It was built
+in Phase 1 anyway, and drifted: by the date of the pause it had none of
+payment, file upload, the annotation tool, mentor services, packages,
+earnings, payout details, availability, training, or the seeker money screen.
+Every slice shipped to web widened the gap.
 
-Two half-finished clients is the worst of the available options. One
-finished responsive web app reaches every handset with no install step,
-no Play Store between a search result and a booking, and keeps provider
-profiles indexable — which the plan calls a major free acquisition
-channel.
+**That drift is the whole reason `apps/app` is shaped the way it is.** The
+decision this time was to keep the web app fully functional — a person on a
+laptop needs the whole product in a browser — and to put machinery in place so
+the two clients cannot quietly diverge again:
+
+- `packages/contract/routes.json`, 148 routes generated from the running API.
+- `scripts/parity.mjs`, which reports what each client calls and fails CI when
+  a client **stops** calling a route it used to.
+- `scripts/sync-tokens.mjs`, which now generates the app's theme and *checks*
+  that the web's stylesheet agrees with the same source.
+
+None of that existed while this app was falling behind. Nothing detected it; a
+person reading two files did.
 
 ## What is here
 
-The app still builds and still runs; nothing was deleted, because
-resuming is a business decision and deleting would make it expensive.
-Two screens were added on the day of the pause — the payment step and
-progress — because the engagement screen said *"fund escrow to start"*
-and offered no way to do so. That was a dead end, not a missing feature.
+The app still builds. Nothing was deleted, because deleting it is a business
+decision — but it is no longer a target of the token pipeline, and its
+`src/theme/generated-tokens.ts` is frozen at the old design system. Do not
+regenerate it; it would only repaint an app on its way out.
 
-## Before resuming
+`docs/PLAN-FLUTTER.md` schedules the deletion for the end of Slice 10, after
+`apps/app` has reached and passed this app's coverage — and says explicitly
+that it will be confirmed then rather than assumed now.
 
-Read `TRACKER.md` → *Decisions and deviations from spec* first, and ask
-whether responsive web has made this unnecessary. `apps/web` now passes
-`test/mobile-fit.mjs` — every screen at 360px with thumb-sized targets —
-alongside the 3G budget in `test/hardening.mjs`.
+## If you are here to add a screen
 
-If you do resume it, the gap is roughly the size of build slices 3–6
-again. Plan it as its own piece of work rather than extending it one
-screen at a time, which is how it got here.
+You are in the wrong directory. It goes in `apps/app`.

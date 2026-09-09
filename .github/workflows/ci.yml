@@ -52,6 +52,14 @@ jobs:
       - name: Design tokens are in sync
         run: node scripts/sync-tokens.mjs --check
 
+      # Which API routes each client actually calls. Not a coverage gate
+      # — apps/app is being built slice by slice — but a client that
+      # STOPS calling a route it used to has gone backwards, and that is
+      # precisely the failure that paused apps/mobile: features landing
+      # on one client and quietly not the other.
+      - name: Route parity — no client has gone backwards
+        run: node scripts/parity.mjs --check
+
       - name: Install (api)
         working-directory: apps/api
         run: npm ci --no-audit --no-fund
@@ -75,6 +83,43 @@ jobs:
       - name: Build (frontend)
         working-directory: apps/frontend
         run: npm run build
+
+  # ── The app ────────────────────────────────────────────────────────
+  # Its own job: it needs the Flutter SDK, which the Node lanes do not,
+  # and there is no reason to make a frontend typecheck wait on a 500MB
+  # toolchain download.
+  #
+  # No emulator here, so this is analyze + the Dart test suite. That
+  # suite carries the rule tests (no price sort, no comparison between
+  # users, no family vocabulary in core) and the accessibility guidelines
+  # — tap targets, contrast, labels — which are the app's equivalent of
+  # the web lane's axe-core gate. Driving the built app against a real
+  # API is `./scripts/dev.sh app-drive`, and needs the stack up.
+  app:
+    name: The app (Flutter)
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.8'
+          channel: stable
+          cache: true
+
+      - name: Install
+        working-directory: apps/app
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: apps/app
+        run: flutter analyze --no-pub
+
+      - name: Test
+        working-directory: apps/app
+        run: flutter test
 
   # ── The API suite ──────────────────────────────────────────────────
   api:

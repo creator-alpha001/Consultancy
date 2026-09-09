@@ -7,7 +7,9 @@ milestone is finished. This file is where that difference is recorded.
 Update rules are at the bottom. Updating this file is part of the
 Definition of Done for every task.
 
-Last updated: 2026-09-05 · `apps/web` removed and the live rows below now name `apps/frontend`, which is where the code actually is; `dev.sh` starts on Git Bash again. The frontend seam is FULLY connected and `mock.ts` is deleted; 320 frontend unit tests (which found the clock frozen, the refund rail lying, and the rubric drawn on a scale that does not exist) and 456 API tests, all green against a real Postgres.
+Last updated: 2026-09-09 · **`apps/app` exists: a Flutter client for seekers and providers, Slice 0 complete and driven against the real API.** The anti-drift spine is in — a generated 148-route inventory, a parity check wired into CI, and `packages/design/tokens.json` rewritten to carry the CURRENT design system (closing D36) with `apps/frontend` checked rather than generated. 85 Dart tests. Parity's first run found the web agenda page's controls are inert; see D56.
+
+Previously: 2026-09-05 · `apps/web` removed and the live rows below now name `apps/frontend`, which is where the code actually is; `dev.sh` starts on Git Bash again. The frontend seam is FULLY connected and `mock.ts` is deleted; 320 frontend unit tests (which found the clock frozen, the refund rail lying, and the rubric drawn on a scale that does not exist) and 456 API tests, all green against a real Postgres.
 
 ---
 
@@ -28,7 +30,8 @@ Milestones and their "done when" bars come from `SPEC-PLATFORM.md` §18.
 | M9 | Hardening | **Partial — not complete** | Mostly. Reconciliation, restore drill and the DB perf baseline are real and verified. **3G and accessibility now are too** — `apps/frontend/test/hardening.mjs` drives the real pages over a throttled Fast-3G profile with a 4× CPU slowdown and runs axe-core against WCAG 2.1 A/AA, in CI on every push. **The security review has now been run** and the one finding it produced is fixed. See below. |
 | — | **identity/auth** (unscheduled, built before M9) | **Complete** | n/a — not a §18 milestone; see below |
 | — | **apps/frontend** (web frontend, unscheduled) | **Booking + mentorship loop working end to end** | n/a — see "apps/frontend — connecting to the API" below. This row named `apps/web` until 2026-09-05; that app is deleted and the section describing it is now marked historical. |
-| — | **apps/mobile** (React Native, unscheduled) | **Both journeys working — the primary client** | n/a — see below |
+| — | **apps/app** (Flutter, unscheduled) | **Both journeys working end to end; 10 screens still stubbed** | n/a — see "apps/app — the Flutter client" below |
+| — | **apps/mobile** (React Native, unscheduled) | **Superseded by `apps/app`. Do not extend.** | n/a — see below |
 
 **"Complete, with debt"** means the milestone's own bar is met but items in
 Open Debt below are outstanding. A milestone is never re-opened; its debt
@@ -786,6 +789,136 @@ reputation/` would have been a module cycle) for mentor discovery.
 works), the admin adjudication and moderation queues, and provider
 credential submission. See D25.
 
+### apps/app — the Flutter client
+
+Added 2026-09-09 on the product owner's decision. The plan is
+`docs/PLAN-FLUTTER.md`; it names ten slices and **only Slice 0 is built.**
+
+**What was decided.** One Flutter app with two shells, chosen from
+`user.role` at sign-in — `user_role` holds exactly one role, so there is
+nothing for a switcher to switch. `apps/frontend` stays FULLY functional
+for seekers and providers, because a laptop user needs the whole product
+in a browser; the app is for the phone. Admin is web-only and ships no
+surface here. Video and payments will go behind a `RoomClient` /
+`PaymentClient` seam with fakes, mirroring M1's `PaymentAggregator`.
+
+**This departs from `SPEC-PLATFORM.md` §19**, which lists native apps as
+out of scope for launch. Recorded once, in the plan, and not re-argued.
+The indexable-profile acquisition channel (§18.1) is preserved because
+the web keeps its public surface.
+
+**Where it is now.** Slices 0–2 are done, and most of 3, 5, 6, 7 and 8.
+Route coverage is **103/123 (84%)**, against `apps/frontend`'s 60/143
+(42%) — the new client already calls more of the API than the old one.
+Ten `NotBuiltScreen` placeholders remain, each naming its slice on
+screen, and a test counts them so the number cannot drift.
+
+**Built and driven against the real API:** sign-in; registration with the
+18+ confirmation (#27) and the family whose wording was shown; the
+catalogue; provider search filtered by field and language; the profile
+with achievements, per-skill tiers and a track record including refunds;
+booking (field, category, language — no price negotiation); the
+engagement hub with its two gates, payment and completion; **the agenda,
+including a working lock with confirmation and an immutable locked view**;
+the session list and the live room with both-party consent, the live
+checklist, and audio-only as a deliberate choice; the money screen; the
+progress screen; the board and the ask flow with its distress path; and
+the provider's dashboard, earnings, verification standing, services and
+availability.
+
+**Still stubbed:** the assessment and annotation tool, reviews, disputes,
+MFA enrolment, the report screen, legal documents, board post detail and
+proposals, training, working languages, and payout details.
+
+**Slice 0 built the anti-drift spine, which is the part `apps/mobile`
+never had:**
+
+- **A generated route inventory.** `apps/api/scripts/dump-routes.ts`
+  (`npm run routes`) writes `packages/contract/routes.json` — 148 routes,
+  enumerated from the running application, so the list cannot drift from
+  the API because it *is* the API. `@nestjs/swagger` is a devDependency;
+  `main.ts` is untouched and production never loads it.
+- **A parity check.** `scripts/parity.mjs` reports which routes each
+  client calls, with reasoned exemptions. `--check` fails when a client
+  STOPS calling a route it used to, and is wired into `dev.sh test` and
+  CI. It is deliberately NOT a coverage threshold: `apps/app` is expected
+  to be incomplete while slices land. Today: `apps/frontend` 60/143,
+  `apps/app` 7/125.
+- **The token pipeline, corrected.** See D55.
+
+**Built in the app itself:** the API client (bearer token, an
+`Idempotency-Key` on every mutation, the error envelope mapped to
+`ApiException`, a two-attempt retry and a mobile-sized timeout budget);
+`Paise`, an integer-paise type with no `/` and no `toDouble()` and an
+exact `allocate()`; the token store (Keystore/Keychain, memory-only on
+web, `SharedPreferences` refused); the pack loader and `Plural.count()`
+with the `2 मेंटरs` fix ported *with its test*; per-record family
+theming; per-string font selection; `go_router` with a role-aware
+redirect; both shells; sign-in; and the seeker home rendering the real
+catalogue.
+
+**Verified, not assumed.** 85 Dart tests. `./scripts/dev.sh app-drive`
+builds the web target and drives the SAME widgets through Chromium at
+360px against the running API — sign-in, the pack over HTTP, both
+shells — entirely through the accessibility tree, so a control it cannot
+find by name is one a screen reader cannot find either. Three kinds of
+test are worth naming:
+
+- **Rule tests** (`test/rules_test.dart`) grep `lib/` for the CLAUDE.md
+  constraints that have no function to call: no price sort (#15), no
+  streaks/percentiles/comparison (#17), no family vocabulary in core, no
+  client-supplied user id (#28). Verified against MANUFACTURED
+  violations — three planted, three caught — not merely against a clean
+  tree, same standard as the reconciliation suite.
+- **A cross-client colour test.** A family publishes one accent and both
+  clients derive four relations from it. `test/pack/family_theme_test.dart`
+  pins this app's ramp to `apps/frontend/src/lib/pack-source.ts`'s output,
+  colour for colour, for the seeded accents. Without it the same family
+  would be a different colour in the browser and on the phone.
+- **Accessibility guidelines** — `androidTapTargetGuideline`,
+  `iOSTapTargetGuideline`, `textContrastGuideline` — the app's equivalent
+  of the web lane's axe-core gate, in CI.
+
+**Debt introduced, and owed:**
+
+- **Types are hand-authored on both clients.** The plan called for one
+  contract generating both. The spike measured what Swagger actually
+  yields here: 148 operations, **0 response schemas, 0 request schemas,
+  0 component schemas** — because every response model is a TS
+  `interface`, erased at compile time, and the plugin introspects
+  decorated DTO *classes*. Extracting types means adopting the Nest CLI
+  or ts-patch and converting fifteen modules' models to classes: invasive
+  surgery on an API with 456 passing tests. Route coverage — the failure
+  that actually happened — was built instead. **A route whose SHAPE
+  changes still breaks neither client's build.**
+- **Fonts are not bundled.** Inter and Noto Sans Devanagari are declared
+  in a commented-out `pubspec.yaml` block with the `.ttf` files missing.
+  The SELECTION MECHANISM exists and is tested (`lib/theme/script.dart`);
+  both names currently fall through to the platform font, which does
+  cover Devanagari on Android, so the app is readable and merely not yet
+  on-brand. Must be bundled, never fetched.
+- **Ten `NotBuiltScreen` placeholders.** Each says on screen which slice
+  will build it. A test counts them so the number is a fact rather than a
+  surprise, and fails if it rises without someone raising the limit on
+  purpose.
+- **`/sessions` returns snake_case while every other endpoint returns
+  camelCase.** Raw database rows, unlike the mapped responses elsewhere.
+  The client reads either (`EitherCase` in `lib/api/json.dart`) so the
+  inconsistency does not spread to every call site — but the fix belongs
+  on the server, where one shape can serve both clients.
+- **Booking does not yet pick a slot.** A `live_session` is created with
+  its price and language, but the slot picker over `/providers/:id/slots`
+  is not built, so a live session cannot be scheduled from the app.
+- **The web target is a test surface, never shipped.** It exists because
+  there is no Android emulator or `/dev/kvm` here. On it the token store
+  is memory-only BY DESIGN, so `app-drive` exercises a different storage
+  path from a real build.
+- **iOS is entirely unverified.** No Apple toolchain exists on Windows
+  and cannot. Every iOS claim is untested until there is a Mac.
+- **Android release builds are blocked locally.** SDK 36.1.0 is present
+  but `cmdline-tools` is missing and the licences are unaccepted, so
+  `flutter build apk` fails. `flutter test` and the web target work.
+
 ### apps/mobile — the native app
 
 Added 2026-08-28 after the user said plainly that the web UI was poor and
@@ -998,6 +1131,8 @@ currently tells.
 
 | # | From | Item | Why it matters |
 |---|---|---|---|
+| D53 | 2026-09-05 | Which commitments an engagement type makes is still hardcoded in core | `commitmentKindsFor()` in `verification/rates.service.ts` is a `switch` over engagement type codes — the last piece of engagement-type knowledge core holds, and it grew when `review_with_live` was added. It belongs in the manifest beside `engagementTypes`, so a family declaring a combined format does not need a core edit. Low risk today (one line per new type, and an unknown type defaults to the safer "turnaround"), but it is exactly the `if (domain === …)` shape hard rule #1 forbids, one level of indirection away. Migration 0052's comment points here. |
+| D54 | 2026-09-05 | A package of a combined format cannot be priced | `provider_packages` still carries `package_commitment_single` from 0048, so a package of `review_with_live` can state its turnaround or its session length but not both. Not fixed with 0052 because nothing sells such a package yet and widening two constraints for one need would be widening one too many. A provider who wants "five document audits with calls" cannot list it. |
 | D28 | M1 | Notification transports do not exist, so those outbox events never leave | **The money half is closed.** `notifications/` now has a relay: it claims outbox rows with `FOR UPDATE SKIP LOCKED`, calls the aggregator outside any transaction, and records the reference — so `release()` finally results in an instructed transfer and a settlement webhook can actually arrive. What remains is that `escrow.held`, `payout.failed` and the rest have no transport (no email, SMS, WhatsApp or push), so the relay deliberately leaves them pending rather than marking them delivered, and reconciliation reports them. That is the honest state, not a silent drop. |
 | D27 | M1 | A crashed process strands an idempotency key `in_flight` forever | Closing D5 removed the delete-on-failure race, but if the process dies between claiming a key and recording an outcome, nothing ever completes or fails that row. Every retry of that request then gets `IDEMPOTENCY_REQUEST_IN_FLIGHT` permanently, pushing the caller toward retrying under a *new* key — the double-charge idempotency exists to prevent. Surfaced, not fixed: reconciliation reports `IDEMPOTENCY_KEY_STUCK_IN_FLIGHT`. **The fix is a policy decision nobody should invent**: a lease that auto-releases a stale claim would hand a second caller permission to re-run a money handler on the strength of a guess about whether the first one moved money before it died. Options are (a) ops releases stranded keys by hand from the reconciliation report, (b) a lease window long enough that the original handler is certainly dead, relying on the ledger's own idempotency layer to catch a double-execution, or (c) handler-specific compensation. Needs a call from whoever owns money risk. |
 | D6 | M2 | Loader cache is per-process | Correct for one deployable. A second instance serves stale manifests until its own publish. Invalidation must become pub/sub before horizontal scaling, not after. |
@@ -1025,6 +1160,10 @@ currently tells.
 | D52 | i18n | Working language is settable; **interface** language is still English-only | Two different things share the word. The one that decides matching — what languages a provider works in — is now declarable by the provider, validated against the pack, and gates matching via `can_evaluate` (#19). The one that decides what the app renders in is still D33: pack vocabulary translates, every string the app itself owns is hardcoded English. So a Marathi-medium aspirant can now *find* a Marathi-speaking mentor, and will do it through an English interface. |
 | D48 | safety | Nothing *tells* anyone a report exists | The queue is correct and a reviewer who opens `/admin/reports` cannot miss a welfare concern — but nothing notifies them, so the time-to-look is however long until someone happens to visit. Same shape as D43 for dead-lettered payouts, and it matters more here: the policy holds content on sight, so an unread queue means someone's post stays wrongly hidden. Needs the notification transport that does not exist yet. The reporter is likewise only acknowledged in the response and in `/reports/mine`; nothing reaches them when the report is later reviewed. |
 | D49 | board | The web app has no free-question board | `GET /board/questions/:id` now returns a question with its (unheld) answers — added so a reported answer has a read path to disappear from — but no screen renders it, on either client. Answers have been writable and unreadable since M6; reporting made the gap visible rather than causing it. |
+| D58 | app | **Every money field crosses the wire as a STRING**, and the first `Paise` refused it | `Paise.fromJson` was written to accept an `int` and to throw on anything else — deliberately, so a double could never be rounded inside a money path. Probing the running API showed that shape never occurs: `amountPaise`, `heldPaise`, `platformFeePaise`, `walletPaise`, `budgetMinPaise` and the rest all arrive as `"70000"`. That is CORRECT rather than sloppy — paise are `bigint` in Postgres and `node-postgres` returns bigint as a string precisely because JavaScript's `number` cannot hold one safely. Dart's 64-bit `int` can, so parsing at the client edge is the first point in the whole chain where the value is a real integer again. `Paise.parse` now takes an int or a numeric string, still **refuses a double** (including a stringified one), and `Paise.tryParse` keeps absent distinct from zero — a payout that has not happened and a payout of nothing are different facts. Worth recording because the original type would have thrown on literally every engagement, and it was caught by reading the API rather than the types: the TypeScript interface says `amountPaise: string` in some places and the model was written from the wrong one. This is exactly the class of bug that generated types would remove (D57). |
+| D55 | both | **Closed D36** — `packages/design/tokens.json` now carries the CURRENT design system, and `apps/frontend` is CHECKED rather than generated | D36 left "two token sources now exist — apps/frontend's own and packages/design's, the latter feeding only the paused apps/mobile" as an open design decision. A third client arriving forced it, because generating a Flutter theme from the stale file would have shipped the app looking like a design the web had already left behind — drift on day one, in its most visible form. So the source was **rewritten** to transcribe apps/frontend's token layer (`globals.css` + `tailwind.config.ts`): canvas/surface/ink/line, the brand ramp, verified/caution/danger/info, the 15px-body type scale, the radii, the structured two-layer shadows, and the `.surface-dark` provider scope. `apps/app` is generated from it (`lib/theme/generated_tokens.dart`). **`apps/frontend` is not generated into** — the script parses its `:root` block and FAILS when it disagrees. That was deliberate: `globals.css` is working, tested and hand-tuned, and what is actually needed is to know when the two disagree, not to own the file. Same guarantee, none of the blast radius; the check was verified by planting a wrong `--brand` and watching it fail. `apps/mobile` is no longer a target and its generated file is frozen. **Also corrected here:** the brand ramp is derived, not published — a manifest carries one `--color-accent` and both clients compute hover/soft/soft-ink/line from it. Flutter's port of that maths is pinned to the web's output colour-for-colour by a test, because two implementations of the same derivation is exactly how the same family ends up two different colours. |
+| D56 | frontend | The web agenda page renders controls that are wired to nothing | Found by `scripts/parity.mjs` on its first run: `apps/frontend` calls none of `GET/POST /engagements/{id}/agenda`, `POST /agendas/{id}/lock` or `POST /agenda-items/{id}/tick`. `src/app/engagements/[id]/agenda/page.tsx` is 207 lines with no `<form>`, no `action=`, no `formAction` and no `onClick` — the "Remove" buttons, the goal editing and the lock confirmation are all inert, and the agenda is read from `e.agenda` embedded in `getEngagement(id)`. **The row at line 762 of this file says the page does "Add/remove goals, out-of-scope, lock with explicit confirmation", which overstates what is wired.** Either wire it or correct that row; they must not be left disagreeing. Note what this means for M3's status: the loop is proven end-to-end in the API suite, but a seeker cannot lock an agenda from the web UI. |
+| D57 | app | The API contract is only half generated — routes yes, types no | The plan called for one contract generating typed clients for both apps. A spike measured what `@nestjs/swagger` actually yields against this codebase with no CLI plugin: **133 paths, 148 operations, 0 response schemas, 0 request schemas, 0 component schemas.** Zero, because every response model here is a TypeScript `interface` — erased at compile time — while the swagger plugin introspects decorated DTO *classes*. Getting types out would mean adopting the Nest CLI or ts-patch and converting the response models of fifteen modules to decorated classes: invasive surgery on a working API with 456 passing tests, for a client-generation benefit. So the **route inventory** was built (it is exact and free) and types stay hand-authored on each client. That is the right trade for now because route coverage, not type drift, is the failure that actually happened to `apps/mobile` — but the consequence is real and is the reason this is debt rather than a decision: **an endpoint whose response SHAPE changes breaks neither client's build.** It surfaces at runtime, as a parse error on a screen. |
 | D47 | docs | `SPEC-FEATURES.md` and `SPEC-SCREENS.md` are referenced but have never existed | CLAUDE.md's reference table names both as authoritative — "Feature behaviour, APIs, edge cases, acceptance criteria" and "Screen layout, states, copy" — and its precedence order puts them below `SPEC-PLATFORM.md` but above nothing. Neither file has ever been committed. Everything built to those two headings has therefore been built from inference, and where this build disagrees with an intention nobody wrote down, there is no document to check against. It also means the acceptance criteria a milestone is supposed to be measured by do not exist except in `SPEC-PLATFORM.md` §18. |
 | D32 | mobile | `applyPack()` exists but is never called — family theming is unwired | `src/theme/tokens.ts` exports it and the kit imports the palette directly instead, so a family cannot actually re-skin the app (#7). Latent rather than harmful today, because there is one family; it becomes a real blocker the moment a second one needs its own accent. Found while rewriting the theme, recorded rather than half-wired. |
 | D33 | mobile | No i18n catalogue — UI chrome is English-only | Pack-supplied vocabulary is translated (the family, seeker, provider, engagement and now category words all render in Hindi), and so are language names, via `Intl.DisplayNames`. But every string the app itself owns — "Language", "Your offer", "What do you need?", "Nothing is charged yet." — is hardcoded English. On a Hindi-default domain that produces a screen half in each language, which is worse than either. `engagementTypeLabel()` is English-only for the same reason and should move into the catalogue when one exists. |
@@ -1103,6 +1242,72 @@ loop rather than the parts.
 
 Where the build knowingly differs from a spec document, and why. If a
 future task is surprised by something, it should be recorded here.
+
+- **A fifth engagement type, `review_with_live` — a format that makes two
+  promises (2026-09-05).** SPEC-PLATFORM.md §7 lists four engagement
+  types and calls them "all four at launch". There are now five. The new
+  one is a combined format: a document is audited and returned by a
+  deadline, and a live consultation follows to go through it — one
+  agenda, one escrow, one release, but two commitments. It is carried by
+  every seeded family, not just the exam one — an audited document plus
+  a call is not a competitive-exam idea.
+
+  **Why it is a type and not a bundle.** The alternative was two linked
+  engagements sharing an agenda, which keeps every existing invariant
+  intact and needs bundle purchase, two escrows and two releases. As one
+  type it needs none of that: `engagements.engagement_type` has been free
+  text since 0010 precisely because "the set of valid values is family
+  data", `sessions` attach to any engagement, and only two places in the
+  API branch on the type at all. The user asked for it on the booking
+  screen; the cheap version of it (a display-only option) would have been
+  a fake, and is recorded nowhere because it was not built.
+
+  **What it cost.** Migration `0052` drops `rate_commitment_single`, the
+  0044 constraint forbidding a rate from stating both a turnaround and a
+  duration. That constraint's reasoning — "a session that is 60 minutes,
+  returned in 3 days is two different products" — is right for the four
+  types that existed when it was written and wrong for a format that
+  genuinely is both. It could not be patched with an exception without
+  writing a family's type into core DDL (#1), so the rule moved to
+  `commitmentKindsFor()` in `verification/rates.service.ts`, which is the
+  layer that can know it. `provider_packages` keeps its equivalent
+  constraint — a package of a combined format is not yet expressible (see
+  D-below).
+
+  **Vocabulary, and a correction worth recording.** The formats are
+  called "Document Audit", "Live Consultation" and "Document Audit +
+  Live Consultation", and those names live in the PLATFORM base — they
+  are neutral and read correctly in accountancy or higher education as
+  they do in an exam.
+
+  The first attempt got this wrong. It shipped an exam-family override
+  renaming `document_review` to "Copy Evaluation" — "copy" being what an
+  aspirant calls an answer sheet — which put one family's word in front
+  of every user of that format and made the launch family look like the
+  product. The user caught it: *"this app is not an app for upsc
+  preparation only, it is one of the part."* The override is gone and no
+  seeded family overrides an engagement-type name today.
+
+  The `engagementTypeLabels` mechanism stays, unused, and that is
+  deliberate rather than an oversight: `pack-source.ts` was already
+  written to read it before any of this, a family whose people genuinely
+  would not recognise a neutral name must be able to publish its own, and
+  the validation test exercises it with a fictional example. `apps/mobile`
+  reads the same field through `engagementTypeLabel()`, which previously
+  humanised the code unconditionally and would have shown "Review with
+  live".
+
+  **A bug this surfaced.** `adapt.ts` set a service's title to
+  `skillCode ?? engagementType`, so a rate with no skill — which is every
+  seeded rate — put the raw code "document_review" in front of seekers as
+  the name of the thing they were buying. It had been on the booking and
+  profile screens the whole time; the user spotted it. The title is now
+  the skill where there is one and the type's pack label otherwise, and
+  the adapter returns an empty string rather than a code it cannot
+  translate. `pack.ts`'s platform base also carried two engagement codes
+  the API has never returned (`async_qa`, `package`) and was missing two
+  it does (`written_qa`, `async_task`), so those two rendered as
+  "Written qa" — fixed in the same pass.
 
 - **The chrome was hardcoded to `upsc_cse` in 32 places across 25 files
   — fixed (2026-08-31).** Every page called `getDomain('upsc_cse')`

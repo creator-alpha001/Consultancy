@@ -8,6 +8,7 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "migrate": "ts-node src/database/migrate.ts",
+    "routes": "ts-node --transpile-only scripts/dump-routes.ts",
     "seed": "ts-node seed/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -23,6 +24,7 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@nestjs/swagger": "^7.4.2",
     "@nestjs/testing": "^10.4.6",
     "@types/express": "^4.17.21",
     "@types/node": "^20.16.11",

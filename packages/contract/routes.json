@@ -1,0 +1,755 @@
+{
+  "$comment": [
+    "GENERATED FILE — DO NOT EDIT.",
+    "",
+    "Source:     the running NestJS application, via SwaggerModule.",
+    "Regenerate: cd apps/api && npm run routes",
+    "",
+    "This is the route inventory both clients are measured against.",
+    "It carries no types, on purpose — see apps/api/scripts/dump-routes.ts."
+  ],
+  "generatedFrom": "apps/api",
+  "count": 148,
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/admin/catalogue",
+      "operationId": "CatalogueOpsController_list"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/catalogue/{code}/listing",
+      "operationId": "CatalogueOpsController_setListing"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/credentials/{id}/automated-check",
+      "operationId": "VerificationController_runCheck"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/credentials/{id}/context",
+      "operationId": "VerificationController_reviewContext"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/credentials/{id}/decide",
+      "operationId": "VerificationController_decide"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/credentials/{id}/document",
+      "operationId": "VerificationController_document"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/credentials/queue",
+      "operationId": "VerificationController_queue"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/disputes/{id}/rule",
+      "operationId": "DisputesController_rule"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/disputes/{id}/settle",
+      "operationId": "DisputesController_settle"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/disputes/queue",
+      "operationId": "DisputesController_queue"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/domains/{code}/manifest",
+      "operationId": "PackEditorController_getDomainManifest"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/domains/manifest",
+      "operationId": "PackEditorController_publishDomain"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/families/manifest",
+      "operationId": "PackEditorController_publishFamily"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/outbox/relay",
+      "operationId": "OutboxRelayController_relayNow"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/reconciliation",
+      "operationId": "ReconciliationController_run"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/reports",
+      "operationId": "ReportsController_queue"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/reports/{id}/claim",
+      "operationId": "ReportsController_claim"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/reports/{id}/resolve",
+      "operationId": "ReportsController_resolve"
+    },
+    {
+      "method": "POST",
+      "path": "/agenda-items/{itemId}/tick",
+      "operationId": "AgendaController_tickItem"
+    },
+    {
+      "method": "POST",
+      "path": "/agendas/{agendaId}/lock",
+      "operationId": "AgendaController_lock"
+    },
+    {
+      "method": "GET",
+      "path": "/agreements/document",
+      "operationId": "AgreementsController_document"
+    },
+    {
+      "method": "DELETE",
+      "path": "/annotations/{id}",
+      "operationId": "AssessmentController_removeAnnotation"
+    },
+    {
+      "method": "POST",
+      "path": "/attachments",
+      "operationId": "AttachmentsController_upload"
+    },
+    {
+      "method": "GET",
+      "path": "/attachments/{id}/download",
+      "operationId": "AttachmentsController_download"
+    },
+    {
+      "method": "GET",
+      "path": "/attachments/{id}/link",
+      "operationId": "AttachmentsController_link"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "operationId": "AuthController_login"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "operationId": "AuthController_logout"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout-others",
+      "operationId": "AuthController_logoutOthers"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "operationId": "AuthController_me"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/mfa/confirm",
+      "operationId": "AuthController_confirmEnrolment"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/mfa/enrol",
+      "operationId": "AuthController_beginEnrolment"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/mfa/recovery-codes",
+      "operationId": "AuthController_regenerateRecoveryCodes"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "operationId": "AuthController_register"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/sessions",
+      "operationId": "AuthController_listSessions"
+    },
+    {
+      "method": "GET",
+      "path": "/board/moderation/held",
+      "operationId": "BoardController_listHeld"
+    },
+    {
+      "method": "POST",
+      "path": "/board/moderation/held/{id}/clear",
+      "operationId": "BoardController_clearHeld"
+    },
+    {
+      "method": "GET",
+      "path": "/board/posts",
+      "operationId": "BoardController_searchOpen"
+    },
+    {
+      "method": "POST",
+      "path": "/board/posts",
+      "operationId": "BoardController_createPost"
+    },
+    {
+      "method": "GET",
+      "path": "/board/posts/{id}",
+      "operationId": "BoardController_getPost"
+    },
+    {
+      "method": "POST",
+      "path": "/board/posts/{id}/cancel",
+      "operationId": "BoardController_cancelPost"
+    },
+    {
+      "method": "GET",
+      "path": "/board/posts/{id}/proposals",
+      "operationId": "BoardController_listProposals"
+    },
+    {
+      "method": "POST",
+      "path": "/board/posts/{id}/proposals",
+      "operationId": "BoardController_submitProposal"
+    },
+    {
+      "method": "POST",
+      "path": "/board/proposals/{id}/accept",
+      "operationId": "BoardController_acceptProposal"
+    },
+    {
+      "method": "POST",
+      "path": "/board/proposals/{id}/withdraw",
+      "operationId": "BoardController_withdrawProposal"
+    },
+    {
+      "method": "GET",
+      "path": "/board/questions",
+      "operationId": "BoardController_listQuestions"
+    },
+    {
+      "method": "POST",
+      "path": "/board/questions",
+      "operationId": "BoardController_askQuestion"
+    },
+    {
+      "method": "GET",
+      "path": "/board/questions/{id}",
+      "operationId": "BoardController_getQuestion"
+    },
+    {
+      "method": "POST",
+      "path": "/board/questions/{id}/answers",
+      "operationId": "BoardController_answerQuestion"
+    },
+    {
+      "method": "GET",
+      "path": "/catalogue",
+      "operationId": "DomainsController_getCatalogue"
+    },
+    {
+      "method": "GET",
+      "path": "/disputes/{id}",
+      "operationId": "DisputesController_get"
+    },
+    {
+      "method": "POST",
+      "path": "/disputes/{id}/appeal",
+      "operationId": "DisputesController_appeal"
+    },
+    {
+      "method": "GET",
+      "path": "/disputes/{id}/evidence",
+      "operationId": "DisputesController_evidenceFor"
+    },
+    {
+      "method": "GET",
+      "path": "/disputes/{id}/rulings",
+      "operationId": "DisputesController_rulings"
+    },
+    {
+      "method": "POST",
+      "path": "/disputes/{id}/withdraw",
+      "operationId": "DisputesController_withdraw"
+    },
+    {
+      "method": "GET",
+      "path": "/domains/{code}",
+      "operationId": "DomainsController_getDomain"
+    },
+    {
+      "method": "GET",
+      "path": "/domains/{code}/categories",
+      "operationId": "DomainsController_getCategoryTree"
+    },
+    {
+      "method": "GET",
+      "path": "/domains/{code}/credential-types",
+      "operationId": "VerificationController_submittableTypes"
+    },
+    {
+      "method": "GET",
+      "path": "/domains/{code}/working-languages",
+      "operationId": "VerificationController_offerableLanguages"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements",
+      "operationId": "EngagementsController_list"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements",
+      "operationId": "EngagementsController_createDraft"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements/{engagementId}/agenda",
+      "operationId": "AgendaController_getForEngagement"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{engagementId}/agenda",
+      "operationId": "AgendaController_createDraft"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements/{engagementId}/assessment-template",
+      "operationId": "AssessmentController_templateForEngagement"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements/{engagementId}/disputes",
+      "operationId": "DisputesController_findForEngagement"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{engagementId}/disputes",
+      "operationId": "DisputesController_raise"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{engagementId}/evaluations",
+      "operationId": "AssessmentController_open"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements/{engagementId}/evaluations/latest",
+      "operationId": "AssessmentController_latestEvaluation"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements/{engagementId}/reviews",
+      "operationId": "ReputationController_listForEngagement"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{engagementId}/reviews",
+      "operationId": "ReputationController_leave"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{engagementId}/sessions",
+      "operationId": "SessionsController_book"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{engagementId}/submissions",
+      "operationId": "AssessmentController_submit"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements/{engagementId}/submissions/latest",
+      "operationId": "AssessmentController_latest"
+    },
+    {
+      "method": "GET",
+      "path": "/engagements/{id}",
+      "operationId": "EngagementsController_get"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{id}/agree",
+      "operationId": "EngagementsController_agree"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{id}/cancel",
+      "operationId": "EngagementsController_cancel"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{id}/complete",
+      "operationId": "EngagementsController_complete"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{id}/discount",
+      "operationId": "EngagementsController_discount"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/{id}/payment",
+      "operationId": "EngagementsController_pay"
+    },
+    {
+      "method": "POST",
+      "path": "/engagements/from-package/{purchaseId}",
+      "operationId": "EngagementsController_drawFromPackage"
+    },
+    {
+      "method": "GET",
+      "path": "/evaluations/{id}",
+      "operationId": "AssessmentController_get"
+    },
+    {
+      "method": "POST",
+      "path": "/evaluations/{id}/annotations",
+      "operationId": "AssessmentController_annotate"
+    },
+    {
+      "method": "POST",
+      "path": "/evaluations/{id}/return",
+      "operationId": "AssessmentController_return_"
+    },
+    {
+      "method": "POST",
+      "path": "/evaluations/{id}/scores",
+      "operationId": "AssessmentController_score"
+    },
+    {
+      "method": "POST",
+      "path": "/extensions/{extensionId}/accept",
+      "operationId": "SessionsController_acceptExtension"
+    },
+    {
+      "method": "POST",
+      "path": "/extensions/{extensionId}/decline",
+      "operationId": "SessionsController_declineExtension"
+    },
+    {
+      "method": "GET",
+      "path": "/families/{code}",
+      "operationId": "DomainsController_getFamily"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/escrows/{engagementId}/hold",
+      "operationId": "MoneyController_hold"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/escrows/{escrowId}/platform-failure",
+      "operationId": "MoneyController_platformFailure"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/escrows/{escrowId}/refund",
+      "operationId": "MoneyController_refund"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/escrows/{escrowId}/release",
+      "operationId": "MoneyController_release"
+    },
+    {
+      "method": "POST",
+      "path": "/me/action-items/{annotationId}",
+      "operationId": "AssessmentController_setActionDone"
+    },
+    {
+      "method": "GET",
+      "path": "/me/agreements",
+      "operationId": "AgreementsController_mine"
+    },
+    {
+      "method": "GET",
+      "path": "/me/availability",
+      "operationId": "SessionsController_myAvailability"
+    },
+    {
+      "method": "POST",
+      "path": "/me/availability/exceptions",
+      "operationId": "SessionsController_addException"
+    },
+    {
+      "method": "POST",
+      "path": "/me/availability/exceptions/{exceptionId}/remove",
+      "operationId": "SessionsController_removeException"
+    },
+    {
+      "method": "POST",
+      "path": "/me/availability/policy",
+      "operationId": "SessionsController_setPolicy"
+    },
+    {
+      "method": "POST",
+      "path": "/me/availability/rules",
+      "operationId": "SessionsController_addRule"
+    },
+    {
+      "method": "POST",
+      "path": "/me/availability/rules/{ruleId}/remove",
+      "operationId": "SessionsController_removeRule"
+    },
+    {
+      "method": "GET",
+      "path": "/me/credentials",
+      "operationId": "VerificationController_mine"
+    },
+    {
+      "method": "POST",
+      "path": "/me/credentials",
+      "operationId": "VerificationController_submit"
+    },
+    {
+      "method": "GET",
+      "path": "/me/domains",
+      "operationId": "MyDomainsController_list"
+    },
+    {
+      "method": "GET",
+      "path": "/me/earnings",
+      "operationId": "ProviderMoneyController_summary"
+    },
+    {
+      "method": "GET",
+      "path": "/me/languages",
+      "operationId": "VerificationController_myLanguages"
+    },
+    {
+      "method": "POST",
+      "path": "/me/languages",
+      "operationId": "VerificationController_setMyLanguages"
+    },
+    {
+      "method": "GET",
+      "path": "/me/money",
+      "operationId": "SeekerMoneyController_summary"
+    },
+    {
+      "method": "GET",
+      "path": "/me/package-purchases",
+      "operationId": "PackagesController_purchases"
+    },
+    {
+      "method": "GET",
+      "path": "/me/packages",
+      "operationId": "PackagesController_mine"
+    },
+    {
+      "method": "POST",
+      "path": "/me/packages",
+      "operationId": "PackagesController_publish"
+    },
+    {
+      "method": "POST",
+      "path": "/me/packages/{id}/withdraw",
+      "operationId": "PackagesController_withdraw"
+    },
+    {
+      "method": "GET",
+      "path": "/me/paid-work-status",
+      "operationId": "VerificationController_paidWorkStatus"
+    },
+    {
+      "method": "GET",
+      "path": "/me/payout-destination",
+      "operationId": "ProviderMoneyController_destination"
+    },
+    {
+      "method": "POST",
+      "path": "/me/payout-destination",
+      "operationId": "ProviderMoneyController_setDestination"
+    },
+    {
+      "method": "GET",
+      "path": "/me/progress",
+      "operationId": "AssessmentController_progress"
+    },
+    {
+      "method": "GET",
+      "path": "/me/rates",
+      "operationId": "VerificationController_myRates"
+    },
+    {
+      "method": "POST",
+      "path": "/me/rates",
+      "operationId": "VerificationController_setRate"
+    },
+    {
+      "method": "POST",
+      "path": "/me/rates/{rateId}/remove",
+      "operationId": "VerificationController_removeRate"
+    },
+    {
+      "method": "GET",
+      "path": "/me/readiness",
+      "operationId": "VerificationController_readiness"
+    },
+    {
+      "method": "GET",
+      "path": "/me/skill-stats",
+      "operationId": "ReputationController_myStats"
+    },
+    {
+      "method": "GET",
+      "path": "/me/training",
+      "operationId": "VerificationController_training"
+    },
+    {
+      "method": "POST",
+      "path": "/me/training/{moduleCode}",
+      "operationId": "VerificationController_submitTraining"
+    },
+    {
+      "method": "POST",
+      "path": "/packages/{id}/purchase",
+      "operationId": "PackagesController_purchase"
+    },
+    {
+      "method": "GET",
+      "path": "/providers",
+      "operationId": "ProvidersController_search"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/{id}",
+      "operationId": "ProvidersController_profile"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/{id}/slots",
+      "operationId": "SessionsController_slots"
+    },
+    {
+      "method": "GET",
+      "path": "/report-reasons",
+      "operationId": "ReportsController_reasons"
+    },
+    {
+      "method": "POST",
+      "path": "/reports",
+      "operationId": "ReportsController_raise"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/mine",
+      "operationId": "ReportsController_mine"
+    },
+    {
+      "method": "POST",
+      "path": "/reviews/{id}/reply",
+      "operationId": "ReputationController_reply"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions",
+      "operationId": "SessionsController_listMine"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions/{id}",
+      "operationId": "SessionsController_get"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/agenda-items/{itemId}/tick",
+      "operationId": "SessionsController_tick"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/audio-only",
+      "operationId": "SessionsController_audioOnly"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/cancel",
+      "operationId": "SessionsController_cancel"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/connection",
+      "operationId": "SessionsController_connection"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/consent",
+      "operationId": "SessionsController_consent"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/end",
+      "operationId": "SessionsController_end"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions/{id}/extensions",
+      "operationId": "SessionsController_listExtensions"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/extensions",
+      "operationId": "SessionsController_proposeExtension"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions/{id}/files",
+      "operationId": "SessionsController_listFiles"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/files",
+      "operationId": "SessionsController_shareFile"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions/{id}/messages",
+      "operationId": "SessionsController_listMessages"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/messages",
+      "operationId": "SessionsController_postMessage"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/recording",
+      "operationId": "SessionsController_recording"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/room",
+      "operationId": "SessionsController_room"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/{id}/start",
+      "operationId": "SessionsController_start"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions/{id}/timer",
+      "operationId": "SessionsController_timer"
+    },
+    {
+      "method": "GET",
+      "path": "/users/{userId}/reviews",
+      "operationId": "ReputationController_listAboutUser"
+    },
+    {
+      "method": "POST",
+      "path": "/webhooks/payment-aggregator",
+      "operationId": "SettlementController_receive"
+    }
+  ]
+}
