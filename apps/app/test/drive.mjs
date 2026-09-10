@@ -456,13 +456,51 @@ async function main() {
       await page.waitForTimeout(1200);
     }
 
+    // ── the board ────────────────────────────────────────────────────
+    // Where CLAUDE.md #15 is visible rather than merely obeyed: the
+    // ordering control on a request's offers must offer no price option.
+    console.log(String.fromCharCode(10) + 'The board');
+    await visitTab(page, 'Home', 'Sankalp');
+    if (await tapByText(page, 'Ask for help')) {
+      if (await waitForPattern(page, /Open requests|No open requests/, 15000)) {
+        ok('the board opens');
+      } else {
+        bad('the board did not open');
+      }
+      if (await tapByText(page, 'REQ-')) {
+        if (await waitForPattern(page, /Budget|offers|No offers/, 15000)) {
+          ok('a request opens with its offers');
+        } else {
+          bad('the request did not open');
+        }
+        const board = await readAfterScrolling(page);
+        // The rule, checked on the rendered control rather than in the
+        // source: whatever ordering is offered, none of it is by price.
+        if (/price/i.test(board) && !/no way to sort these by price/i.test(board)) {
+          bad(`something on the request mentions ordering by price: ${board.slice(0, 200)}`);
+        } else {
+          ok('the offers carry no price ordering');
+        }
+        await page.screenshot({ path: join(ROOT, 'build/screen-board-request.png') });
+        await page.goBack();
+        await page.waitForTimeout(1200);
+      }
+      await page.goBack();
+      await page.waitForTimeout(1200);
+    }
+
     await visitTab(page, 'Sessions', 'Sessions');
     await page.screenshot({ path: join(ROOT, 'build/screen-sessions.png') });
 
     await visitTab(page, 'You', 'You');
-    const you = await semanticsText(page);
-    if (you.includes('priya.nair@demo.local')) ok('the account screen knows who is signed in');
-    else bad('the account screen did not show the signed-in email');
+    // Waited for, not read once: the panel fills in a beat after its
+    // title, and an assertion that races it is a flake — which is worse
+    // than no check, because it teaches people to re-run until green.
+    if (await waitForPattern(page, /priya\.nair@demo\.local/)) {
+      ok('the account screen knows who is signed in');
+    } else {
+      bad('the account screen did not show the signed-in email');
+    }
     await page.screenshot({ path: join(ROOT, 'build/screen-account.png') });
 
     // ── the other shell ──────────────────────────────────────────────

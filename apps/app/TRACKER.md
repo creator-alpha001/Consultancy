@@ -35,8 +35,8 @@ a piece of debt — belongs in the root file with a `D` number, not here.
 |---|---|
 | Journeys | Both. Seeker and provider, one binary, shell chosen from `user.role` |
 | Route coverage | **110/123 (89%)**, against `apps/frontend`'s 60/143 (42%) |
-| Screens built | 23 |
-| Screens stubbed | **7** (table below) |
+| Screens built | **30 — none stubbed** |
+| Screens stubbed | **0** (table below is empty, and a test keeps it that way) |
 | Dart tests | 95 across 6 files |
 | Driven against a real API | `./scripts/dev.sh app-drive` |
 
@@ -63,13 +63,17 @@ than written down.
 | Agenda | Built — draft, lock behind confirmation, and an immutable locked view with no edit affordance (#11) |
 | Assessment | Built — scores against the category's own dimensions, marks, action items. Renders the **no-template** case as a named state (#3) |
 | Sessions list | Built |
-| Session room | Built — both-party in-session consent (#21), live checklist, audio-only as a choice (#22) |
+| Session room | Built — both-party in-session consent (#21), live checklist, audio-only as a choice (#22), and append-only chat |
 | Money | Built — every figure from the ledger; nothing summed locally (#7) |
 | Progress | Built — own history only. No comparison to anyone (#17) |
-| Board | Built — list, and asking a free question with its distress path (#25) |
+| Board | Built — list, asking a free question with its distress path (#25), and reading a request with its offers |
+| Board request | Built — offers ordered by recency or experience. **No price sort, and the enum has no price member** (#15) |
 | Review | Built — family dimensions, right of reply |
 | Dispute | Built — claim anchored to the locked agenda, family's ladder |
 | Account | Built — fields, language, devices, sign-out-everywhere |
+| Legal | Built — the wording as accepted, not today's version |
+| Report | Built — reasons from the family manifest; a welfare reason answers with helplines, not a queue (#25) |
+| Second factor | Built — enrolment, and recovery codes shown exactly once |
 
 ### Provider
 
@@ -81,23 +85,23 @@ than written down.
 | Services | Built — one published price each |
 | Availability | Built — rules shown, never evaluated client-side |
 | Evaluate | Built — scores against the bound template only; no way to add a dimension (#16) |
+| Training | Built — entirely pack data; the platform grades, not this screen |
+| Working languages | Built — "can work in" and "can assess in" kept separate |
+| Payout destination | Built — the account number is typed once and never stored by us (#31) |
 
 ---
 
 ## Stubbed screens
 
-Each says on screen which slice will build it. **This table is checked
-against `lib/` by `test/tracker_test.dart`** — the count must match.
+**None.** Every route renders a real screen, and
+`lib/features/placeholder/` has been deleted along with the last one.
+
+`test/tracker_test.dart` keeps this true: it counts `NotBuiltScreen(` in
+`lib/` and requires this table to match, so re-introducing a stub without
+a row here is a red build.
 
 | Screen | Route | Waiting on |
 |---|---|---|
-| Second-factor enrolment | `/mfa/enrol` | Slice 9 |
-| Board post detail and proposals | `/board/:id` | Slice 4 |
-| Legal documents | `/legal` | Slice 9 |
-| Report something | `/report` | Slice 9 |
-| Training | `/provider/training` | Slice 8 |
-| Working languages | `/provider/languages` | Slice 8 |
-| Payout destination | `/provider/payout` | Slice 8 |
 
 ---
 
@@ -126,6 +130,10 @@ against `lib/` by `test/tracker_test.dart`** — the count must match.
 | **Slot picking** | A live session is created with its price and language, but the picker over `/providers/:id/slots` does not exist, so a session cannot be scheduled from the app. |
 | **Generated types** | Routes are generated; types are hand-written on both clients (root D57). An endpoint whose response *shape* changes breaks neither build. |
 | **Push notifications** | Not started. The API's `outbox` relay is the right seam. A marketplace where a proposal arrives silently does not work, so this matters before launch. |
+| **Video is a fake, on every client** | `FakeRoomClient` connects to nothing, and the API's `HundredMsSandboxRoomProvider` returns a made-up room reference without a network call. Everything AROUND the video is real and hits the API — both-party consent, the live checklist, audio-only, ending the session. `apps/frontend`'s room is further behind: 286 lines of local React state that call no API at all. |
+| **In-session chat is mobile-only** | The API has served `GET/POST /sessions/:id/messages` since M5. `apps/app` now uses it; `apps/frontend` still makes no session-message call anywhere. |
+| **A QR code for second-factor enrolment** | The API returns a `provisioningUri` and the screen ignores it, offering the raw key for manual entry instead. A QR renderer or `url_launcher` would make setup a tap. |
+| **Uploading a file** | Still nowhere, on either client. Submissions take a note; the session file list reads but cannot add. |
 
 ---
 
@@ -182,7 +190,16 @@ cannot find by name is one a screen reader cannot find either.
 
 ## Slices
 
-`docs/PLAN-FLUTTER.md` holds the plan. Slices 0–3 are done, most of 5,
-6, 7 and 9. What remains is Slice 4 (board detail and proposals), the
-rest of Slice 8 (training, languages, payout), and Slice 10 (bundled
-fonts, goldens, a measured 3G budget, deep links, store metadata).
+`docs/PLAN-FLUTTER.md` holds the plan. **Slices 0–9 are built.** Every
+screen those slices name exists and renders against the real API.
+
+What remains is **Slice 10 — hardening and release**, none of which is
+screen work: bundled fonts, goldens at 360px, a measured cold-start and
+payload budget on a throttled profile, offline behaviour, crash
+reporting, signing, App Links, and store metadata. Most of it needs the
+Android toolchain finished locally, and none of the iOS half can be done
+without a Mac.
+
+The two things that would most change what the app can do are not
+screens either: **real video** (a vendor SDK behind `RoomClient`) and
+**file upload**, which is blocked on both clients.

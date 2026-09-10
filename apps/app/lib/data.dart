@@ -76,6 +76,14 @@ sessionMessagesProvider = FutureProvider.family<List<SessionMessage>, String>(
   (Ref ref, String id) => ref.watch(repositoryProvider).sessionMessages(id),
 );
 
+/// Files shared during a session. Sharing one creates the grant — that
+/// is the whole access model (CLAUDE.md #29).
+final FutureProviderFamily<List<Map<String, dynamic>>, String>
+sessionFilesProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+      (Ref ref, String id) => ref.watch(repositoryProvider).sessionFiles(id),
+    );
+
 // ── board ────────────────────────────────────────────────────────────
 
 final FutureProvider<List<BoardPost>> boardPostsProvider =
@@ -183,6 +191,22 @@ final FutureProvider<PaidWorkStatus> paidWorkStatusProvider =
 final FutureProvider<List<ServicePackage>> myPackagesProvider =
     FutureProvider<List<ServicePackage>>(
       (Ref ref) => ref.watch(repositoryProvider).myPackages(),
+    );
+
+/// What a person may report something for. FAMILY data — core names
+/// none of them, because a music-instruction family's list is not an
+/// exam family's, and an enum here would mean a migration to open a
+/// field (hard rule #4).
+final FutureProviderFamily<List<Map<String, dynamic>>, String>
+reportReasonsProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+      (Ref ref, String domainCode) =>
+          ref.watch(repositoryProvider).reportReasons(domainCode),
+    );
+
+final FutureProvider<List<Map<String, dynamic>>> myAgreementsProvider =
+    FutureProvider<List<Map<String, dynamic>>>(
+      (Ref ref) => ref.watch(repositoryProvider).myAgreements(),
     );
 
 // ── trust ────────────────────────────────────────────────────────────

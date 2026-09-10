@@ -134,6 +134,7 @@
       "POST /auth/logout",
       "POST /auth/logout-others",
       "POST /auth/mfa/confirm",
+      "POST /auth/mfa/enrol",
       "POST /auth/register",
       "POST /board/posts",
       "POST /board/posts/{id}/cancel",

@@ -11,6 +11,7 @@ import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import 'session_chat.dart';
 
 /// The live session room.
 ///
@@ -81,6 +82,7 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
             _Stage(session: s, connection: _connection),
             _Consent(session: s),
             _LiveAgenda(engagementId: s.engagementId),
+            SessionChat(sessionId: s.id),
             _Controls(
               session: s,
               connection: _connection,

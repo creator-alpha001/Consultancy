@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import 'api/models/user.dart';
 import 'features/account/account_screen.dart';
+import 'features/account/legal_and_report.dart';
+import 'features/auth/mfa_enrol_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/sign_in_screen.dart';
+import 'features/board/board_post_screen.dart';
 import 'features/board/board_screen.dart';
 import 'features/discover/find_screen.dart';
 import 'features/discover/provider_screen.dart';
@@ -15,13 +18,13 @@ import 'features/engagement/engagement_screen.dart';
 import 'features/engagement/work_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/money/money_screen.dart';
-import 'features/placeholder/not_built_screen.dart';
 import 'features/progress/progress_screen.dart';
 import 'features/provider/dashboard_screen.dart';
 import 'features/provider/earnings_screen.dart';
 import 'features/provider/evaluate_screen.dart';
 import 'features/provider/services_screen.dart';
 import 'features/provider/standing_screen.dart';
+import 'features/provider/supply_screens.dart';
 import 'features/session/room_screen.dart';
 import 'features/session/sessions_screen.dart';
 import 'features/trust/dispute_screen.dart';
@@ -90,17 +93,7 @@ GoRouter buildRouter(WidgetRef ref) {
       GoRoute(path: '/', builder: (_, _) => const _Splash()),
       GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
-      GoRoute(
-        path: '/mfa/enrol',
-        builder: (_, _) => const NotBuiltScreen(
-          title: 'Set up your second factor',
-          slice: 'Slice 9',
-          note:
-              'Providers and admins must hold a second factor before they can '
-              'sign in. The API side works; this screen does not exist yet — '
-              'enrol on the web for now.',
-        ),
-      ),
+      GoRoute(path: '/mfa/enrol', builder: (_, _) => const MfaEnrolScreen()),
       GoRoute(
         path: '/admin-elsewhere',
         builder: (_, _) => const AdminElsewhere(),
@@ -121,31 +114,16 @@ GoRouter buildRouter(WidgetRef ref) {
       GoRoute(path: '/board/new', builder: (_, _) => const AskScreen()),
       GoRoute(
         path: '/board/:id',
-        builder: (_, GoRouterState s) => NotBuiltScreen(
-          title: 'Request ${s.pathParameters['id']}',
-          slice: 'Slice 4',
-          note:
-              'Reading a request and its offers — including the rule that '
-              'they are never ordered by price — is the next piece of work '
-              'on the board.',
-        ),
+        builder: (_, GoRouterState s) =>
+            BoardPostScreen(postId: s.pathParameters['id']!),
       ),
-      GoRoute(
-        path: '/legal',
-        builder: (_, _) => const NotBuiltScreen(
-          title: 'Legal',
-          slice: 'Slice 9',
-          note: 'The agreement wording you accepted, as you accepted it.',
-        ),
-      ),
+      GoRoute(path: '/legal', builder: (_, _) => const LegalScreen()),
       GoRoute(
         path: '/report',
-        builder: (_, _) => const NotBuiltScreen(
-          title: 'Report',
-          slice: 'Slice 9',
-          note:
-              'Reporting is built on the API, with reasons that come from the '
-              'family manifest. The screen is not.',
+        builder: (_, GoRouterState s) => ReportScreen(
+          subjectType: s.uri.queryParameters['subject'] ?? 'user',
+          subjectId: s.uri.queryParameters['id'] ?? '',
+          domainCode: s.uri.queryParameters['domain'],
         ),
       ),
 
@@ -253,31 +231,15 @@ GoRouter buildRouter(WidgetRef ref) {
               ),
               GoRoute(
                 path: 'training',
-                builder: (_, _) => const NotBuiltScreen(
-                  title: 'Training',
-                  slice: 'Slice 8',
-                  note:
-                      'What you may and may not promise. Entirely pack data — '
-                      'a different family trains on different things with no '
-                      'code change.',
-                ),
+                builder: (_, _) => const ProviderTrainingScreen(),
               ),
               GoRoute(
                 path: 'languages',
-                builder: (_, _) => const NotBuiltScreen(
-                  title: 'Working languages',
-                  slice: 'Slice 8',
-                ),
+                builder: (_, _) => const ProviderLanguagesScreen(),
               ),
               GoRoute(
                 path: 'payout',
-                builder: (_, _) => const NotBuiltScreen(
-                  title: 'Where you get paid',
-                  slice: 'Slice 8',
-                  note:
-                      'Bank details go straight to the payment aggregator. We '
-                      'keep the last four digits and the IFSC, nothing else.',
-                ),
+                builder: (_, _) => const ProviderPayoutScreen(),
               ),
             ],
           ),
