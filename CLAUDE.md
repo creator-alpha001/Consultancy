@@ -36,6 +36,7 @@ Read `SPEC-PLATFORM.md` before any architectural work. It supersedes the product
 | `SPEC-FEATURES.md` | Feature behaviour, APIs, edge cases, acceptance criteria | Backend or logic work |
 | `SPEC-SCREENS.md` | Screen layout, states, copy — currently written for the exam family | UI work |
 | `docs/VIDEO-SESSIONS.md` | Video vendor, recording pipeline, failure handling, setup, costs | Anything in `sessions/` or `apps/app/lib/room/` |
+| `docs/ACCOUNTS-AND-ONBOARDING.md` | Sign-in, reset, email, sessions, profiles, seeker fields, mentor readiness and verification | Anything in `identity/`, `notifications/email/`, readiness or onboarding screens |
 | `schema.sql`, `schema-v2-patch.sql`, `schema-v3-generic.sql`, `schema-v4-family.sql` | DDL and enforced invariants | Data-layer work |
 
 Precedence: `SPEC-PLATFORM.md` → `CLAUDE.md` → feature/screen specs. `SPEC-FEATURES.md` and `SPEC-SCREENS.md` still carry the older exam-bound vocabulary in places; translate using §3 of `SPEC-PLATFORM.md`.

@@ -35,6 +35,7 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
+  final TextEditingController _name = TextEditingController();
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
 
@@ -46,6 +47,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   void dispose() {
+    _name.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
@@ -119,6 +121,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             Panel(
               child: Column(
                 children: <Widget>[
+                  TextFormField(
+                    controller: _name,
+                    textCapitalization: TextCapitalization.words,
+                    autofillHints: const <String>[AutofillHints.name],
+                    decoration: const InputDecoration(
+                      labelText: 'Your name',
+                      helperText:
+                          'What the people you work with will see. Never '
+                          'your email.',
+                    ),
+                    validator: (String? v) => (v == null || v.trim().isEmpty)
+                        ? 'Enter the name you want people to see.'
+                        : (v.contains('@') ? 'A name, not an email.' : null),
+                  ),
+                  const SizedBox(height: Space.md),
                   TextFormField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
@@ -209,6 +226,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           'confirmsAdult': _confirmsAdult,
           'familyCode': ?_familyCode,
           'lang': ref.read(langProvider),
+          'displayName': _name.text.trim(),
         },
       );
       // Straight in: an account that exists but leaves you on a form is

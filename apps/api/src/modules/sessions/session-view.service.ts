@@ -49,6 +49,8 @@ export class SessionViewService {
         provider_id: string;
         seeker_email: string;
         provider_email: string;
+        seeker_display_name: string | null;
+        provider_display_name: string | null;
         recording_active: boolean;
         ended_at: Date | null;
         has_transcript: boolean;
@@ -57,6 +59,8 @@ export class SessionViewService {
                 e.seeker_id, e.provider_id,
                 su.email AS seeker_email,
                 pu.email AS provider_email,
+                su.display_name AS seeker_display_name,
+                pu.display_name AS provider_display_name,
                 s.recording_active, s.ended_at,
                 (t.id IS NOT NULL) AS has_transcript
            FROM sessions s
@@ -88,9 +92,10 @@ export class SessionViewService {
          * Priya Nair" to Priya herself is the sort of thing that reads
          * as a bug even when the data is right.
          */
-        counterpart: displayNameFor(
-          viewerId === row.seeker_id ? row.provider_email : row.seeker_email,
-        ),
+        counterpart:
+          viewerId === row.seeker_id
+            ? displayNameFor(row.provider_email, row.provider_display_name)
+            : displayNameFor(row.seeker_email, row.seeker_display_name),
         durationMinutes: Math.max(
           0,
           Math.round((row.scheduled_end.getTime() - row.scheduled_start.getTime()) / 60_000),

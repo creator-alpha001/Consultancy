@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/session';
 import { t } from '@/lib/pack';
 import { listCredentialQueue } from '@/lib/data';
 import { ago, until } from '@/lib/format';
+import { decideCredential, openCredentialDocument, runAutomatedCheck } from '@/app/actions/verification';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,18 +21,29 @@ export const dynamic = 'force-dynamic';
  * supply permanently and a reviewer writing free text at 6pm writes
  * something worse than a template.
  */
-export default async function VerificationQueuePage(): Promise<JSX.Element> {
+const NOTICES: Record<string, string> = {
+  verified: 'Verified. The provider has been told, and the tier is granted for the skills this credential covers.',
+  rejected: 'Refused. The provider has been told, with your reason.',
+  checked: 'Automated check run. It sorts the queue; the decision is still yours.',
+};
+
+const ERRORS: Record<string, string> = {
+  REASON_REQUIRED: 'A refusal needs a reason of at least a sentence — the provider reads it.',
+  DECISION_REQUIRED: 'Choose to verify or to refuse.',
+  CREDENTIAL_WRONG_STATUS: 'This credential is not at that stage any more. The queue has been refreshed.',
+  CREDENTIAL_HAS_NO_DOCUMENT: 'No document was attached to this credential.',
+  UNKNOWN: 'That did not go through. Try again.',
+};
+
+export default async function VerificationQueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string; notice?: string; error?: string }>;
+}): Promise<JSX.Element> {
   await requireRole('admin', '/admin/verification');
   const { fam, lang } = await preview('admin');
-  const queue = await listCredentialQueue();
-  const selected = queue[0];
-  /*
-   * A reviewer works one queue across every field, so each row has to
-   * carry its own field's credential vocabulary and tier names. "Result
-   * verified" and "Membership verified" are the same tier; calling both
-   * of them T2 to the reviewer would be accurate and useless.
-   */
-  const selectedFam = selected ? contextFor(selected.family) : fam;
+  const [{ id, notice, error }, queue] = await Promise.all([searchParams, listCredentialQueue()]);
+  const selected = queue.find((c) => c.id === id) ?? queue[0];
 
   return (
     <AppShell fam={fam} lang={lang} role="admin" current="/admin/verification">
@@ -39,6 +51,17 @@ export default async function VerificationQueuePage(): Promise<JSX.Element> {
         title="Verification"
         sub={`${queue.length} waiting, across every field · 48 hour target · ordered by how close each is to breaching`}
       />
+
+      {notice && NOTICES[notice] && (
+        <div role="status" className="mb-5 rounded-md border border-verified-line bg-verified-soft px-4 py-3 text-small text-verified">
+          {NOTICES[notice]}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {ERRORS[error] ?? ERRORS.UNKNOWN}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <ul className="grid gap-3">
@@ -54,7 +77,13 @@ export default async function VerificationQueuePage(): Promise<JSX.Element> {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-lead font-semibold">{c.provider.displayName}</span>
+                        <a
+                          href={`/admin/verification?id=${encodeURIComponent(c.id)}`}
+                          className="text-lead font-semibold hover:underline"
+                          aria-current={c.id === selected?.id ? 'true' : undefined}
+                        >
+                          {c.provider.displayName}
+                        </a>
                         <FieldChip
                           label={t(contextFor(c.family).label, lang)}
                           colour={contextFor(c.family).theme.brand}
@@ -108,65 +137,60 @@ export default async function VerificationQueuePage(): Promise<JSX.Element> {
           {selected && (
             <Panel title="Decide" note={`${selected.provider.displayName} · ${selected.skillCode.replace(/_/g, ' ')}`}>
               <div className="rounded-md border border-line bg-surface-sunk p-4">
-                <Eyebrow>Documents</Eyebrow>
-                <ul className="mt-2 space-y-1.5 text-small">
-                  {Array.from({ length: selected.documentCount }).map((_, i) => (
-                    <li key={i} className="flex items-center justify-between">
-                      <span>Document {i + 1}</span>
-                      <a href="#" className="text-brand hover:underline">
-                        Open
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <Eyebrow>Evidence</Eyebrow>
+                {selected.documentCount > 0 ? (
+                  <form action={openCredentialDocument} target="_blank" className="mt-2">
+                    <input type="hidden" name="credentialId" value={selected.id} />
+                    <Button tone="secondary" size="sm" type="submit">
+                      Open the document
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="mt-2 text-small text-ink-muted">No document was attached — only the typed details.</p>
+                )}
                 <p className="mt-2.5 text-caption text-ink-muted">
-                  Opening one is logged against your name, with the reason. These never leave this console.
+                  Opening it is logged against your name, and the link works for five minutes. It never leaves this
+                  console.
                 </p>
               </div>
 
-              <div className="mt-4">
-                <Eyebrow>Which tier does this evidence support?</Eyebrow>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {(['t1', 't2', 't3', 't4'] as const).map((tier) => (
-                    <button
-                      key={tier}
-                      type="button"
-                      className="rounded-pill border border-line px-3 py-1.5 text-caption font-medium hover:border-brand hover:bg-brand-soft"
-                    >
-                      {t(selectedFam.tierLabels[tier], lang)}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 text-caption text-ink-muted">
-                  This grants the tier for this skill only. It does not touch their other skills, and it is not a
-                  rating of the person.
-                </p>
-              </div>
-
-              <TextArea
-                label="Your reasoning"
-                name="reason"
-                rows={3}
-                className="mt-4"
-                hint="Kept in the audit log. If this is appealed, the next reviewer reads exactly this."
-              />
-
-              <Divider className="my-4" />
-
-              <div className="space-y-2">
-                <Button full>Approve at the selected tier</Button>
-                <Button tone="secondary" full>
-                  Ask for one specific thing
-                </Button>
-                {/* Reachable, not inviting. */}
-                <Button tone="destructive" full>
-                  Refuse, with a reason
-                </Button>
-              </div>
-              <p className="mt-3 text-caption text-ink-muted">
-                &ldquo;Ask for one specific thing&rdquo; is usually right where a refusal is tempting. Sending someone
-                back to the start of a form is how good people stop bothering.
-              </p>
+              {selected.status === 'submitted' ? (
+                <form action={runAutomatedCheck} className="mt-4 space-y-2">
+                  <input type="hidden" name="credentialId" value={selected.id} />
+                  <p className="text-small text-ink-muted">
+                    The automated check has not run yet. It only sorts the queue — it cannot verify anyone — but it has
+                    to run before a decision.
+                  </p>
+                  <Button full type="submit">
+                    Run the automated check
+                  </Button>
+                </form>
+              ) : (
+                <form action={decideCredential} className="mt-4">
+                  <input type="hidden" name="credentialId" value={selected.id} />
+                  <p className="text-caption text-ink-muted">
+                    Verifying grants the tier this credential type carries, for the skills it covers — not the
+                    person&rsquo;s other skills, and not a rating of them.
+                  </p>
+                  <TextArea
+                    label="Your reasoning"
+                    name="note"
+                    rows={3}
+                    className="mt-4"
+                    hint="Kept in the audit log. A refusal's reason is also sent to the provider, so write it for them."
+                  />
+                  <Divider className="my-4" />
+                  <div className="space-y-2">
+                    <Button full type="submit" name="decision" value="verified">
+                      Verify
+                    </Button>
+                    {/* Reachable, not inviting. */}
+                    <Button tone="destructive" full type="submit" name="decision" value="rejected">
+                      Refuse, with a reason
+                    </Button>
+                  </div>
+                </form>
+              )}
             </Panel>
           )}
         </aside>

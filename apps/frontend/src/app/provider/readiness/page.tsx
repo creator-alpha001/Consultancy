@@ -23,6 +23,18 @@ export const dynamic = 'force-dynamic';
 
 /** What each step means, and where it is done. */
 const STEPS: Record<string, { title: string; why: string; href?: string; cta?: string }> = {
+  email_verified: {
+    title: 'Confirm your email address',
+    why: 'Payouts, disputes and decisions about your credentials are sent there.',
+    href: '/account',
+    cta: 'Send the link again',
+  },
+  profile_complete: {
+    title: 'Add your name and a short bio',
+    why: 'The first thing a person reads before trusting you with their work.',
+    href: '/account',
+    cta: 'Edit your profile',
+  },
   credential_submitted: {
     title: 'Submit something to be verified',
     why: 'A claim a human can check. Nothing is published until one has.',

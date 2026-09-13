@@ -15,6 +15,10 @@ export const IdentityErrorCode = {
   MFA_ALREADY_ENROLLED: 'MFA_ALREADY_ENROLLED',
   SESSION_INVALID: 'SESSION_INVALID',
   FORBIDDEN_ROLE: 'FORBIDDEN_ROLE',
+  TOKEN_INVALID: 'TOKEN_INVALID',
+  EMAIL_ALREADY_VERIFIED: 'EMAIL_ALREADY_VERIFIED',
+  TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
+  PROFILE_INVALID: 'PROFILE_INVALID',
 } as const;
 
 export type IdentityErrorCode = (typeof IdentityErrorCode)[keyof typeof IdentityErrorCode];
@@ -110,4 +114,35 @@ export function forbiddenRole(required: string[], actual: string): AppError {
     `this action requires one of: ${required.join(', ')}`,
     { status: HttpStatus.FORBIDDEN, detail: { required, actual } },
   );
+}
+
+/**
+ * One answer for a reset or verification link that is unknown, expired,
+ * or already used. Telling them apart helps nobody who holds a real link
+ * and tells someone guessing which tokens once existed.
+ */
+export function tokenInvalid(): AppError {
+  return new AppError(IdentityErrorCode.TOKEN_INVALID, 'this link is not valid any more — ask for a new one', {
+    status: HttpStatus.BAD_REQUEST,
+  });
+}
+
+export function emailAlreadyVerified(): AppError {
+  return new AppError(IdentityErrorCode.EMAIL_ALREADY_VERIFIED, 'this email address is already verified', {
+    status: HttpStatus.CONFLICT,
+  });
+}
+
+export function tooManyRequests(retryAfterMinutes: number): AppError {
+  return new AppError(IdentityErrorCode.TOO_MANY_REQUESTS, 'too many requests — try again later', {
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    detail: { retryAfterMinutes },
+  });
+}
+
+export function profileInvalid(field: string, reason: string): AppError {
+  return new AppError(IdentityErrorCode.PROFILE_INVALID, `${field}: ${reason}`, {
+    status: HttpStatus.UNPROCESSABLE_ENTITY,
+    detail: { field, reason },
+  });
 }

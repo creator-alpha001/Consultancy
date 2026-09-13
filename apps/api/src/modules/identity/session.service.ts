@@ -40,7 +40,28 @@ export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-const SESSION_TTL_HOURS = 12;
+/**
+ * How long a session lives, by role: an ABSOLUTE limit from sign-in, and
+ * an IDLE limit since it was last used (TRACKER D20).
+ *
+ * An admin console holds refunds, rulings and verification decisions,
+ * and is often open on a shared office machine — so it expires fast and
+ * after half an hour untouched. A seeker or provider is on their own
+ * phone, where being signed out daily (and, for a provider, re-entering
+ * an authenticator code) is a cost with little protection behind it.
+ *
+ * These are policy defaults, not settled numbers; they live here, in one
+ * place, so changing them is a one-line decision.
+ */
+export const SESSION_POLICY = {
+  admin: { absolute: '12 hours', idle: '30 minutes' },
+  provider: { absolute: '30 days', idle: '7 days' },
+  seeker: { absolute: '30 days', idle: '7 days' },
+} as const;
+
+/** How stale `last_seen_at` may get before a request refreshes it — one write a minute, not one per request. */
+const TOUCH_AFTER = '1 minute';
+
 /** Minutes, not hours: an enrolment ticket is a bootstrap, not a login. */
 const ENROLMENT_TTL_MINUTES = 10;
 
@@ -67,9 +88,11 @@ export class SessionService {
   }): Promise<{ token: string; session: SessionRow }> {
     const scope: SessionScope = input.scope ?? 'full';
     const token = randomBytes(32).toString('base64url');
+    const roleRes = await this.pool.query<{ role: UserRole }>(`SELECT role FROM users WHERE id = $1`, [input.userId]);
+    const role = roleRes.rows[0]?.role ?? 'admin'; // unknown → the strictest; the insert then fails on the FK anyway
     const ttl = scope === 'mfa_enrolment'
       ? `${ENROLMENT_TTL_MINUTES} minutes`
-      : `${SESSION_TTL_HOURS} hours`;
+      : SESSION_POLICY[role].absolute;
 
     let res;
     try {
@@ -106,18 +129,27 @@ export class SessionService {
       role: UserRole;
       scope: SessionScope;
       mfa_satisfied: boolean;
+      needs_touch: boolean;
     }>(
-      `SELECT s.id AS session_id, s.user_id, u.role, s.scope, s.mfa_satisfied
+      `SELECT s.id AS session_id, s.user_id, u.role, s.scope, s.mfa_satisfied,
+              (s.last_seen_at < now() - $5::interval) AS needs_touch
          FROM user_sessions s
          JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1
           AND s.revoked_at IS NULL
           AND s.expires_at > now()
-          AND u.status = 'active'`,
-      [hashToken(token)],
+          AND u.status = 'active'
+          AND s.last_seen_at > now() - (CASE u.role
+                WHEN 'admin' THEN $2::interval
+                WHEN 'provider' THEN $3::interval
+                ELSE $4::interval END)`,
+      [hashToken(token), SESSION_POLICY.admin.idle, SESSION_POLICY.provider.idle, SESSION_POLICY.seeker.idle, TOUCH_AFTER],
     );
     const row = res.rows[0];
     if (!row) return null;
+    if (row.needs_touch) {
+      await this.pool.query(`UPDATE user_sessions SET last_seen_at = now() WHERE id = $1`, [row.session_id]);
+    }
     return {
       userId: row.user_id,
       role: row.role,

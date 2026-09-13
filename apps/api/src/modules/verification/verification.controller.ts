@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpStatus, Inject, Param, Post, Query } from '@nestjs/common';
+import { AppError } from '../../common/errors/app-error';
 import { CurrentActor, Public, Roles } from '../identity/auth.guard';
 import { Actor } from '../identity/types';
 import { CredentialService } from './credential.service';
@@ -146,7 +147,7 @@ export class VerificationController {
     @CurrentActor() actor: Actor,
     @Query('family') familyCode?: string,
   ): Promise<TrainingState> {
-    return this.trainingService.forProvider(actor.userId, familyCode ?? 'civil_services_exams');
+    return this.trainingService.forProvider(actor.userId, await this.familyFor(actor.userId, familyCode));
   }
 
   @Post('me/training/:moduleCode')
@@ -158,7 +159,7 @@ export class VerificationController {
   ): Promise<{ passed: boolean; score: number; outOf: number; wrong: string[] }> {
     return this.trainingService.submit({
       providerId: actor.userId,
-      familyCode: body.familyCode ?? 'civil_services_exams',
+      familyCode: await this.familyFor(actor.userId, body.familyCode),
       moduleCode,
       answers: body.answers ?? {},
     });
@@ -170,7 +171,22 @@ export class VerificationController {
     @CurrentActor() actor: Actor,
     @Query('domain') domainCode?: string,
   ): Promise<ProviderReadiness> {
-    return this.readinessService.forProvider(actor.userId, domainCode ?? 'upsc_cse');
+    return this.readinessService.forProvider(actor.userId, domainCode);
+  }
+
+  /**
+   * The family a training request is about: the one named, or the only
+   * one this provider is in. Never a default family — a provider in two
+   * families must say which, and one in none has nothing to train for yet.
+   */
+  private async familyFor(providerId: string, named?: string): Promise<string> {
+    if (named) return named;
+    const families = await this.readinessService.familiesFor(providerId);
+    if (families.length === 1) return families[0];
+    throw new AppError('FAMILY_REQUIRED', 'say which family this is for', {
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      detail: { families },
+    });
   }
 
   @Get('me/rates')

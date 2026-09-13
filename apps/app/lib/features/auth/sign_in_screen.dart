@@ -179,6 +179,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     ),
                     const SizedBox(height: Space.sm),
                     TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => context.go('/forgot-password'),
+                      child: const PackText('Forgot your password?'),
+                    ),
+                    TextButton(
                       onPressed: _busy ? null : () => context.go('/register'),
                       child: const PackText('Create an account'),
                     ),

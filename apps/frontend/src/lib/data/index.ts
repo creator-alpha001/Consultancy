@@ -472,6 +472,8 @@ export interface ReadinessStep {
 export interface Readiness {
   bookable: boolean;
   steps: ReadinessStep[];
+  /** The families this covers. Training is per family, and none is assumed. */
+  families: string[];
 }
 
 export async function getReadiness(): Promise<Readiness | null> {
@@ -549,6 +551,50 @@ export interface Training {
   modules: TrainingModule[];
 }
 
-export async function getTraining(): Promise<Training | null> {
-  return apiOrNull<Training>('/me/training');
+/** Training for one family. Named, because a provider may be in several and the API will not guess. */
+export async function getTraining(familyCode: string): Promise<Training | null> {
+  return apiOrNull<Training>(`/me/training?family=${encodeURIComponent(familyCode)}`);
+}
+
+// ── account ──────────────────────────────────────────────────────────
+
+export interface MyProfile {
+  displayName: string | null;
+  preferredLang: string;
+  email: string;
+  emailVerified: boolean;
+  role: 'seeker' | 'provider' | 'admin';
+  signupFamilyCode: string | null;
+  /** Present for providers only. */
+  provider: { headline: string | null; bio: string | null; bioLang: string | null } | null;
+}
+
+export async function getMyProfile(): Promise<MyProfile | null> {
+  return apiOrNull<MyProfile>('/me/profile');
+}
+
+export interface AccountSession {
+  id: string;
+  issuedAt: string;
+  expiresAt: string;
+  userAgent: string | null;
+  ipPrefix: string | null;
+}
+
+/** Devices holding a live session for the signed-in person. */
+export async function getMySessions(): Promise<AccountSession[]> {
+  return (await apiOrNull<AccountSession[]>('/auth/sessions')) ?? [];
+}
+
+export interface MyDomain {
+  domainCode: string;
+  labels: Record<string, string>;
+  familyCode: string;
+  workingLanguage: string | null;
+  isPrimary: boolean;
+}
+
+/** The fields the signed-in person is in. Always a list (#6). */
+export async function getMyDomains(): Promise<MyDomain[]> {
+  return (await apiOrNull<MyDomain[]>('/me/domains')) ?? [];
 }

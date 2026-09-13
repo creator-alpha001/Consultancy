@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data.dart';
 import '../../pack/label.dart';
 import '../../pack/pack.dart';
 import '../../pack/plural.dart';
@@ -43,6 +44,7 @@ class HomeScreen extends ConsumerWidget {
           children: <Widget>[
             const _QuickLinks(),
             const SizedBox(height: Space.lg),
+            const _ChooseFields(),
             PackText(
               'Fields open on Sankalp',
               style: Theme.of(context).textTheme.titleLarge,
@@ -184,4 +186,34 @@ class _QuickLinks extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Asks a new seeker which fields they are in, once, until they say.
+///
+/// Shown only while they have none — declared or implied by work they
+/// have commissioned — and never as a gate: someone can look around
+/// first. Several at once is the normal case (#6).
+class _ChooseFields extends ConsumerWidget {
+  const _ChooseFields();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<Map<String, dynamic>>? mine = ref
+        .watch(myDomainsProvider)
+        .valueOrNull;
+    if (mine == null || mine.isNotEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.lg),
+      child: Panel(
+        title: 'What are you preparing for?',
+        note:
+            'Choose your fields and the language you work in for each. You '
+            'can pick more than one, and change them later.',
+        child: FilledButton(
+          onPressed: () => context.push('/you/fields'),
+          child: const PackText('Choose fields'),
+        ),
+      ),
+    );
+  }
 }

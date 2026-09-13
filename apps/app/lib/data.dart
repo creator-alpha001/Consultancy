@@ -7,6 +7,7 @@ import 'api/models/provider.dart';
 import 'api/models/session.dart';
 import 'api/models/supply.dart';
 import 'api/models/trust.dart';
+import 'api/models/user.dart';
 import 'providers.dart';
 
 /// The fetches every screen shares.
@@ -202,10 +203,16 @@ final FutureProvider<List<CredentialSubmission>> myCredentialsProvider =
       (Ref ref) => ref.watch(repositoryProvider).myCredentials(),
     );
 
-final FutureProvider<TrainingState> trainingProvider =
-    FutureProvider<TrainingState>(
-      (Ref ref) => ref.watch(repositoryProvider).training(),
+final FutureProviderFamily<TrainingState, String> trainingProvider =
+    FutureProvider.family<TrainingState, String>(
+      (Ref ref, String familyCode) =>
+          ref.watch(repositoryProvider).training(familyCode),
     );
+
+/// What the signed-in person has told other people about themselves.
+final FutureProvider<MyProfile> myProfileProvider = FutureProvider<MyProfile>(
+  (Ref ref) => ref.watch(repositoryProvider).myProfile(),
+);
 
 final FutureProvider<Availability> availabilityProvider =
     FutureProvider<Availability>(

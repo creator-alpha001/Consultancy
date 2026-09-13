@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Inject, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { AllowsEnrolmentScope, CurrentActor, Public } from './auth.guard';
 import { DomainLoaderService } from '../domains/domain-loader.service';
+import { AccountService } from './account.service';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 import { Actor, EnrolFactorResult, LoginResult, RecoveryCodesResult, SessionRow, UserRow } from './types';
@@ -21,6 +22,7 @@ export class AuthController {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
+    @Inject(AccountService) private readonly accounts: AccountService,
   ) {}
 
   /** Coarse client provenance for the auth audit — never a full IP kept for analytics. */
@@ -46,6 +48,7 @@ export class AuthController {
       /** Older clients sent a domain; it resolves to the same family. */
       domainCode?: string;
       lang?: string;
+      displayName?: string;
     },
   ): Promise<UserRow> {
     // Agreement wording is FAMILY data — a domain was only ever a way to
@@ -70,7 +73,63 @@ export class AuthController {
       confirmsAdult: body.confirmsAdult === true,
       familyCode,
       lang: body.lang,
+      displayName: body.displayName,
     });
+  }
+
+  // ── Getting back in, and proving the address ───────────────────────
+
+  /**
+   * Always 202, whether or not the address has an account, and whether or
+   * not it was rate-limited — see `AccountService.requestPasswordReset`.
+   */
+  @Post('password/forgot')
+  @Public()
+  @HttpCode(202)
+  async forgotPassword(@Body() body: { email?: string }, @Req() req: Request): Promise<{ accepted: true }> {
+    if (typeof body.email === 'string' && body.email.includes('@')) {
+      await this.accounts.requestPasswordReset(body.email, this.provenance(req).ipPrefix);
+    }
+    return { accepted: true };
+  }
+
+  /** Sets a new password from an emailed link. Signs the account out everywhere. */
+  @Post('password/reset')
+  @Public()
+  async resetPassword(
+    @Body() body: { token?: string; password?: string },
+    @Req() req: Request,
+  ): Promise<{ ok: true }> {
+    await this.accounts.resetPassword(body.token ?? '', body.password ?? '', this.provenance(req).ipPrefix);
+    return { ok: true };
+  }
+
+  @Post('password/change')
+  async changePassword(
+    @CurrentActor() actor: Actor,
+    @Body() body: { currentPassword?: string; newPassword?: string },
+    @Req() req: Request,
+  ): Promise<{ revokedSessions: number }> {
+    return this.accounts.changePassword({
+      userId: actor.userId,
+      sessionId: actor.sessionId,
+      currentPassword: body.currentPassword ?? '',
+      newPassword: body.newPassword ?? '',
+      ipPrefix: this.provenance(req).ipPrefix,
+    });
+  }
+
+  /** Public: the link is opened from an inbox, often on another device, signed out. */
+  @Post('email/verify')
+  @Public()
+  async verifyEmail(@Body() body: { token?: string }): Promise<{ verified: true }> {
+    await this.accounts.verifyEmail(body.token ?? '');
+    return { verified: true };
+  }
+
+  @Post('email/resend')
+  async resendVerification(@CurrentActor() actor: Actor): Promise<{ sent: boolean }> {
+    return this.accounts.sendEmailVerification(actor.userId);
   }
 
   /**

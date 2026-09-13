@@ -85,6 +85,14 @@ export default async function RegisterPage({
             </div>
           </fieldset>
 
+          <Field
+            label="Your name"
+            name="displayName"
+            required
+            maxLength={80}
+            autoComplete="name"
+            hint="What the people you work with will see. Never your email."
+          />
           <Field label="Email" name="email" type="email" required autoComplete="email" />
           <Field
             label="Password"

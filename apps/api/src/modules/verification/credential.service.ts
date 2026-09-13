@@ -247,6 +247,7 @@ export class CredentialService {
       CredentialDbRow & {
         submitted_at: Date;
         provider_email: string;
+        provider_display_name: string | null;
         family_code: string | null;
         credential_type_code: string | null;
         credential_type_labels: Record<string, string> | null;
@@ -254,6 +255,7 @@ export class CredentialService {
     >(
       `SELECT pc.*,
               u.email   AS provider_email,
+              u.display_name AS provider_display_name,
               d.family_code,
               ct.code   AS credential_type_code,
               ct.labels AS credential_type_labels
@@ -269,7 +271,7 @@ export class CredentialService {
       res.rows.map(async (row) => ({
         ...(await this.hydrate(row)),
         submittedAt: row.submitted_at.toISOString(),
-        providerDisplayName: displayNameFor(row.provider_email),
+        providerDisplayName: displayNameFor(row.provider_email, row.provider_display_name),
         familyCode: row.family_code,
         credentialTypeCode: row.credential_type_code,
         credentialTypeLabels: row.credential_type_labels,
@@ -449,6 +451,15 @@ export class CredentialService {
           note: input.note ?? '',
         },
       });
+
+      // The provider is told, by email, after commit (#9). In the same
+      // transaction as the decision, so a decision can never exist that
+      // nobody was ever going to hear about.
+      await client.query(
+        `INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload)
+         VALUES ('provider_credential', $1, 'verification.decided', $2::jsonb)`,
+        [input.credentialId, JSON.stringify({ decision: input.decision })],
+      );
 
       await client.query('COMMIT');
       return this.hydrate(updated.rows[0]);

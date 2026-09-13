@@ -38,9 +38,16 @@ class AccountScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 PackText(
-                  user?.email ?? '',
+                  user?.displayName ?? user?.email ?? '',
                   style: theme.textTheme.titleMedium,
                 ),
+                if (user?.displayName != null)
+                  PackText(
+                    user?.email ?? '',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: BaseColors.inkMuted,
+                    ),
+                  ),
                 const SizedBox(height: Space.xs),
                 StatusChip(
                   switch (user?.role) {
@@ -49,6 +56,26 @@ class AccountScreen extends ConsumerWidget {
                     Role.admin => 'Operations',
                     null => '—',
                   },
+                ),
+                if (user != null && !user.emailVerified) ...<Widget>[
+                  const SizedBox(height: Space.md),
+                  const Note(
+                    'Your email address is not confirmed yet.',
+                    tone: ChipTone.caution,
+                    icon: Icons.mark_email_unread_outlined,
+                  ),
+                ],
+                const SizedBox(height: Space.md),
+                NavRow(
+                  title: 'Your profile',
+                  subtitle: 'Name, language, email',
+                  leading: const Icon(Icons.person_outline, size: 20),
+                  onTap: () => context.push('/you/profile'),
+                ),
+                NavRow(
+                  title: 'Change your password',
+                  leading: const Icon(Icons.lock_outline, size: 20),
+                  onTap: () => context.push('/you/password'),
                 ),
               ],
             ),
@@ -61,6 +88,10 @@ class AccountScreen extends ConsumerWidget {
               data: (List<Map<String, dynamic>> list) => Panel(
                 title: 'Your fields',
                 note: 'You can be working in several at once.',
+                trailing: TextButton(
+                  onPressed: () => context.push('/you/fields'),
+                  child: const PackText('Change'),
+                ),
                 child: Column(
                   children: <Widget>[
                     for (final Map<String, dynamic> d in list)

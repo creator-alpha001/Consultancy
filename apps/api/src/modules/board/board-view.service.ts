@@ -49,6 +49,7 @@ export class BoardViewService {
       id: string;
       seeker_id: string;
       seeker_email: string;
+      seeker_display_name: string | null;
       family_code: string | null;
       created_at: Date;
       proposal_count: string;
@@ -56,6 +57,7 @@ export class BoardViewService {
       `SELECT b.id,
               b.seeker_id,
               u.email        AS seeker_email,
+              u.display_name AS seeker_display_name,
               d.family_code,
               b.created_at,
               COALESCE(p.proposal_count, 0) AS proposal_count
@@ -76,7 +78,7 @@ export class BoardViewService {
       out.set(row.id, {
         reference: boardReferenceFor(row.id),
         postedAt: row.created_at.toISOString(),
-        seeker: { id: row.seeker_id, displayName: displayNameFor(row.seeker_email) },
+        seeker: { id: row.seeker_id, displayName: displayNameFor(row.seeker_email, row.seeker_display_name) },
         familyCode: row.family_code,
         proposalCount: Number(row.proposal_count),
       });

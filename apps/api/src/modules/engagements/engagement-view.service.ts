@@ -118,8 +118,8 @@ export class EngagementViewService {
           WHERE e.id = ANY($1::uuid[])`,
         [engagementIds],
       ),
-      this.pool.query<{ id: string; email: string }>(
-        `SELECT u.id, u.email
+      this.pool.query<{ id: string; email: string; display_name: string | null }>(
+        `SELECT u.id, u.email, u.display_name
            FROM users u
           WHERE u.id IN (
             SELECT seeker_id FROM engagements WHERE id = ANY($1::uuid[])
@@ -197,7 +197,7 @@ export class EngagementViewService {
       ),
     ]);
 
-    const nameById = new Map(parties.rows.map((u) => [u.id, displayNameFor(u.email)]));
+    const nameById = new Map(parties.rows.map((u) => [u.id, displayNameFor(u.email, u.display_name)]));
     const itemsByAgenda = new Map<string, EngagementAgendaItemView[]>();
     for (const it of items.rows) {
       const list = itemsByAgenda.get(it.agenda_id) ?? [];

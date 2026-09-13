@@ -13,6 +13,8 @@ import { ReviewService } from './review.service';
 export interface ProviderCard {
   providerId: string;
   displayName: string;
+  /** One line the provider wrote about themselves, or null. */
+  headline: string | null;
   languages: string[];
   skills: Array<{
     skillId: string;
@@ -202,6 +204,9 @@ export class ProvidersController {
        * price orders nothing on this platform (#15).
        */
       rates: ProviderRate[];
+      /** In the language it was written in; `bioLang` names it (#20's principle). */
+      bio: string | null;
+      bioLang: string | null;
     }
   > {
     /*
@@ -225,15 +230,28 @@ export class ProvidersController {
       throw new AppError('PROVIDER_NOT_FOUND', `no provider "${id}"`, { status: HttpStatus.NOT_FOUND });
     }
 
-    const [credentials, trackRecord, reviewSummary, reviews, rates] = await Promise.all([
+    const [credentials, trackRecord, reviewSummary, reviews, rates, profile] = await Promise.all([
       this.publicCredentials(id),
       this.trackRecord(id),
       this.reviews.summaryFor(id),
       this.reviews.listAboutProviderWithContext(id, 30),
       this.rates.list(id),
+      this.pool.query<{ bio: string | null; bio_lang: string | null }>(
+        `SELECT bio, bio_lang FROM provider_profiles WHERE provider_id = $1`,
+        [id],
+      ),
     ]);
 
-    return { ...card, credentials, trackRecord, reviewSummary, reviews, rates };
+    return {
+      ...card,
+      credentials,
+      trackRecord,
+      reviewSummary,
+      reviews,
+      rates,
+      bio: profile.rows[0]?.bio ?? null,
+      bioLang: profile.rows[0]?.bio_lang ?? null,
+    };
   }
 
   /**
@@ -322,8 +340,10 @@ export class ProvidersController {
     if (providerIds.length === 0) return [];
 
     const [users, skills, languages, blocked, services, reach] = await Promise.all([
-      this.pool.query<{ id: string; email: string }>(
-        `SELECT id, email FROM users WHERE id = ANY($1::uuid[]) AND role = 'provider'`,
+      this.pool.query<{ id: string; email: string; display_name: string | null; headline: string | null }>(
+        `SELECT u.id, u.email, u.display_name, pp.headline
+           FROM users u LEFT JOIN provider_profiles pp ON pp.provider_id = u.id
+          WHERE u.id = ANY($1::uuid[]) AND u.role = 'provider'`,
         [providerIds],
       ),
       this.pool.query<{
@@ -404,7 +424,8 @@ export class ProvidersController {
 
     return users.rows.map((u) => ({
       providerId: u.id,
-      displayName: displayNameFor(u.email),
+      displayName: displayNameFor(u.email, u.display_name),
+      headline: u.headline,
       languages: languages.rows.filter((l) => l.provider_id === u.id).map((l) => l.lang_code),
       skills: skills.rows
         .filter((s) => s.provider_id === u.id)

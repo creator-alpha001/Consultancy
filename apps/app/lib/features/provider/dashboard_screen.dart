@@ -186,6 +186,7 @@ class _Readiness extends StatelessWidget {
   }
 
   static String _routeFor(String code) => switch (code) {
+    'email_verified' || 'profile_complete' => '/you/profile',
     'credential_submitted' || 'skill_verified_at_tier' => '/provider/standing',
     'working_language' => '/provider/languages',
     'service_published' => '/provider/services',

@@ -23,6 +23,8 @@ export interface RegisterInput {
    */
   familyCode?: string;
   lang?: string;
+  /** The name other people will see. Optional here; the profile asks again. */
+  displayName?: string;
   ipPrefix?: string;
 }
 
@@ -34,6 +36,11 @@ export interface UserRow {
   emailVerifiedAt: Date | null;
   adultConfirmedAt: Date | null;
   lastLoginAt: Date | null;
+  /** What other people see. Null until the person chooses one. */
+  displayName: string | null;
+  preferredLang: string;
+  /** The family someone registered through — which training and wording to show first. */
+  signupFamilyCode: string | null;
 }
 
 export interface LoginInput {

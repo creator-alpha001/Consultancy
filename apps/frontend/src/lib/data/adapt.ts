@@ -676,6 +676,7 @@ export function toCredentialSubmission(c: ApiCredentialQueueItem): CredentialSub
   const check = c.automatedCheckResult;
   return {
     id: c.id,
+    status: c.status,
     provider: { id: c.providerId, displayName: c.providerDisplayName },
     family: c.familyCode ?? 'platform',
     credentialType: label(c.credentialTypeLabels, c.credentialTypeCode ?? 'credential'),

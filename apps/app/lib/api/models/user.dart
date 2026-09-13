@@ -41,6 +41,8 @@ class User {
     this.emailVerifiedAt,
     this.adultConfirmedAt,
     this.lastLoginAt,
+    this.displayName,
+    this.preferredLang = 'en',
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -51,6 +53,8 @@ class User {
     emailVerifiedAt: _date(json['emailVerifiedAt']),
     adultConfirmedAt: _date(json['adultConfirmedAt']),
     lastLoginAt: _date(json['lastLoginAt']),
+    displayName: json['displayName'] as String?,
+    preferredLang: json['preferredLang'] as String? ?? 'en',
   );
 
   final String id;
@@ -64,6 +68,12 @@ class User {
   /// failing opaquely.
   final DateTime? adultConfirmedAt;
   final DateTime? lastLoginAt;
+
+  /// The name other people see. Null until the person chooses one.
+  final String? displayName;
+  final String preferredLang;
+
+  bool get emailVerified => emailVerifiedAt != null;
 
   bool get isProvider => role == Role.provider;
   bool get isSeeker => role == Role.seeker;
@@ -123,4 +133,48 @@ LoginOutcome parseLoginResult(Map<String, dynamic> json) {
     ),
     _ => throw FormatException('unknown login outcome: $outcome'),
   };
+}
+
+/// The signed-in person's own profile, from `GET /me/profile`.
+///
+/// Deliberately separate from [User]: [User] is who is signed in, this is
+/// what they have told other people about themselves.
+class MyProfile {
+  const MyProfile({
+    required this.email,
+    required this.emailVerified,
+    required this.preferredLang,
+    this.displayName,
+    this.headline,
+    this.bio,
+    this.bioLang,
+    this.isProvider = false,
+  });
+
+  factory MyProfile.fromJson(Map<String, dynamic> json) {
+    final Object? p = json['provider'];
+    final Map<String, dynamic>? provider = p is Map<String, dynamic> ? p : null;
+    return MyProfile(
+      email: json['email'] as String? ?? '',
+      emailVerified: json['emailVerified'] == true,
+      preferredLang: json['preferredLang'] as String? ?? 'en',
+      displayName: json['displayName'] as String?,
+      isProvider: provider != null,
+      headline: provider?['headline'] as String?,
+      bio: provider?['bio'] as String?,
+      bioLang: provider?['bioLang'] as String?,
+    );
+  }
+
+  final String email;
+  final bool emailVerified;
+  final String preferredLang;
+  final String? displayName;
+  final bool isProvider;
+  final String? headline;
+  final String? bio;
+
+  /// The language the bio was written in. The original is what the
+  /// person said; anything else would be a translation.
+  final String? bioLang;
 }

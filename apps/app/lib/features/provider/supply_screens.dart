@@ -28,21 +28,58 @@ class ProviderTrainingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String lang = ref.watch(langProvider);
-    final AsyncValue<TrainingState> training = ref.watch(trainingProvider);
+    final AsyncValue<Readiness> readiness = ref.watch(readinessProvider);
 
     return Scaffold(
       appBar: AppBar(title: const PackText('Training')),
-      body: AsyncBody<TrainingState>(
-        value: training,
-        onRetry: () => ref.invalidate(trainingProvider),
-        emptyWhen: (TrainingState t) => t.modules.isEmpty,
+      // Training belongs to a family, and a provider may be in several —
+      // each one's is shown, and none is assumed.
+      body: AsyncBody<Readiness>(
+        value: readiness,
+        onRetry: () => ref.invalidate(readinessProvider),
+        emptyWhen: (Readiness r) => r.families.isEmpty,
         emptyMessage:
-            'This field asks for no training. You can be booked without it.',
-        builder: (TrainingState t) => PageBody(
-          onRefresh: () async => ref.invalidate(trainingProvider),
+            'Submit a credential first. Training depends on the field you '
+            'work in, and there is none on your account yet.',
+        builder: (Readiness r) => PageBody(
+          onRefresh: () async {
+            ref
+              ..invalidate(readinessProvider)
+              ..invalidate(trainingProvider);
+          },
           children: <Widget>[
-            for (final TrainingModule m in t.modules)
-              _ModuleCard(module: m, familyCode: t.familyCode, lang: lang),
+            for (final String family in r.families)
+              ref
+                  .watch(trainingProvider(family))
+                  .when(
+                    loading: () =>
+                        const Panel(child: LinearProgressIndicator()),
+                    error: (Object e, _) => Panel(
+                      child: Note(
+                        e is ApiException
+                            ? e.message
+                            : 'Could not load this training.',
+                        tone: ChipTone.danger,
+                      ),
+                    ),
+                    data: (TrainingState t) => t.modules.isEmpty
+                        ? const Panel(
+                            child: Note(
+                              'This field asks for no training.',
+                              icon: Icons.check_circle_outline,
+                            ),
+                          )
+                        : Column(
+                            children: <Widget>[
+                              for (final TrainingModule m in t.modules)
+                                _ModuleCard(
+                                  module: m,
+                                  familyCode: t.familyCode,
+                                  lang: lang,
+                                ),
+                            ],
+                          ),
+                  ),
           ],
         ),
       ),

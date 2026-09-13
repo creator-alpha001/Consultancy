@@ -7,6 +7,7 @@ import 'models/provider.dart';
 import 'models/session.dart';
 import 'models/supply.dart';
 import 'models/trust.dart';
+import 'models/user.dart';
 
 /// Every API call the app makes, in one typed place.
 ///
@@ -116,6 +117,69 @@ class Repository {
           l['langCode'] as String,
     ];
   }
+
+  /// A seeker says which field they are in, and in which language (#6, #19).
+  Future<void> declareDomain(
+    String domainCode, {
+    required String workingLanguage,
+    bool? isPrimary,
+  }) => _api.post<void>(
+    '/me/domains',
+    body: <String, dynamic>{
+      'domainCode': domainCode,
+      'workingLanguage': workingLanguage,
+      'isPrimary': ?isPrimary,
+    },
+  );
+
+  Future<void> removeDomain(String domainCode) =>
+      _api.post<void>('/me/domains/$domainCode/remove');
+
+  // ── account ────────────────────────────────────────────────────────
+
+  Future<MyProfile> myProfile() async =>
+      MyProfile.fromJson(await _api.get<Map<String, dynamic>>('/me/profile'));
+
+  /// Only the fields passed are changed; an empty string clears one.
+  Future<MyProfile> updateProfile({
+    String? displayName,
+    String? preferredLang,
+    String? headline,
+    String? bio,
+    String? bioLang,
+  }) async => MyProfile.fromJson(
+    await _api.post<Map<String, dynamic>>(
+      '/me/profile',
+      body: <String, dynamic>{
+        'displayName': ?displayName,
+        'preferredLang': ?preferredLang,
+        'headline': ?headline,
+        'bio': ?bio,
+        'bioLang': ?bioLang,
+      },
+    ),
+  );
+
+  /// Always accepted, whether or not the address has an account — the
+  /// screen says the same thing either way.
+  Future<void> forgotPassword(String email) => _api.post<void>(
+    '/auth/password/forgot',
+    body: <String, dynamic>{'email': email},
+  );
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => _api.post<void>(
+    '/auth/password/change',
+    body: <String, dynamic>{
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    },
+  );
+
+  Future<void> resendEmailVerification() =>
+      _api.post<void>('/auth/email/resend');
 
   /// The seeker's own active domains. A seeker has MANY (CLAUDE.md #6),
   /// so this is a list and every caller treats it as one.
@@ -696,8 +760,15 @@ class Repository {
     },
   );
 
-  Future<TrainingState> training() async =>
-      TrainingState.fromJson(await _api.get<Map<String, dynamic>>('/me/training'));
+  /// Training for one family. Named, because a provider may work in more
+  /// than one and the server will not guess which.
+  Future<TrainingState> training(String familyCode) async =>
+      TrainingState.fromJson(
+        await _api.get<Map<String, dynamic>>(
+          '/me/training',
+          query: <String, dynamic>{'family': familyCode},
+        ),
+      );
 
   Future<void> completeTraining(
     String moduleCode, {

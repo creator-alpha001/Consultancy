@@ -277,6 +277,11 @@ function RoleMenu({ role, dark }: { role: Role; dark: boolean }): JSX.Element {
       </button>
       <div className="invisible absolute right-0 top-full z-40 w-72 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
         <div className="rounded-lg border border-line bg-surface p-2 text-ink shadow-e3">
+          <a href="/account" className="block rounded-md px-2 py-2 text-small hover:bg-surface-sunk">
+            <span className="block font-medium">Your account</span>
+            <span className="block text-caption text-ink-muted">Profile, password, devices, email</span>
+          </a>
+          <div className="my-1 border-t border-line" />
           <p className="px-2 py-1.5 text-caption text-ink-muted">Preview build — switch product</p>
           {options.map(([code, label, blurb]) => (
             <a

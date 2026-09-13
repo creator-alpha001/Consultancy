@@ -34,10 +34,10 @@ a piece of debt — belongs in the root file with a `D` number, not here.
 | | |
 |---|---|
 | Journeys | Both. Seeker and provider, one binary, shell chosen from `user.role` |
-| Route coverage | **123/123 (100%)**, against `apps/frontend`'s 60/143 (42%). Parity is method-blind (root D64); a method-aware pass found and closed two hidden gaps |
-| Screens built | **30 — none stubbed** |
+| Route coverage | **130/130 (100%)**, against `apps/frontend`'s 76/152 (50%). The two emailed-link landings (reset, verify) are web pages by design and exempt. Parity is method-blind (root D64); a method-aware pass found and closed two hidden gaps |
+| Screens built | **34 — none stubbed** |
 | Screens stubbed | **0** (table below is empty, and a test keeps it that way) |
-| Dart tests | 103 across 9 files |
+| Dart tests | 107 across 10 files |
 | Driven against a real API | `./scripts/dev.sh app-drive` |
 
 Run `node scripts/parity.mjs --missing apps/app` for the routes still
@@ -52,8 +52,9 @@ than written down.
 
 | Screen | State |
 |---|---|
-| Sign in | Built — including the second-factor step for accounts that hold one |
-| Register | Built — 18+ confirmation required, unticked by default (#27) |
+| Sign in | Built — including the second-factor step for accounts that hold one, and "Forgot your password?" |
+| Forgot password | Built — says the same thing whether or not the account exists; the link opens on the web |
+| Register | Built — name, 18+ confirmation required and unticked by default (#27); a confirmation email is sent |
 | Home | Built — the catalogue, each family in its own accent |
 | Find | Built — filtered by field and language. No sort control of any kind (#15) |
 | Provider profile | Built — achievements via `publicFields` allow-list, per-skill tiers, track record including refunds |
@@ -70,22 +71,25 @@ than written down.
 | Board request | Built — offers ordered by recency or experience. **No price sort, and the enum has no price member** (#15) |
 | Review | Built — family dimensions, right of reply |
 | Dispute | Built — claim anchored to the locked agenda, family's ladder |
-| Account | Built — fields, language, devices, sign-out-everywhere |
+| Account | Built — profile, password, fields, language, devices, sign-out-everywhere, recovery codes |
+| Profile | Built — name, email confirmation status and resend, language; for providers a headline and a bio kept with its language |
+| Change password | Built — other devices signed out |
+| Your fields | Built — many at once (#6), a working language per field from that field's list (#19), one main. Home prompts until at least one is chosen |
 | Legal | Built — the wording as accepted, not today's version |
 | Report | Built — reasons from the family manifest; a welfare reason answers with helplines, not a queue (#25) |
-| Second factor | Built — enrolment, and recovery codes shown exactly once |
+| Second factor | Built — enrolment with a QR code or the typed key, and recovery codes shown exactly once |
 
 ### Provider
 
 | Screen | State |
 |---|---|
-| Dashboard | Built — readiness blockers separated from advisory steps |
+| Dashboard | Built — readiness blockers separated from advisory steps, including email confirmation and profile |
 | Earnings | Built — platform fee stated, failed payouts shown |
 | Verification standing | Built — per-skill tiers, never one badge |
 | Services | Built — one published price each, and bundles of two or more sessions published and withdrawn |
 | Availability | Built — rules shown, never evaluated client-side |
 | Evaluate | Built — scores against the bound template only; no way to add a dimension (#16) |
-| Training | Built — entirely pack data; the platform grades, not this screen |
+| Training | Built — entirely pack data, one section per family the provider is in; the platform grades, not this screen |
 | Working languages | Built — "can work in" and "can assess in" kept separate |
 | Payout destination | Built — the account number is typed once and never stored by us (#31) |
 
@@ -133,14 +137,13 @@ a row here is a red build.
 | **Push notifications** | Not started. The API's `outbox` relay is the right seam. A marketplace where a proposal arrives silently does not work, so this matters before launch. |
 | **Video has never run against a real Agora project** | The Agora SDK is wired (root D65): voice-first join, camera toggle, mic mute, dual-stream, the SDK's audio fall-back, weak-quality switch to voice only, automatic drop/return reports, token renewal. None of it has joined a real channel — no Agora credentials exist here and no device either. The first real call is the test. A recorder that idles out is not yet noticed (root D66). `apps/frontend`'s room still calls no API at all. |
 | **In-session chat is mobile-only** | The API has served `GET/POST /sessions/:id/messages` since M5. `apps/app` now uses it; `apps/frontend` still makes no session-message call anywhere. |
-| **A QR code for second-factor enrolment** | The API returns a `provisioningUri` and the screen ignores it, offering the raw key for manual entry instead. A QR renderer or `url_launcher` would make setup a tap. |
 | **A bundle of a combined format** | The bundle sheet sends one commitment, read as minutes for a live session and hours otherwise, because `provider_packages` still allows only one (root D54). |
 
 ---
 
 ## Verification — what is real, and what cannot be
 
-**Real, on every push:** `flutter analyze`, 103 Dart tests, and route
+**Real, on every push:** `flutter analyze`, 107 Dart tests, and route
 parity, all in CI.
 
 The Dart suite carries three kinds of test worth knowing about:

@@ -130,4 +130,23 @@ export class MyDomainsController {
   async list(@CurrentActor() actor: Actor): Promise<MyDomain[]> {
     return this.mine.forActor(actor);
   }
+
+  /**
+   * A seeker says which field they are in, and in which language. A
+   * provider's fields come from verified skills and cannot be declared.
+   */
+  @Post('domains')
+  @Roles('seeker')
+  async declare(
+    @CurrentActor() actor: Actor,
+    @Body() body: { domainCode?: string; workingLanguage?: string; isPrimary?: boolean },
+  ): Promise<MyDomain[]> {
+    return this.mine.declare(actor.userId, body ?? {});
+  }
+
+  @Post('domains/:code/remove')
+  @Roles('seeker')
+  async withdraw(@CurrentActor() actor: Actor, @Param('code') code: string): Promise<MyDomain[]> {
+    return this.mine.withdraw(actor.userId, code);
+  }
 }

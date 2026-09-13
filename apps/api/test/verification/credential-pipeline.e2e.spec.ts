@@ -97,6 +97,12 @@ describe('M4 acceptance: submit -> automated check -> human review -> tier grant
 
     const verified = await credentials.decide({ credentialId: submitted.id, reviewerId: adminId, decision: 'verified' });
     expect(verified.status).toBe('verified');
+    // The provider is told: an email is queued in the decision's own transaction.
+    const told = await pool.query(
+      `SELECT event_type FROM outbox WHERE aggregate_id = $1 AND event_type = 'verification.decided'`,
+      [submitted.id],
+    );
+    expect(told.rows).toHaveLength(1);
 
     const tier = await matching.getProviderTier(providerId, politySkillId);
     expect(tier).toBe('t3'); // exam_rank's minTierGranted in the fixture

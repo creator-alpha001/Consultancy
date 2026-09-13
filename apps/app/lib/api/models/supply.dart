@@ -8,10 +8,18 @@ import '../json.dart';
 /// matters — telling someone their payout details are "missing" in the
 /// same tone as "you are not verified" makes both easy to ignore.
 class Readiness {
-  const Readiness({required this.bookable, required this.steps});
+  const Readiness({
+    required this.bookable,
+    required this.steps,
+    this.families = const <String>[],
+  });
 
   factory Readiness.fromJson(Map<String, dynamic> json) => Readiness(
     bookable: json.boolOr('bookable'),
+    families: <String>[
+      for (final Object? f in (json['families'] as List<Object?>? ?? const <Object?>[]))
+        if (f is String) f,
+    ],
     steps: <ReadinessStep>[
       for (final Map<String, dynamic> s in json.objects('steps'))
         ReadinessStep.fromJson(s),
@@ -20,6 +28,10 @@ class Readiness {
 
   final bool bookable;
   final List<ReadinessStep> steps;
+
+  /// The families this checklist covers — where the provider signed up,
+  /// and everywhere their credentials reach. Training is per family.
+  final List<String> families;
 
   List<ReadinessStep> get outstanding =>
       steps.where((ReadinessStep s) => !s.done).toList();
@@ -55,6 +67,8 @@ class ReadinessStep {
   /// platform's words rather than a manifest's. They move to the ARB
   /// catalogue with the rest of the interface chrome.
   String get title => switch (code) {
+    'email_verified' => 'Confirm your email address',
+    'profile_complete' => 'Add your name and a short bio',
     'credential_submitted' => 'Submit a credential',
     'skill_verified_at_tier' => 'Get a skill verified',
     'working_language' => 'Declare a working language',
@@ -66,6 +80,10 @@ class ReadinessStep {
   };
 
   String get why => switch (code) {
+    'email_verified' =>
+      'Payouts, disputes and verification decisions reach you there.',
+    'profile_complete' =>
+      'The first thing someone reads before trusting you with their work.',
     'credential_submitted' =>
       'Nothing is published until something has been checked.',
     'skill_verified_at_tier' =>

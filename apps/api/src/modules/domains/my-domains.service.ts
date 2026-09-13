@@ -1,4 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { AppError } from '../../common/errors/app-error';
+import { DomainLoaderService } from './domain-loader.service';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { Actor } from '../identity/types';
@@ -49,7 +51,75 @@ export interface MyDomain {
  */
 @Injectable()
 export class MyDomainsService {
-  constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
+  constructor(
+    @Inject(PG_POOL) private readonly pool: Pool,
+    @Inject(DomainLoaderService) private readonly loader: DomainLoaderService,
+  ) {}
+
+  /**
+   * A seeker declares a domain they are working in, and the language
+   * they work in there (#19 — language is chosen per domain, because
+   * the same person may write UPSC answers in Hindi and a state paper in
+   * Marathi).
+   *
+   * Adding a domain never removes another (#6). Marking one primary
+   * clears the flag elsewhere in the same transaction, so there is never
+   * a moment with two.
+   */
+  async declare(seekerId: string, input: { domainCode?: unknown; workingLanguage?: unknown; isPrimary?: unknown }): Promise<MyDomain[]> {
+    const domainCode = typeof input.domainCode === 'string' ? input.domainCode : '';
+    const domain = await this.loader.getDomain(domainCode).catch(() => null);
+    if (!domain) throw myDomainInvalid('domainCode', 'no such field');
+    const lang = typeof input.workingLanguage === 'string' ? input.workingLanguage : domain.defaultLanguage;
+    if (!domain.languages.includes(lang)) {
+      throw myDomainInvalid('workingLanguage', `not offered in this field; one of: ${domain.languages.join(', ')}`);
+    }
+    const existing = await this.forSeekerDeclared(seekerId);
+    // The first declared domain is primary unless the person says otherwise.
+    const isPrimary = input.isPrimary === true || (input.isPrimary === undefined && existing === 0);
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (isPrimary) {
+        await client.query(`UPDATE seeker_domains SET is_primary = false WHERE seeker_id = $1 AND is_primary`, [seekerId]);
+      }
+      await client.query(
+        `INSERT INTO seeker_domains (seeker_id, domain_code, is_primary, working_language, active)
+         VALUES ($1, $2, $3, $4, true)
+         ON CONFLICT (seeker_id, domain_code) DO UPDATE
+           SET working_language = EXCLUDED.working_language,
+               is_primary = CASE WHEN $5 THEN seeker_domains.is_primary ELSE EXCLUDED.is_primary END,
+               active = true`,
+        // $5: the caller did not say, and this is not the first — keep what it was.
+        [seekerId, domainCode, isPrimary, lang, input.isPrimary === undefined && !isPrimary],
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+    return this.forSeeker(seekerId);
+  }
+
+  /** Stops showing a domain. History stays: the row is deactivated, not deleted. */
+  async withdraw(seekerId: string, domainCode: string): Promise<MyDomain[]> {
+    await this.pool.query(
+      `UPDATE seeker_domains SET active = false, is_primary = false WHERE seeker_id = $1 AND domain_code = $2`,
+      [seekerId, domainCode],
+    );
+    return this.forSeeker(seekerId);
+  }
+
+  private async forSeekerDeclared(seekerId: string): Promise<number> {
+    const res = await this.pool.query<{ n: string }>(
+      `SELECT count(*)::text AS n FROM seeker_domains WHERE seeker_id = $1 AND active`,
+      [seekerId],
+    );
+    return Number(res.rows[0].n);
+  }
 
   async forActor(actor: Actor): Promise<MyDomain[]> {
     if (actor.role === 'seeker') return this.forSeeker(actor.userId);
@@ -164,4 +234,11 @@ export class MyDomainsService {
       isPrimary: false,
     }));
   }
+}
+
+export function myDomainInvalid(field: string, reason: string): AppError {
+  return new AppError('MY_DOMAIN_INVALID', `${field}: ${reason}`, {
+    status: HttpStatus.UNPROCESSABLE_ENTITY,
+    detail: { field, reason },
+  });
 }

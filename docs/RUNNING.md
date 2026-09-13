@@ -143,6 +143,15 @@ npm run start:dev             # :3000
 `npm run migrate` and `npm run seed` do **not** read `.env` themselves —
 export `DATABASE_URL` first, or `export $(grep -v '^#' .env | xargs)`.
 
+### Emails (reset, confirmation, verification decisions)
+
+Emails are not sent in development: each one is printed to the API
+console, with its link, so the reset and confirmation flows can be
+clicked through locally. They leave the outbox only while the relay
+runs, so set `OUTBOX_RELAY_INTERVAL_MS=15000` (it is in `.env.example`).
+Real sending through Amazon SES is described in
+[`ACCOUNTS-AND-ONBOARDING.md`](ACCOUNTS-AND-ONBOARDING.md).
+
 ### Video rooms and recording
 
 By default the API uses a sandbox room and recorder: sessions can be

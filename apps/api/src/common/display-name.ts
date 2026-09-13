@@ -10,7 +10,10 @@
  * would mean the same person is named one way in search and another on
  * their engagement, which reads as two different people.
  */
-export function displayNameFor(email: string): string {
+export function displayNameFor(email: string, chosen?: string | null): string {
+  // A name the person chose always wins. The derivation below is only for
+  // accounts that have not picked one yet.
+  if (chosen && chosen.trim()) return chosen.trim();
   const local = email.split('@')[0].replace(/\+.*$/, '');
   const parts = local.split(/[._-]+/).filter(Boolean);
   if (parts.length === 0) return 'Member';

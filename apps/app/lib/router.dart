@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'api/models/user.dart';
 import 'features/account/account_screen.dart';
 import 'features/account/legal_and_report.dart';
+import 'features/account/profile_screens.dart';
+import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/mfa_enrol_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/sign_in_screen.dart';
@@ -96,6 +98,10 @@ GoRouter buildRouter(WidgetRef ref) {
       GoRoute(path: '/', builder: (_, _) => const _Splash()),
       GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, _) => const ForgotPasswordScreen(),
+      ),
       GoRoute(path: '/mfa/enrol', builder: (_, _) => const MfaEnrolScreen()),
       GoRoute(
         path: '/admin-elsewhere',
@@ -207,7 +213,18 @@ GoRouter buildRouter(WidgetRef ref) {
             ],
           ),
           GoRoute(path: '/sessions', builder: (_, _) => const SessionsScreen()),
-          GoRoute(path: '/you', builder: (_, _) => const AccountScreen()),
+          GoRoute(
+            path: '/you',
+            builder: (_, _) => const AccountScreen(),
+            routes: <RouteBase>[
+              GoRoute(path: 'profile', builder: (_, _) => const ProfileScreen()),
+              GoRoute(
+                path: 'password',
+                builder: (_, _) => const ChangePasswordScreen(),
+              ),
+              GoRoute(path: 'fields', builder: (_, _) => const FieldsScreen()),
+            ],
+          ),
 
           GoRoute(
             path: '/provider',
@@ -273,7 +290,11 @@ GoRouter buildRouter(WidgetRef ref) {
 }
 
 /// The only screens reachable without a session.
-const List<String> _signedOutPaths = <String>['/sign-in', '/register'];
+const List<String> _signedOutPaths = <String>[
+  '/sign-in',
+  '/register',
+  '/forgot-password',
+];
 
 /// Paths a provider may visit without being bounced to their dashboard.
 const List<String> _sharedPaths = <String>['/you', '/sessions', '/work'];

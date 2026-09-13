@@ -9,7 +9,7 @@
     "It carries no types, on purpose — see apps/api/scripts/dump-routes.ts."
   ],
   "generatedFrom": "apps/api",
-  "count": 148,
+  "count": 157,
   "routes": [
     {
       "method": "GET",
@@ -138,6 +138,16 @@
     },
     {
       "method": "POST",
+      "path": "/auth/email/resend",
+      "operationId": "AuthController_resendVerification"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/email/verify",
+      "operationId": "AuthController_verifyEmail"
+    },
+    {
+      "method": "POST",
       "path": "/auth/login",
       "operationId": "AuthController_login"
     },
@@ -170,6 +180,21 @@
       "method": "POST",
       "path": "/auth/mfa/recovery-codes",
       "operationId": "AuthController_regenerateRecoveryCodes"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/password/change",
+      "operationId": "AuthController_changePassword"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/password/forgot",
+      "operationId": "AuthController_forgotPassword"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/password/reset",
+      "operationId": "AuthController_resetPassword"
     },
     {
       "method": "POST",
@@ -517,6 +542,16 @@
       "operationId": "MyDomainsController_list"
     },
     {
+      "method": "POST",
+      "path": "/me/domains",
+      "operationId": "MyDomainsController_declare"
+    },
+    {
+      "method": "POST",
+      "path": "/me/domains/{code}/remove",
+      "operationId": "MyDomainsController_withdraw"
+    },
+    {
       "method": "GET",
       "path": "/me/earnings",
       "operationId": "ProviderMoneyController_summary"
@@ -570,6 +605,16 @@
       "method": "POST",
       "path": "/me/payout-destination",
       "operationId": "ProviderMoneyController_setDestination"
+    },
+    {
+      "method": "GET",
+      "path": "/me/profile",
+      "operationId": "ProfileController_get"
+    },
+    {
+      "method": "POST",
+      "path": "/me/profile",
+      "operationId": "ProfileController_update"
     },
     {
       "method": "GET",

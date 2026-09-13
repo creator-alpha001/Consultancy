@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DomainsModule } from '../domains/domains.module';
+import { AccountService } from './account.service';
 import { AuthController } from './auth.controller';
+import { ProfileController } from './profile.controller';
+import { ProfileService } from './profile.service';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { MfaPolicyService } from './mfa-policy.service';
@@ -17,8 +20,8 @@ import { TotpService } from './totp.service';
  */
 @Module({
   imports: [DomainsModule],
-  controllers: [AuthController],
-  providers: [AuthService, PasswordService, TotpService, SessionService, MfaPolicyService, AuthGuard],
-  exports: [AuthService, SessionService, AuthGuard, PasswordService, TotpService, MfaPolicyService],
+  controllers: [AuthController, ProfileController],
+  providers: [AuthService, AccountService, ProfileService, PasswordService, TotpService, SessionService, MfaPolicyService, AuthGuard],
+  exports: [AuthService, AccountService, ProfileService, SessionService, AuthGuard, PasswordService, TotpService, MfaPolicyService],
 })
 export class IdentityModule {}

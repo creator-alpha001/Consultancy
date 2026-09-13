@@ -12,6 +12,9 @@ export interface Me {
   emailVerifiedAt: string | null;
   adultConfirmedAt: string | null;
   lastLoginAt: string | null;
+  /** The name other people see. Null until the person chooses one. */
+  displayName: string | null;
+  preferredLang: string;
 }
 
 /**
@@ -102,5 +105,12 @@ export async function requireRole(role: Role, currentPath: string): Promise<Me> 
    * to see what a seeker sees to answer a ticket about it.
    */
   if (me.role !== role && me.role !== 'admin') redirect('/');
+  return me;
+}
+
+/** Any signed-in person, whatever their role. Sends a signed-out visitor to sign in and back. */
+export async function requireAuth(currentPath: string): Promise<Me> {
+  const me = await currentUser();
+  if (!me) redirect(`/login?next=${encodeURIComponent(currentPath)}`);
   return me;
 }

@@ -13,8 +13,9 @@ import {
   mfaInvalid,
   mfaNotEnrolled,
   mfaRequired,
-  passwordTooWeak,
+  profileInvalid,
 } from './errors';
+import { AccountService, assertPasswordAcceptable } from './account.service';
 import { PasswordService } from './password.service';
 import { MfaPolicyService } from './mfa-policy.service';
 import { SessionService } from './session.service';
@@ -39,6 +40,9 @@ interface UserDbRow {
   last_login_at: Date | null;
   failed_login_count: number;
   locked_until: Date | null;
+  display_name: string | null;
+  preferred_lang: string;
+  signup_family_code: string | null;
 }
 
 function mapUser(row: UserDbRow): UserRow {
@@ -50,12 +54,14 @@ function mapUser(row: UserDbRow): UserRow {
     emailVerifiedAt: row.email_verified_at,
     adultConfirmedAt: row.adult_confirmed_at,
     lastLoginAt: row.last_login_at,
+    displayName: row.display_name,
+    preferredLang: row.preferred_lang,
+    signupFamilyCode: row.signup_family_code,
   };
 }
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
-const MIN_PASSWORD_LENGTH = 12;
 
 function hashRecoveryCode(code: string): string {
   return createHash('sha256').update(code.replace(/[\s-]/g, '').toUpperCase()).digest('hex');
@@ -92,6 +98,7 @@ export class AuthService {
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(MfaPolicyService) private readonly mfaPolicy: MfaPolicyService,
     @Inject(AgreementService) private readonly agreements: AgreementService,
+    @Inject(AccountService) private readonly accounts: AccountService,
   ) {}
 
   private readonly log = new Logger(AuthService.name);
@@ -101,7 +108,8 @@ export class AuthService {
     // accommodate minors. Refused before anything is written.
     if (!input.confirmsAdult) throw adultConfirmationRequired();
 
-    this.assertPasswordAcceptable(input.password, input.email);
+    assertPasswordAcceptable(input.password, input.email);
+    const displayName = normaliseDisplayName(input.displayName);
 
     const email = input.email.trim().toLowerCase();
     const existing = await this.pool.query(`SELECT 1 FROM users WHERE email = $1`, [email]);
@@ -109,10 +117,10 @@ export class AuthService {
 
     const passwordHash = await this.passwords.hash(input.password);
     const res = await this.pool.query<UserDbRow>(
-      `INSERT INTO users (email, role, password_hash, adult_confirmed_at)
-       VALUES ($1, $2, $3, now())
+      `INSERT INTO users (email, role, password_hash, adult_confirmed_at, display_name, preferred_lang, signup_family_code)
+       VALUES ($1, $2, $3, now(), $4, $5, $6)
        RETURNING *`,
-      [email, input.role, passwordHash],
+      [email, input.role, passwordHash, displayName, normaliseLang(input.lang), input.familyCode ?? null],
     );
     const user = mapUser(res.rows[0]);
     await this.recordEvent(this.pool, user.id, 'register', { role: user.role });
@@ -142,24 +150,15 @@ export class AuthService {
       }
     }
 
-    return user;
-  }
+    // Verification is sent, not required to proceed: a seeker can look
+    // around before confirming, and a provider's readiness checklist is
+    // what holds them to it (they are paid, and must be reachable).
+    // Best-effort for the same reason as the agreements above.
+    await this.accounts.sendEmailVerification(user.id).catch((err) => {
+      this.log.error(`verification email not queued: ${err instanceof Error ? err.message : String(err)}`);
+    });
 
-  /**
-   * A password policy that checks length and obvious reuse of the email,
-   * and deliberately does NOT impose character-class rules — those push
-   * people toward `Password1!` and are no longer recommended (NIST
-   * SP 800-63B). Breach-corpus checking belongs here later; recorded as
-   * debt rather than faked.
-   */
-  private assertPasswordAcceptable(password: string, email: string): void {
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      throw passwordTooWeak(`password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-    }
-    const local = email.split('@')[0]?.toLowerCase() ?? '';
-    if (local.length >= 3 && password.toLowerCase().includes(local)) {
-      throw passwordTooWeak('password must not contain your email address');
-    }
+    return user;
   }
 
   async login(input: LoginInput): Promise<LoginResult> {
@@ -414,4 +413,19 @@ export class AuthService {
     }
     return this.dummyHashPromise;
   }
+}
+
+/** Trimmed, inner whitespace collapsed; empty means "not chosen". Never an email address. */
+export function normaliseDisplayName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const name = raw.trim().replace(/\s+/g, ' ');
+  if (name.length === 0) return null;
+  if (name.length > 80) throw profileInvalid('displayName', 'at most 80 characters');
+  if (name.includes('@')) throw profileInvalid('displayName', 'a name, not an email address');
+  return name;
+}
+
+/** A BCP-47-ish language tag, or English. Anything else is ignored rather than stored. */
+export function normaliseLang(raw: unknown): string {
+  return typeof raw === 'string' && /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(raw) ? raw : 'en';
 }

@@ -2,7 +2,7 @@ import { AppShell } from '@/components/shell';
 import { Button, Chip, Divider, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
-import { getTraining } from '@/lib/data';
+import { getReadiness, getTraining } from '@/lib/data';
 import { completeTraining } from '@/app/actions/provider';
 
 export const dynamic = 'force-dynamic';
@@ -29,11 +29,19 @@ function pick(labels: Record<string, string> | undefined, lang: string): string 
 export default async function ProviderTrainingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; completed?: string; retry?: string }>;
+  searchParams: Promise<{ error?: string; completed?: string; retry?: string; family?: string }>;
 }): Promise<JSX.Element> {
   await requireRole('provider', '/provider/training');
   const { fam, lang } = await preview('provider');
-  const [{ error, completed }, training] = await Promise.all([searchParams, getTraining()]);
+  const [{ error, completed, family }, readiness] = await Promise.all([searchParams, getReadiness()]);
+  /*
+   * Training belongs to a family, and a provider may be in several — so
+   * the family is chosen from the provider's own (never a default one),
+   * and the page switches between them.
+   */
+  const families = readiness?.families ?? [];
+  const familyCode = family && families.includes(family) ? family : families[0];
+  const training = familyCode ? await getTraining(familyCode) : null;
 
   const modules = training?.modules ?? [];
   const outstanding = modules.filter((m) => m.required && !m.completedAt).length;
@@ -61,7 +69,29 @@ export default async function ProviderTrainingPage({
         </div>
       )}
 
-      {modules.length === 0 ? (
+      {families.length > 1 && (
+        <nav aria-label="Field" className="mb-5 flex flex-wrap gap-2">
+          {families.map((f) => (
+            <a
+              key={f}
+              href={`/provider/training?family=${encodeURIComponent(f)}`}
+              aria-current={f === familyCode ? 'page' : undefined}
+              className={`rounded-md border px-3 py-2 text-small ${f === familyCode ? 'border-brand bg-brand-soft' : 'border-line'}`}
+            >
+              {f}
+            </a>
+          ))}
+        </nav>
+      )}
+
+      {!familyCode ? (
+        <Panel title="Nothing to read yet">
+          <p className="text-body text-ink-muted">
+            Training depends on the field you work in, and there is none on your account yet. Submit a credential
+            first.
+          </p>
+        </Panel>
+      ) : modules.length === 0 ? (
         <Panel title="Nothing to read">
           <p className="text-body text-ink-muted">
             This field publishes no training. A legitimate state — each family decides its own, and some have none.

@@ -2,12 +2,16 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { PayoutDispatchService } from '../money/payout-dispatch.service';
+import { EMAIL_EVENTS, EmailComposerService, NothingToSend } from './email/email-composer.service';
+import { EMAIL_TRANSPORT, EmailTransport } from './email/email-transport';
 
 export interface RelayResult {
   claimed: number;
   dispatched: number;
   failed: number;
   deadLettered: number;
+  /** Rows with nothing left to deliver — a superseded or expired link. Closed, not retried. */
+  skipped: number;
 }
 
 interface OutboxRow {
@@ -77,11 +81,25 @@ export class OutboxRelayService {
       const outcome = await this.payouts.dispatchRefund(row.aggregate_id);
       this.log.log(`refund.initiated ${row.aggregate_id}: ${outcome}`);
     },
+    // Emails. Composed at send time (see EmailComposerService), so the
+    // link inside a reset email was never stored anywhere.
+    ...Object.fromEntries(
+      EMAIL_EVENTS.map((event) => [
+        event,
+        async (row: OutboxRow) => {
+          const message = await this.composer.compose(row);
+          const { messageId } = await this.email.send(message);
+          this.log.log(`${event} ${row.aggregate_id}: sent via ${this.email.code} (${messageId})`);
+        },
+      ]),
+    ),
   };
 
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(PayoutDispatchService) private readonly payouts: PayoutDispatchService,
+    @Inject(EmailComposerService) private readonly composer: EmailComposerService,
+    @Inject(EMAIL_TRANSPORT) private readonly email: EmailTransport,
   ) {}
 
   handledEventTypes(): string[] {
@@ -90,7 +108,7 @@ export class OutboxRelayService {
 
   async runOnce(batchSize = 20): Promise<RelayResult> {
     const rows = await this.claim(batchSize);
-    const result: RelayResult = { claimed: rows.length, dispatched: 0, failed: 0, deadLettered: 0 };
+    const result: RelayResult = { claimed: rows.length, dispatched: 0, failed: 0, deadLettered: 0, skipped: 0 };
 
     for (const row of rows) {
       try {
@@ -102,6 +120,14 @@ export class OutboxRelayService {
         result.dispatched += 1;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        if (err instanceof NothingToSend) {
+          await this.pool.query(
+            `UPDATE outbox SET dispatched_at = now(), last_error = $2 WHERE id = $1`,
+            [row.id, `skipped: ${message}`.slice(0, 2000)],
+          );
+          result.skipped += 1;
+          continue;
+        }
         // `attempts` was already incremented by the claim, so it reflects
         // this try. Past the cap the row stops being retried and stays
         // undispatched — a payout that cannot be instructed is not

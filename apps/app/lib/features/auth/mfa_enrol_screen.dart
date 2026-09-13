@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../api/api_error.dart';
 import '../../providers.dart';
@@ -30,6 +31,7 @@ class MfaEnrolScreen extends ConsumerStatefulWidget {
 class _MfaEnrolScreenState extends ConsumerState<MfaEnrolScreen> {
   final TextEditingController _code = TextEditingController();
   String? _secret;
+  String? _provisioningUri;
   List<String>? _recoveryCodes;
   bool _busy = false;
   String? _error;
@@ -68,13 +70,32 @@ class _MfaEnrolScreenState extends ConsumerState<MfaEnrolScreen> {
           Panel(
             title: 'Add it to your authenticator',
             note:
-                'Any authenticator app works. Copy the key into it, then type '
-                'the six digits it gives you.',
+                'Any authenticator app works. Scan the code with it — or, on '
+                'this same phone, copy the key in — then type the six digits '
+                'it gives you.',
             child: _busy && _secret == null
                 ? const Center(child: CircularProgressIndicator())
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
+                      if (_provisioningUri != null) ...<Widget>[
+                        Center(
+                          child: Semantics(
+                            label:
+                                'QR code for your authenticator app. The same '
+                                'key is written out below.',
+                            child: Container(
+                              color: BaseColors.surface,
+                              padding: const EdgeInsets.all(Space.sm),
+                              child: QrImageView(
+                                data: _provisioningUri!,
+                                size: 196,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: Space.md),
+                      ],
                       if (_secret != null) ...<Widget>[
                         Container(
                           padding: const EdgeInsets.all(Space.md),
@@ -151,12 +172,13 @@ class _MfaEnrolScreenState extends ConsumerState<MfaEnrolScreen> {
           .read(apiClientProvider)
           .post<Map<String, dynamic>>('/auth/mfa/enrol', asEnrolling: true);
       if (!mounted) return;
-      // `provisioningUri` is also returned — an otpauth:// URI that a
-      // QR code or a tap could hand straight to an authenticator app.
-      // Neither is built (no QR renderer, no url_launcher), so the raw
-      // key is offered for manual entry, which every authenticator
-      // accepts. Recorded as owed in apps/app/TRACKER.md.
-      setState(() => _secret = res['secret'] as String?);
+      // The otpauth:// URI becomes a QR code for an authenticator on
+      // another device; the raw key stays for one on this phone, which
+      // cannot scan its own screen.
+      setState(() {
+        _secret = res['secret'] as String?;
+        _provisioningUri = res['provisioningUri'] as String?;
+      });
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {

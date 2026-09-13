@@ -73,6 +73,14 @@ const EXEMPT = [
     match: (r) => r.path.startsWith('/board/moderation'),
     clientsExempt: ['apps/app'],
   },
+  {
+    // An emailed link lands on a WEB page, on whatever device opened the
+    // email, signed out. The app sends the request (forgot / resend) and
+    // never receives the token, so it has nothing to call these with.
+    why: 'emailed-link landings (reset, verify) are web pages by design',
+    match: (r) => r.method === 'POST' && (r.path === '/auth/password/reset' || r.path === '/auth/email/verify'),
+    clientsExempt: ['apps/app'],
+  },
 ];
 
 function walk(dir, exts, out = []) {

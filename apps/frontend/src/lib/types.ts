@@ -327,6 +327,8 @@ export interface Dispute {
 
 export interface CredentialSubmission {
   id: string;
+  /** `submitted` still needs its automated check; `under_review` is ready for a person's decision. */
+  status: string;
   provider: { id: string; displayName: string };
   family: string;
   credentialType: string;

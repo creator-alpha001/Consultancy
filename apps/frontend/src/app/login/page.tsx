@@ -50,7 +50,7 @@ export default async function LoginPage({
               role="status"
               className="rounded-md border border-verified-line bg-verified-soft px-3.5 py-3 text-small text-verified"
             >
-              Account created. Sign in to continue.
+              Account created. We have sent a link to confirm your email address — sign in to continue meanwhile.
             </div>
           )}
           {enrolled && (
@@ -84,6 +84,11 @@ export default async function LoginPage({
           <Button full size="lg" type="submit">
             Sign in
           </Button>
+          <p className="text-center text-small">
+            <a href="/forgot-password" className="text-brand underline underline-offset-2">
+              Forgot your password?
+            </a>
+          </p>
         </form>
 
         <Divider className="my-5" />
@@ -93,7 +98,8 @@ export default async function LoginPage({
           <a href="/register" className="text-brand underline underline-offset-2">
             Create an account
           </a>
-          . Sessions last 12 hours and are held in a cookie this page&rsquo;s own JavaScript cannot read.
+          . You stay signed in while you use the site, and are signed out after a week away. The session is held in
+          a cookie this page&rsquo;s own JavaScript cannot read.
         </p>
       </Card>
 

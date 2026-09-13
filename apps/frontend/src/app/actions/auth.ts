@@ -95,12 +95,14 @@ export async function registerAccount(formData: FormData): Promise<void> {
         // records what the person actually agreed to.
         familyCode: String(formData.get('familyCode') ?? '') || undefined,
         lang: String(formData.get('lang') ?? 'en'),
+        displayName: String(formData.get('displayName') ?? '').trim() || undefined,
       }),
     });
   } catch (err) {
     back(err instanceof ApiError ? err.code : 'UNKNOWN');
   }
 
+  // A confirmation email is already on its way; the sign-in page says so.
   redirect(`/login?registered=1&role=${encodeURIComponent(role)}`);
 }
 
