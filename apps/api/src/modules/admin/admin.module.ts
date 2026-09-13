@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DomainsModule } from '../domains/domains.module';
+import { OpsReadController } from './ops-read.controller';
 import { PackEditorController } from './pack-editor.controller';
 import { ReconciliationController } from './reconciliation.controller';
 import { ReconciliationService } from './reconciliation.service';
@@ -14,7 +15,7 @@ import { ReconciliationService } from './reconciliation.service';
  */
 @Module({
   imports: [DomainsModule],
-  controllers: [PackEditorController, ReconciliationController],
+  controllers: [PackEditorController, ReconciliationController, OpsReadController],
   providers: [ReconciliationService],
   exports: [ReconciliationService],
 })

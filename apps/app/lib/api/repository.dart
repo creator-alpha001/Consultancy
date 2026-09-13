@@ -212,6 +212,7 @@ class Repository {
     required String language,
     required Paise amount,
     String? serviceId,
+    String currency = 'INR',
   }) async => Engagement.fromJson(
     await _api.post<Map<String, dynamic>>(
       '/engagements',
@@ -221,6 +222,9 @@ class Repository {
         'categoryId': categoryId,
         'engagementType': engagementType,
         'language': language,
+        // Required by the API and by the column: an engagement without a
+        // currency is an amount of nothing in particular.
+        'currency': currency,
         'amountPaise': amount.value,
         'serviceId': ?serviceId,
       },
@@ -265,25 +269,28 @@ class Repository {
 
   /// Saves the draft. Legal only while unlocked — the server refuses
   /// otherwise, and the client does not second-guess that (#11).
+  ///
+  /// Saving again replaces an unlocked draft. The words are sent in the
+  /// language they were written in, which is the authoritative one (#20).
   Future<Agenda> saveAgenda(
     String engagementId, {
     required List<String> items,
     required String language,
+    required String expectedDeliverable,
+    required String successCriteria,
     String? outOfScope,
-    String? expectedDeliverable,
-    String? successCriteria,
   }) async => Agenda.fromJson(
     await _api.post<Map<String, dynamic>>(
       '/engagements/$engagementId/agenda',
       body: <String, dynamic>{
-        'language': language,
+        'originalLang': language,
+        'expectedDeliverable': expectedDeliverable,
+        'successCriteria': successCriteria,
         'items': <Map<String, dynamic>>[
-          for (int i = 0; i < items.length; i++)
-            <String, dynamic>{'ordinal': i, 'text': items[i]},
+          for (final String text in items)
+            <String, dynamic>{'labelLang': language, 'labelText': text},
         ],
         'outOfScope': ?outOfScope,
-        'expectedDeliverable': ?expectedDeliverable,
-        'successCriteria': ?successCriteria,
       },
     ),
   );
@@ -325,13 +332,15 @@ class Repository {
         '/engagements/$engagementId/evaluations/latest',
       );
 
+  /// One file, or none: the API takes a single `attachmentId`. A written
+  /// piece of work can be the note itself.
   Future<Map<String, dynamic>> submit(
     String engagementId, {
     required String note,
-    List<String> attachmentIds = const <String>[],
+    String? attachmentId,
   }) => _api.post<Map<String, dynamic>>(
     '/engagements/$engagementId/submissions',
-    body: <String, dynamic>{'note': note, 'attachmentIds': attachmentIds},
+    body: <String, dynamic>{'note': note, 'attachmentId': ?attachmentId},
   );
 
   Future<Map<String, dynamic>> startEvaluation(String engagementId) =>
@@ -339,20 +348,26 @@ class Repository {
 
   /// Scores against the bound template's dimensions — never a set the
   /// provider invented (#16).
+  ///
+  /// The API takes one dimension per request, so a score is only ever
+  /// half-saved if the connection drops between two — and the next save
+  /// simply writes them again.
   Future<void> scoreEvaluation(
     String evaluationId, {
     required Map<String, int> scores,
     String? comment,
-  }) => _api.post<void>(
-    '/evaluations/$evaluationId/scores',
-    body: <String, dynamic>{
-      'scores': <Map<String, dynamic>>[
-        for (final MapEntry<String, int> e in scores.entries)
-          <String, dynamic>{'dimensionCode': e.key, 'score': e.value},
-      ],
-      'comment': ?comment,
-    },
-  );
+  }) async {
+    for (final MapEntry<String, int> e in scores.entries) {
+      await _api.post<void>(
+        '/evaluations/$evaluationId/scores',
+        body: <String, dynamic>{
+          'dimensionCode': e.key,
+          'score': e.value,
+          'comment': ?comment,
+        },
+      );
+    }
+  }
 
   /// Ticks off something the seeker was told to do next. Private to
   /// them — it is not reported to the provider.
@@ -364,23 +379,25 @@ class Repository {
   /// [body] is required and carries the whole meaning: an annotation is
   /// pinned to a scan of handwriting, and a coordinate alone is not
   /// something a screen reader user can act on.
+  ///
+  /// Every remark is something the seeker can act on — the API tracks
+  /// that on the seeker's side (migration 0051), so there is no flag to
+  /// send. The language is recorded because the original is authoritative.
   Future<void> annotate(
     String evaluationId, {
     required String body,
-    String? dimensionCode,
+    required String lang,
     int? page,
     double? x,
     double? y,
-    bool isActionItem = false,
   }) => _api.post<void>(
     '/evaluations/$evaluationId/annotations',
     body: <String, dynamic>{
-      'body': body,
-      'dimensionCode': ?dimensionCode,
+      'bodyText': body,
+      'bodyLang': lang,
       'page': ?page,
-      'x': ?x,
-      'y': ?y,
-      'isActionItem': isActionItem,
+      'anchorX': ?x,
+      'anchorY': ?y,
     },
   );
 
@@ -435,7 +452,11 @@ class Repository {
       '/engagements/$engagementId/sessions',
       body: <String, dynamic>{
         'scheduledStart': start.toUtc().toIso8601String(),
-        'durationMinutes': durationMinutes,
+        // The API books a window, not a length: the end is sent.
+        'scheduledEnd': start
+            .add(Duration(minutes: durationMinutes))
+            .toUtc()
+            .toIso8601String(),
         'timezone': timezone,
       },
     ),
@@ -563,6 +584,7 @@ class Repository {
         'engagementType': engagementType,
         'language': language,
         'description': description,
+        'currency': 'INR',
         'budgetMinPaise': budgetMin.value,
         'budgetMaxPaise': budgetMax.value,
       },
@@ -581,32 +603,35 @@ class Repository {
     ];
   }
 
+  ///
+  /// The message carries any turnaround promise: the API stores an offer
+  /// as an amount and words, nothing else.
   Future<void> propose(
     String postId, {
     required Paise amount,
     required String message,
-    int? turnaroundHours,
-    int? durationMinutes,
   }) => _api.post<void>(
     '/board/posts/$postId/proposals',
     body: <String, dynamic>{
-      'amountPaise': amount.value,
+      'proposedAmountPaise': amount.value,
       'message': message,
-      'turnaroundHours': ?turnaroundHours,
-      'durationMinutes': ?durationMinutes,
     },
   );
 
   /// Accepting one automatically rejects its siblings, server-side.
-  Future<Engagement> acceptProposal(
+  ///
+  /// Returns the id of the engagement the acceptance created. The API
+  /// answers with the proposal, which names it.
+  Future<String?> acceptProposal(
     String proposalId, {
     required String idempotencyKey,
-  }) async => Engagement.fromJson(
-    await _api.post<Map<String, dynamic>>(
+  }) async {
+    final Map<String, dynamic> proposal = await _api.post<Map<String, dynamic>>(
       '/board/proposals/$proposalId/accept',
       idempotencyKey: idempotencyKey,
-    ),
-  );
+    );
+    return proposal['resultingEngagementId'] as String?;
+  }
 
   Future<void> withdrawProposal(String proposalId) =>
       _api.post<void>('/board/proposals/$proposalId/withdraw');
@@ -636,12 +661,14 @@ class Repository {
     required String domainCode,
     required String body,
     required String language,
+    String? categoryId,
   }) => _api.post<Map<String, dynamic>>(
     '/board/questions',
     body: <String, dynamic>{
       'domainCode': domainCode,
-      'body': body,
-      'language': language,
+      'categoryId': ?categoryId,
+      'bodyOriginal': body,
+      'bodyLang': language,
     },
   );
 
@@ -676,7 +703,7 @@ class Repository {
     body: <String, dynamic>{
       'accountHolderName': accountHolderName,
       'accountNumber': accountNumber,
-      'bankIfsc': ifsc,
+      'ifsc': ifsc,
     },
   );
 
@@ -747,15 +774,19 @@ class Repository {
     ];
   }
 
+  /// A credential names the skills it is evidence for — verification is
+  /// per skill, never per person (#5) — and its type by code.
   Future<void> submitCredential({
-    required String credentialTypeId,
+    required String credentialTypeCode,
     required String domainCode,
+    required List<String> skillCodes,
     required Map<String, dynamic> verifierData,
   }) => _api.post<void>(
     '/me/credentials',
     body: <String, dynamic>{
-      'credentialTypeId': credentialTypeId,
+      'credentialTypeCode': credentialTypeCode,
       'domainCode': domainCode,
+      'skillCodes': skillCodes,
       'verifierData': verifierData,
     },
   );
@@ -968,6 +999,7 @@ class Repository {
     required String subjectType,
     required String subjectId,
     required String reasonCode,
+    required String lang,
     String? detail,
   }) => _api.post<void>(
     '/reports',
@@ -975,7 +1007,8 @@ class Repository {
       'subjectType': subjectType,
       'subjectId': subjectId,
       'reasonCode': reasonCode,
-      'detail': ?detail,
+      'detailOriginal': ?detail,
+      if (detail != null) 'detailLang': lang,
     },
   );
 
@@ -1039,9 +1072,10 @@ class Repository {
   Future<Map<String, dynamic>> requestExtension(
     String sessionId, {
     required int minutes,
+    required Paise amount,
   }) => _api.post<Map<String, dynamic>>(
     '/sessions/$sessionId/extensions',
-    body: <String, dynamic>{'minutes': minutes},
+    body: <String, dynamic>{'minutes': minutes, 'amountPaise': amount.value},
   );
 
   Future<List<Map<String, dynamic>>> extensions(String sessionId) =>
@@ -1124,18 +1158,20 @@ class Repository {
   /// A day off, or an extra window. Exceptions beat the weekly rules,
   /// which is why they exist: a rule that had to be edited for one
   /// Tuesday would be edited back and forgotten.
+  ///
+  /// An exception only ever REMOVES time: a day, or part of one, off.
   Future<void> addAvailabilityException({
     required String date,
-    required bool available,
     int? startMinute,
     int? endMinute,
+    String? reason,
   }) => _api.post<void>(
     '/me/availability/exceptions',
     body: <String, dynamic>{
-      'date': date,
-      'available': available,
+      'onDate': date,
       'startMinute': ?startMinute,
       'endMinute': ?endMinute,
+      'reason': ?reason,
     },
   );
 
@@ -1154,7 +1190,9 @@ class Repository {
   }) => _api.post<void>(
     '/engagements/$engagementId/discount',
     body: <String, dynamic>{
-      'amountPaise': amount.value,
+      // A string on the wire, like every paise amount the API reads as
+      // a bigint.
+      'discountPaise': amount.value.toString(),
       'reason': reason,
     },
   );

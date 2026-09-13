@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 import '../../api/api_error.dart';
 import '../../api/models/board.dart';
-import '../../api/models/engagement.dart';
 import '../../data.dart';
 import '../../money/paise.dart';
 import '../../providers.dart';
@@ -341,7 +340,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       _error = null;
     });
     try {
-      final Engagement e = await ref
+      final String? engagementId = await ref
           .read(repositoryProvider)
           .acceptProposal(
             widget.proposal.id,
@@ -354,7 +353,11 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
         ..invalidate(proposalsProvider(widget.postId))
         ..invalidate(boardPostProvider(widget.postId))
         ..invalidate(engagementsProvider);
-      if (mounted) context.go('/work/${e.id}/agenda');
+      if (mounted) {
+        context.go(
+          engagementId == null ? '/work' : '/work/$engagementId/agenda',
+        );
+      }
     } on ApiException catch (err) {
       if (mounted) setState(() => _error = err.message);
     } finally {
@@ -459,8 +462,13 @@ class _ProposeButtonState extends ConsumerState<_ProposeButton> {
             // Rupees in, paise out — the conversion happens once, here,
             // at the edge, and everything downstream is integer paise.
             amount: Paise(rupees * 100),
-            message: _message.text.trim(),
-            turnaroundHours: int.tryParse(_turnaround.text.trim()),
+            // An offer is an amount and words; a turnaround promise is
+            // part of the words, where the seeker reads it.
+            message: <String>[
+              _message.text.trim(),
+              if (int.tryParse(_turnaround.text.trim()) != null)
+                'Back within ${int.parse(_turnaround.text.trim())} hours.',
+            ].where((String s) => s.isNotEmpty).join('\n\n'),
           );
       ref.invalidate(proposalsProvider(widget.post.id));
       if (mounted) Navigator.of(context).pop();

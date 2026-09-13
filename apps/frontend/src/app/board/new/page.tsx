@@ -1,7 +1,15 @@
 import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, Field, PageHead, Panel, Select, TextArea } from '@/components/ui';
 import { preview } from '@/lib/preview';
-import { allFamilies, t, tl, languageName, allLanguages } from '@/lib/pack';
+import { allFamilies, t, tl, languageName } from '@/lib/pack';
+import { createBoardPost } from '@/app/actions/board';
+
+const ERRORS: Record<string, string> = {
+  PLACEMENT_REQUIRED: 'Choose what this is about.',
+  DESCRIPTION_REQUIRED: 'Give it a one-line summary and the detail.',
+  BUDGET_INVALID: 'Give a budget range in whole rupees, lowest first.',
+  UNKNOWN: 'That could not be posted. Try again.',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +25,12 @@ export const dynamic = 'force-dynamic';
  * distress in a person's own description has to be noticed. A person
  * whose post is held never sees the word "rejected" (CLAUDE.md #25).
  */
-export default async function NewRequestPage(): Promise<JSX.Element> {
+export default async function NewRequestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}): Promise<JSX.Element> {
+  const { error } = await searchParams;
   const { fam, lang } = await preview('seeker');
   /*
    * Step one asks for the FIELD before anything else, and the options
@@ -50,42 +63,60 @@ export default async function NewRequestPage(): Promise<JSX.Element> {
       </ol>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <form className="min-w-0 space-y-5">
+        <form action={createBoardPost} className="min-w-0 space-y-5">
+          {error && (
+            <div role="alert" className="rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+              {ERRORS[error] ?? ERRORS.UNKNOWN}
+            </div>
+          )}
           <Panel title="What it is about">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select
-                label="Field"
-                name="family"
-                options={allFamilies().map((f) => ({ value: f.code, label: t(f.label, lang) }))}
-                hint="Everything below changes with this — the areas, the languages, and what the people here call things."
-              />
-              <Select
-                label="Area"
-                name="domain"
-                options={(field?.domains ?? []).map((d) => ({ value: d.code, label: t(d.label, lang) }))}
-              />
-              <Select
-                label={t(field?.labels.category, lang) || 'Category'}
-                name="category"
-                options={(domain?.categories ?? []).map((c) => ({ value: c.code, label: t(c.label, lang) }))}
-              />
               {/*
-                Language is asked here, at the same weight as the
-                category, not inferred and not buried in settings. It is
-                a matching dimension, and getting it wrong wastes both
-                people's time.
+                One choice across every field, grouped by field and area, so
+                the form works without any script: a separate "field" select
+                could not narrow the next one on a server-rendered page.
+              */}
+              <label className="block text-small sm:col-span-2">
+                <span className="mb-1.5 block font-medium">What it is about</span>
+                <select name="placement" required className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-body">
+                  {allFamilies().flatMap((f) =>
+                    f.domains.map((d) => (
+                      <optgroup key={d.code} label={`${t(f.label, lang)} · ${t(d.label, lang)}`}>
+                        {d.categories
+                          .filter((c) => c.id)
+                          .map((c) => (
+                            <option key={c.id} value={`${d.code}|${c.id}`}>
+                              {t(c.label, lang)}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )),
+                  )}
+                </select>
+              </label>
+              {/*
+                Language is asked at the same weight as the category, not
+                inferred. It is a matching dimension (#19).
               */}
               <Select
                 label="Language you want to work in"
                 name="language"
-                options={(domain?.languages ?? allLanguages()).map((l) => ({ value: l, label: languageName(l, lang) }))}
-                hint="Only people who actually work in this language will see your post. Write the rest of this in it too — nobody is expecting English."
+                options={[...new Set(allFamilies().flatMap((f) => f.domains.flatMap((d) => d.languages)))].map((l) => ({
+                  value: l,
+                  label: languageName(l, lang),
+                }))}
+                hint="Only people who actually work in this language will see your post. Write the rest of this in it too."
               />
               <Select
                 label="How you would like to work"
-                name="type"
-                options={(field?.engagementTypes ?? fam.engagementTypes).map((e) => ({ value: e.code, label: t(e.label, lang) }))}
-                hint="The options differ by field. Some fields barely use video; some are photographs and a voice note."
+                name="engagementType"
+                options={[
+                  ...new Map(
+                    allFamilies()
+                      .flatMap((f) => f.engagementTypes)
+                      .map((e) => [e.code, { value: e.code, label: t(e.label, lang) }] as const),
+                  ).values(),
+                ]}
               />
             </div>
           </Panel>
@@ -110,18 +141,8 @@ export default async function NewRequestPage(): Promise<JSX.Element> {
 
           <Panel title="Budget and timing">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="What you can spend"
-                name="budget"
-                type="number"
-                placeholder="1800"
-                hint={
-                  domain
-                    ? `Most work in this area lands between ₹${domain.priceBand.minPaise / 100} and ₹${domain.priceBand.maxPaise / 100}.`
-                    : undefined
-                }
-              />
-              <Field label="Needed by" name="deadline" type="date" />
+              <Field label="Lowest you would spend (₹)" name="budgetMin" inputMode="numeric" pattern="\d*" required />
+              <Field label="Most you would spend (₹)" name="budgetMax" inputMode="numeric" pattern="\d*" required />
             </div>
             <p className="mt-4 text-small text-ink-muted">
               A budget is a signal, not a commitment — people can reply above or below it, and you are not obliged to
@@ -130,9 +151,8 @@ export default async function NewRequestPage(): Promise<JSX.Element> {
           </Panel>
 
           <div className="flex flex-wrap gap-3">
-            <Button size="lg">Post it</Button>
-            <Button tone="secondary" size="lg">
-              Save as a draft
+            <Button size="lg" type="submit">
+              Post it
             </Button>
           </div>
         </form>

@@ -1,5 +1,5 @@
 import { AppShell } from '@/components/shell';
-import { Button, Card, Chip, Divider, Eyebrow, PageHead, Panel, TierChip } from '@/components/ui';
+import { Button, ButtonLink, Card, Chip, Divider, Eyebrow, PageHead, Panel, TierChip } from '@/components/ui';
 import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
 import { t, tl } from '@/lib/pack';
@@ -57,7 +57,9 @@ export default async function ProviderStandingPage(): Promise<JSX.Element> {
               ))}
             </ul>
             <div className="mt-4">
-              <Button tone="secondary">Claim another skill</Button>
+              <ButtonLink href="/provider/credentials" tone="secondary">
+                Submit another credential
+              </ButtonLink>
             </div>
           </Panel>
 
@@ -114,15 +116,15 @@ export default async function ProviderStandingPage(): Promise<JSX.Element> {
         </div>
 
         <aside className="space-y-4">
-          <Panel tone="verified" title="Account security">
+          <Panel title="Account security">
             <p className="text-small">
-              Two-factor authentication is on. It is required for everyone who can be paid — an account that can move
-              money is not protected by a password alone.
+              An account that can be paid should not be protected by a password alone. Your password, devices and
+              recovery codes are on your account page.
             </p>
             <Divider className="my-4" />
-            <Button tone="secondary" full size="sm">
-              See recovery codes
-            </Button>
+            <ButtonLink href="/account#devices" tone="secondary" full size="sm">
+              Open account security
+            </ButtonLink>
           </Panel>
 
           <Card className="p-5">

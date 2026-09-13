@@ -344,6 +344,8 @@ cmd_test() {
   # failure that paused apps/mobile.
   bold "Route parity"
   node "$ROOT/scripts/parity.mjs" --check || die "a client dropped a route it used to call"
+  bold "Request bodies"
+  node "$ROOT/scripts/contract-bodies.mjs" --check || die "a client sends a body the API does not read"
 
   bold "API suite"
   ensure_postgres

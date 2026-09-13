@@ -1,38 +1,61 @@
+import { randomUUID } from 'node:crypto';
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import { Button, ButtonLink, Card, Divider, Eyebrow, GlyphLock, PageHead, Panel, TextArea } from '@/components/ui';
+import { GoalsContract } from '@/components/goals';
+import { lockAgenda, saveAgenda } from '@/app/actions/engagement';
 import { preview, contextFor } from '@/lib/preview';
-import { t, tl, languageName } from '@/lib/pack';
+import { t, tl, languageName, plural } from '@/lib/pack';
 import { getEngagement } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
+/** Up to five goals: fewer, sharper ones settle a disagreement; a long vague list does not. */
+const MAX_GOALS = 5;
+
+const NOTICES: Record<string, string> = {
+  saved: 'Draft saved. Nothing is locked yet — you can keep changing it.',
+};
+
+const ERRORS: Record<string, string> = {
+  GOALS_REQUIRED: 'Write at least one goal.',
+  OUTCOME_REQUIRED: 'Say what comes back to you, and how you will know it worked.',
+  CONFIRM_REQUIRED: 'Tick the box to confirm you understand the list cannot be edited afterwards.',
+  AGENDA_INVALID: 'Something in the list could not be saved. Check that every goal has text.',
+  AGENDA_ALREADY_LOCKED: 'This list is already locked. A change now needs a change order.',
+  UNKNOWN: 'That did not go through. Try again.',
+};
+
 /**
- * Writing the agenda.
+ * Writing, and locking, the agenda.
  *
- * The agenda is the product's core differentiator and its biggest
- * friction risk at the same time — a seeker asked to fill in a form
- * abandons; a seeker helped to say what they want does not. So the
- * screen is built as assistance rather than as a form:
+ * The agenda is what a dispute is judged against — so the screen helps
+ * someone say what they want in a way another person could tick off:
+ * goals, what comes back to them, how they will know it worked, and what
+ * is out of scope.
  *
- *  - field labels are questions, not nouns
- *  - each goal carries a "done when" so another person can check it
- *  - out-of-scope is offered with an explanation of who it protects
- *  - the value is stated on the screen, because someone who does not
- *    know why they are typing stops typing
- *
- * The lock is a separate, deliberate act with its own confirmation, and
- * after it there is no edit affordance anywhere in the component — a
- * change is a change order producing a new version, never an overwrite.
+ * Saving replaces the draft; it can be saved as often as needed. Locking
+ * is a separate, deliberate act behind an explicit confirmation, and after
+ * it there is no edit affordance anywhere — a change is a change order
+ * producing a new version (#11). The words are kept in the language they
+ * were written in, which is the one that counts (#20).
  */
-export default async function AgendaPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
-  const { id } = await params;
+export default async function AgendaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ notice?: string; error?: string }>;
+}): Promise<JSX.Element> {
+  const [{ id }, { notice, error }] = await Promise.all([params, searchParams]);
   const { lang } = await preview('seeker');
   const e = await getEngagement(id);
   if (!e) notFound();
   const fam = contextFor(e.family);
   const agenda = e.agenda;
   const locked = agenda?.state === 'locked';
+  const goals = agenda?.items ?? [];
+  const blanks = Math.max(1, Math.min(MAX_GOALS, goals.length + 1)) - goals.length;
 
   return (
     <AppShell fam={fam} lang={lang} role="seeker" current="/engagements">
@@ -42,107 +65,98 @@ export default async function AgendaPage({ params }: { params: Promise<{ id: str
         sub="Say what you want to come out of this, in a way another person could tick off. This is what protects your payment — a dispute is judged against exactly this list and nothing else."
       />
 
+      {notice && NOTICES[notice] && (
+        <div role="status" className="mb-5 rounded-md border border-verified-line bg-verified-soft px-4 py-3 text-small text-verified">
+          {NOTICES[notice]}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {ERRORS[error] ?? ERRORS.UNKNOWN}
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-5">
-          <Panel
-            title={`Your ${tl(fam.labels.agenda, lang)}`}
-            note="Between one and five. Fewer, sharper ones settle disputes; a long vague list does not."
-          >
-            <ol className="space-y-5">
-              {(agenda?.items ?? []).map((item) => (
-                <li key={item.id} className="rounded-md border border-line bg-surface-sunk p-4">
-                  <div className="flex items-center justify-between">
-                    <Eyebrow>
-                      {t(fam.labels.agendaItem, lang)} {item.ordinal}
-                    </Eyebrow>
-                    {!locked && (
-                      <button type="button" className="text-caption text-ink-muted hover:text-danger">
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <p className="mt-2 text-body">{item.text.original}</p>
-                  <div className="mt-3 rounded-sm border-l-2 border-brand-line bg-surface px-3 py-2">
-                    <p className="text-caption font-medium text-ink-muted">I will know this worked if…</p>
-                    <p className="mt-0.5 text-small">
-                      {item.successCriteria?.original ?? (
-                        <span className="text-ink-faint">Not set — add one, it is what makes this checkable.</span>
-                      )}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+          {locked && agenda ? (
+            <GoalsContract
+              agenda={agenda}
+              labels={{ agenda: t(fam.labels.agenda, lang), agendaItem: t(fam.labels.agendaItem, lang) }}
+            />
+          ) : (
+            <form id="agenda-form" action={saveAgenda} className="space-y-5">
+              <input type="hidden" name="engagementId" value={e.id} />
+              <input type="hidden" name="language" value={e.language} />
 
-            {!locked && (
-              <div className="mt-5 rounded-md border border-dashed border-line-strong p-4">
-                <TextArea
-                  label={`Add a ${tl(fam.labels.agendaItem, lang)}`}
-                  name="goal"
-                  rows={2}
-                  placeholder="Tell me, per question, whether I answered the demand of the question or wrote around it."
-                  hint="Write it the way you would say it out loud. It gets tightened, not replaced."
-                />
-                <TextArea
-                  label="I will know this worked if…"
-                  name="criteria"
-                  rows={2}
-                  placeholder="A one-line verdict against each of the four questions."
-                  className="mt-3"
-                />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm">Add</Button>
-                  <Button tone="secondary" size="sm">
-                    Suggest a sharper version
-                  </Button>
-                </div>
-                {/*
-                  An assistant drafts; a person decides. Nothing an
-                  assistant produces enters the contract on its own.
-                */}
-                <p className="mt-2 text-caption text-ink-muted">
-                  Suggestions are drafts. Nothing joins the {tl(fam.labels.agenda, lang)} unless you accept it.
+              <Panel
+                title={`Your ${plural(fam.labels.agendaItem, lang)}`}
+                note={`Between one and ${MAX_GOALS}. Written in ${languageName(e.language, lang)} — the language this work happens in, and the version that counts.`}
+              >
+                <ol className="space-y-4">
+                  {goals.map((item, i) => (
+                    <li key={item.id}>
+                      <TextArea
+                        label={`${t(fam.labels.agendaItem, lang)} ${i + 1}`}
+                        name="goal"
+                        rows={2}
+                        defaultValue={item.text.original}
+                        hint="Leave it empty to remove it."
+                      />
+                    </li>
+                  ))}
+                  {Array.from({ length: blanks }).map((_, i) => (
+                    <li key={`new-${i}`}>
+                      <TextArea
+                        label={`${t(fam.labels.agendaItem, lang)} ${goals.length + i + 1}`}
+                        name="goal"
+                        rows={2}
+                        hint="Write it the way you would say it out loud, specific enough to tick off."
+                      />
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-3 text-caption text-ink-muted">
+                  Save to add another line (up to {MAX_GOALS}).
                 </p>
-              </div>
-            )}
-          </Panel>
+              </Panel>
 
-          <Panel
-            title="Out of scope"
-            note={`What you are explicitly not asking for. This protects your ${tl(fam.labels.provider, lang)} — and protects you from paying for something you did not want.`}
-          >
-            {locked ? (
-              <p className="text-body">{agenda?.outOfScope?.original ?? 'Nothing recorded.'}</p>
-            ) : (
-              <TextArea
-                label="Anything you do not want them to spend time on"
-                name="outofscope"
-                rows={3}
-                defaultValue={agenda?.outOfScope?.original}
-                hint="Optional, and the most under-used field here. One line is usually enough."
-              />
-            )}
-          </Panel>
-
-          <Panel title="Context they will need">
-            <p className="text-body text-ink-muted">
-              Attachments are private. Only the person you are working with can open them, through a link that expires
-              in five minutes and carries their name across the page.
-            </p>
-            {!locked && (
-              <div className="mt-4 rounded-md border border-dashed border-line-strong p-6 text-center">
-                <p className="text-body font-medium">Add files</p>
-                <p className="mt-1 text-small text-ink-muted">
-                  Photograph your pages if that is easier — they are straightened and cropped for you.
-                </p>
-                <div className="mt-3">
-                  <Button tone="secondary" size="sm">
-                    Choose files
-                  </Button>
+              <Panel title="What comes back to you">
+                <div className="space-y-4">
+                  <TextArea
+                    label="What you will receive"
+                    name="expectedDeliverable"
+                    rows={2}
+                    required
+                    defaultValue={agenda?.expectedDeliverable}
+                  />
+                  <TextArea
+                    label="I will know this worked if…"
+                    name="successCriteria"
+                    rows={2}
+                    required
+                    defaultValue={agenda?.successCriteria}
+                  />
                 </div>
-              </div>
-            )}
-          </Panel>
+              </Panel>
+
+              <Panel
+                title="Out of scope"
+                note={`What you are explicitly not asking for. It protects your ${tl(fam.labels.provider, lang)} — and protects you from paying for something you did not want.`}
+              >
+                <TextArea
+                  label="Anything you do not want them to spend time on"
+                  name="outOfScope"
+                  rows={3}
+                  defaultValue={agenda?.outOfScope?.original}
+                  hint="Optional, and the most under-used field here. One line is usually enough."
+                />
+              </Panel>
+
+              <Button type="submit" size="lg">
+                Save the draft
+              </Button>
+            </form>
+          )}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -152,52 +166,62 @@ export default async function AgendaPage({ params }: { params: Promise<{ id: str
                 Neither of you can change this now. Both hold an identical, timestamped copy, and that copy is what a
                 dispute is decided against.
               </p>
-              <code className="figure mt-3 block rounded-sm bg-surface px-2 py-1 text-caption text-ink-muted">
-                {agenda?.contentHash}
-              </code>
+              {agenda?.contentHash && (
+                <code className="figure mt-3 block break-all rounded-sm bg-surface px-2 py-1 text-caption text-ink-muted">
+                  {agenda.contentHash}
+                </code>
+              )}
               <Divider className="my-4" />
-              <ButtonLink href={`/engagements/${e.id}/change-order`} tone="secondary" full>
-                Propose a change
+              <ButtonLink href={`/engagements/${e.id}`} full>
+                Back to the {tl(fam.labels.engagement, lang)}
               </ButtonLink>
-              <p className="mt-2 text-caption text-ink-muted">
-                A change needs both of you and creates version {(agenda?.version ?? 1) + 1}. This version is kept, not
-                replaced.
-              </p>
+            </Panel>
+          ) : agenda ? (
+            <Panel title="Lock it" tone="brand">
+              <ul className="space-y-2.5 text-small">
+                <li className="flex justify-between gap-3">
+                  <span className="text-ink-muted">Language</span>
+                  <span className="text-right font-medium">{languageName(e.language, lang)}</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span className="text-ink-muted">With</span>
+                  <span className="text-right font-medium">{e.provider?.displayName ?? '—'}</span>
+                </li>
+              </ul>
+              <p className="mt-3 text-caption text-ink-muted">Save any changes first — the saved draft is what gets locked.</p>
+              <Divider className="my-4" />
+              <form action={lockAgenda}>
+                <input type="hidden" name="engagementId" value={e.id} />
+                <input type="hidden" name="agendaId" value={agenda.id} />
+                <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+                <label className="flex min-h-touch cursor-pointer items-start gap-2.5 py-1.5 text-small">
+                  <input
+                    type="checkbox"
+                    name="understood"
+                    required
+                    className="mt-0.5 h-4 w-4 flex-none accent-[color:var(--brand)]"
+                  />
+                  <span>I understand this cannot be edited afterwards, and that a dispute is judged against it.</span>
+                </label>
+                <div className="mt-4">
+                  <Button full size="lg" type="submit">
+                    <GlyphLock /> Lock it
+                  </Button>
+                </div>
+              </form>
             </Panel>
           ) : (
             <Panel title="Lock it" tone="brand">
-              <ul className="space-y-2.5 text-small">
-                {[
-                  ['Language', `${languageName(e.language, lang)} — this is the version that counts`],
-                  ['Sent to', e.provider?.displayName ?? '—'],
-                  ['They have', '24 hours to accept or propose changes'],
-                  ['If they do not reply', 'It expires and you are refunded in full'],
-                ].map(([k, v]) => (
-                  <li key={k} className="flex justify-between gap-3">
-                    <span className="text-ink-muted">{k}</span>
-                    <span className="text-right font-medium">{v}</span>
-                  </li>
-                ))}
-              </ul>
-              <Divider className="my-4" />
-              <label className="flex min-h-touch cursor-pointer items-start gap-2.5 py-1.5 text-small">
-                <input type="checkbox" className="mt-0.5 h-4 w-4 flex-none accent-[color:var(--brand)]" />
-                <span>I understand this cannot be edited afterwards, and that a dispute is judged against it.</span>
-              </label>
-              <div className="mt-4">
-                <Button full size="lg" disabled>
-                  <GlyphLock /> Lock and send
-                </Button>
-              </div>
+              <p className="text-small text-ink-muted">Save a draft first. Locking is the step after.</p>
             </Panel>
           )}
 
           <Card className="p-5">
             <Eyebrow>Why this exists</Eyebrow>
             <p className="mt-2 text-small text-ink-muted">
-              Most people write &ldquo;need help with GS-II&rdquo; and are then disappointed by advice that was
-              perfectly reasonable. A checkable list means the two of you find out you disagree{' '}
-              <span className="font-medium text-ink">before</span> the money moves, not after.
+              A vague request gets advice that was perfectly reasonable and still disappointing. A checkable list means
+              the two of you find out you disagree <span className="font-medium text-ink">before</span> the money moves,
+              not after.
             </p>
           </Card>
         </aside>
@@ -205,3 +229,4 @@ export default async function AgendaPage({ params }: { params: Promise<{ id: str
     </AppShell>
   );
 }
+

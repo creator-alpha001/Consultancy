@@ -4,6 +4,7 @@ import { AccountService } from './account.service';
 import { AuthController } from './auth.controller';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
+import { SecretBox } from './secret-box';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { MfaPolicyService } from './mfa-policy.service';
@@ -21,7 +22,9 @@ import { TotpService } from './totp.service';
 @Module({
   imports: [DomainsModule],
   controllers: [AuthController, ProfileController],
-  providers: [AuthService, AccountService, ProfileService, PasswordService, TotpService, SessionService, MfaPolicyService, AuthGuard],
+  providers: [
+    { provide: SecretBox, useFactory: () => new SecretBox() },
+    AuthService, AccountService, ProfileService, PasswordService, TotpService, SessionService, MfaPolicyService, AuthGuard],
   exports: [AuthService, AccountService, ProfileService, SessionService, AuthGuard, PasswordService, TotpService, MfaPolicyService],
 })
 export class IdentityModule {}

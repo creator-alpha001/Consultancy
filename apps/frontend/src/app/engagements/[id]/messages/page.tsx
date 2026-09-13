@@ -57,7 +57,8 @@ export default async function MessagesPage({ params }: { params: Promise<{ id: s
 
           <TextArea label="Write something" name="message" rows={4} placeholder="A message, an update, a question." />
           <div className="mt-3 flex flex-wrap gap-2">
-            <ButtonLink href={`/engagements/${e.id}/messages`}>Send</ButtonLink>
+            {/* The API has no engagement thread — only in-session chat exists (TRACKER D63). */}
+            <p className="text-small text-ink-muted">Messaging outside a session is not available yet. Use the chat inside a session.</p>
           </div>
         </Panel>
 

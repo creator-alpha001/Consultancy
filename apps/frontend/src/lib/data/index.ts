@@ -598,3 +598,99 @@ export interface MyDomain {
 export async function getMyDomains(): Promise<MyDomain[]> {
   return (await apiOrNull<MyDomain[]>('/me/domains')) ?? [];
 }
+
+// ── dispute adjudication ─────────────────────────────────────────────
+
+export interface DisputeEvidence {
+  id: string;
+  kind: string;
+  refType: string | null;
+  refId: string | null;
+  /** In the language it was written in. Never a translation (#20). */
+  contentOriginal: string;
+  contentLang: string;
+  addedBy: string | null;
+}
+
+/** The evidence packet the ruling may cite — and nothing else. */
+export async function getDisputeEvidence(id: string): Promise<DisputeEvidence[]> {
+  return apiListOrEmpty<DisputeEvidence>(`/disputes/${encodeURIComponent(id)}/evidence`);
+}
+
+export interface DisputeRuling {
+  id: string;
+  tier: number;
+  ruledBy: string;
+  outcome: 'release_to_provider' | 'refund_to_seeker' | 'split';
+  seekerRefundPaise: string | null;
+  rationale: string;
+}
+
+export async function getDisputeRulings(id: string): Promise<DisputeRuling[]> {
+  return apiListOrEmpty<DisputeRuling>(`/disputes/${encodeURIComponent(id)}/rulings`);
+}
+
+export interface HeldQuestion {
+  id: string;
+  domainCode: string;
+  bodyOriginal: string;
+  bodyLang: string;
+  status: string;
+  distressFlagged: boolean;
+}
+
+/** Board questions screening held back from public view (#25). Never public. */
+export async function listHeldQuestions(): Promise<HeldQuestion[]> {
+  return apiListOrEmpty<HeldQuestion>('/board/moderation/held');
+}
+
+// ── operations read views ────────────────────────────────────────────
+
+export interface FeeScheduleView {
+  currency: string;
+  current: { platformFeeBps: number; effectiveFrom: string; effectiveTo: string | null } | null;
+  history: Array<{ platformFeeBps: number; effectiveFrom: string; effectiveTo: string | null; createdAt: string }>;
+}
+
+/** The platform fee actually in force, per currency, and every schedule before it. */
+export async function listFeeSchedules(): Promise<FeeScheduleView[]> {
+  return apiListOrEmpty<FeeScheduleView>('/admin/fee-schedules');
+}
+
+export interface AuditEntryView {
+  id: string;
+  createdAt: string;
+  actorRole: string | null;
+  actorName: string | null;
+  action: string;
+  subjectType: string;
+  subjectId: string | null;
+  detail: Record<string, unknown>;
+}
+
+/** The append-only audit log, newest first. */
+export async function listAuditLog(limit = 25): Promise<AuditEntryView[]> {
+  return apiListOrEmpty<AuditEntryView>(`/admin/audit-log?limit=${limit}`);
+}
+
+export interface ReviewDimension {
+  code: string;
+  labels: Record<string, string>;
+}
+
+/** The family's own review dimensions. A family may declare none; that is allowed. */
+export async function getReviewDimensions(familyCode: string): Promise<ReviewDimension[]> {
+  const family = await apiOrNull<{ reviewDimensions?: ReviewDimension[] }>(`/families/${encodeURIComponent(familyCode)}`);
+  return family?.reviewDimensions ?? [];
+}
+
+export interface ReportReason {
+  code: string;
+  labels: Record<string, string>;
+  isWelfareConcern: boolean;
+}
+
+/** The reasons a person may give, declared by the family — core names none of them. */
+export async function listReportReasons(domainCode: string): Promise<ReportReason[]> {
+  return apiListOrEmpty<ReportReason>(`/report-reasons?domainCode=${encodeURIComponent(domainCode)}`);
+}

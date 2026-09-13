@@ -1,63 +1,125 @@
+import { randomUUID } from 'node:crypto';
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import { Button, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, TextArea } from '@/components/ui';
 import { GoalsContract } from '@/components/goals';
 import { EscrowRail } from '@/components/escrow';
+import { ruleDispute, settleDispute } from '@/app/actions/disputes-admin';
 import { preview, contextFor } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
-import { t, tl } from '@/lib/pack';
-import { getDispute, getEngagement } from '@/lib/data';
-import { money, until, dateTime } from '@/lib/format';
+import { languageName, t, tl } from '@/lib/pack';
+import { getDispute, getDisputeEvidence, getDisputeRulings, getEngagement, type DisputeEvidence } from '@/lib/data';
+import { money, until } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
+
+const NOTICES: Record<string, string> = {
+  ruled: 'Ruling issued. Both parties receive your reasons verbatim. Nothing has moved yet — settle when ready.',
+  settled: 'Settled. The escrow has been carried out according to the ruling.',
+};
+
+const ERRORS: Record<string, string> = {
+  OUTCOME_REQUIRED: 'Choose an outcome.',
+  RATIONALE_TOO_SHORT: 'Write your reasons in full — at least a few sentences citing the goals and the evidence.',
+  SPLIT_AMOUNT_INVALID: 'For a split, enter the refund to the seeker as a whole number of rupees.',
+  RULING_SPLIT_AMOUNT_REQUIRED: 'For a split, enter the refund to the seeker.',
+  DISPUTE_WRONG_STATUS: 'This dispute is not at that stage any more. The page has been refreshed.',
+  UNKNOWN: 'That did not go through. Try again.',
+};
+
+/** The evidence kinds the API assembles, in words. An unknown kind shows its code rather than being hidden. */
+const EVIDENCE_KIND: Record<string, string> = {
+  agenda: 'The locked agenda',
+  agenda_item: 'An agenda item',
+  assessment: 'An assessment',
+  session_consent: 'Recording consent',
+  submission: 'Submitted work',
+};
+
+const OUTCOME_WORDS: Record<string, string> = {
+  release_to_provider: 'Release the escrow to the provider',
+  refund_to_seeker: 'Refund the seeker in full',
+  split: 'Split: refund part to the seeker, release the rest',
+};
 
 /**
  * Ruling on a dispute.
  *
- * The whole evidence packet is on one screen: the locked agenda with the
- * claimed items marked, the escrow state, attendance, the record of who
- * consented to recording, and both statements. A reviewer who has to
- * open five tabs rules worse and slower.
+ * **Everything on this screen comes from the record.** An earlier version
+ * showed sample party statements, a sample evidence list and a sample
+ * "automated summary" in place of real data — a reviewer could have read
+ * fiction and ruled on it. Now: the dispute as raised, in the language it
+ * was written; the evidence packet the API assembled, in its original
+ * languages (#20); the locked agenda; the escrow; and any earlier rulings.
+ * Anything not here was not considered.
  *
- * The goals render through the same component both parties saw. That is
- * the point of the component — the reviewer is looking at exactly the
- * artefact the two of them agreed to, not an operations summary of it.
- *
- * An assistant's summary is offered, labelled, and cannot act. No AI
- * output on this screen causes a money movement; a person presses the
- * button and their name goes on the ruling.
+ * No machine suggestion appears, and none can act (#18). A person chooses
+ * the outcome, writes the reasons, and presses the button; settling — the
+ * moment money moves — is a second, separate step.
  */
-export default async function DisputeDetailPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
-  const { id } = await params;
+export default async function DisputeDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ notice?: string; error?: string }>;
+}): Promise<JSX.Element> {
+  const [{ id }, { notice, error }] = await Promise.all([params, searchParams]);
   await requireRole('admin', '/admin/disputes');
   const { lang } = await preview('admin');
   const dispute = await getDispute(id);
   if (!dispute) notFound();
-  const engagement = await getEngagement(dispute.engagementId);
+  const [engagement, evidence, rulings] = await Promise.all([
+    getEngagement(dispute.engagementId),
+    getDisputeEvidence(id),
+    getDisputeRulings(id),
+  ]);
   /*
    * The reviewer reads this in the vocabulary the two parties used, not
-   * in ours. "The grower says" and "the agronomist says" is what the
-   * locked agenda called them, and renaming them for the console would
-   * quietly edit the evidence.
+   * in ours — renaming them for the console would quietly edit the evidence.
    */
   const fam = contextFor(engagement?.family);
+  const canRule = dispute.apiStatus === 'open' || dispute.apiStatus === 'appealed';
+  const canSettle = dispute.apiStatus === 'ruled';
+  const latest = rulings[rulings.length - 1];
 
   return (
     <AppShell fam={fam} lang={lang} role="admin" current="/admin/disputes">
       <PageHead
-        eyebrow={<span className="figure">{dispute.reference}</span>}
+        eyebrow={dispute.reference ? <span className="figure">{dispute.reference}</span> : undefined}
         title={`Tier ${dispute.tier} · ${money(dispute.amount)} frozen`}
-        sub={dispute.summary}
-        action={<SlaClock text={until(dispute.slaDueAt)} />}
+        sub={`Raised by the ${tl(dispute.raisedBy === 'provider' ? fam.labels.provider : fam.labels.seeker, lang)} · ${dispute.reasonCode.replace(/_/g, ' ')} · ${dispute.apiStatus}`}
+        action={dispute.slaDueAt ? <SlaClock text={until(dispute.slaDueAt)} /> : undefined}
       />
+
+      {notice && NOTICES[notice] && (
+        <div role="status" className="mb-5 rounded-md border border-verified-line bg-verified-soft px-4 py-3 text-small text-verified">
+          {NOTICES[notice]}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {ERRORS[error] ?? ERRORS.UNKNOWN}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <div className="min-w-0 space-y-5">
+          <Panel
+            title={`What the ${tl(dispute.raisedBy === 'provider' ? fam.labels.provider : fam.labels.seeker, lang)} said`}
+            action={<Chip>{languageName(dispute.summaryLang, lang)}</Chip>}
+            note="As written, in the language it was written in. A translation, if you need one, is a convenience — this is the record."
+          >
+            <p lang={dispute.summaryLang} className="max-w-reading whitespace-pre-line text-body">
+              {dispute.summary}
+            </p>
+          </Panel>
+
           {engagement?.agenda && (
             <div>
               <p className="mb-2 text-small text-ink-muted">
-                What the two of them locked, with the {tl(fam.labels.agendaItem, lang)} under claim marked. This is the
-                document the ruling is measured against — not anybody&rsquo;s later description of it.
+                What the two of them locked. This is the document the ruling is measured against — not anybody&rsquo;s
+                later description of it.
               </p>
               <GoalsContract
                 agenda={engagement.agenda}
@@ -68,141 +130,142 @@ export default async function DisputeDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Panel title={`The ${tl(fam.labels.seeker, lang)} says`}>
-              <p className="text-body">
-                &ldquo;ती कीड कोणती हे तिने सांगितलं, ते बरोबर आहे. पण मी विचारलं होतं की कोणतं औषध, किती
-                प्रमाणात — ते लिहून मिळालं नाही. दुकानात मी काय दाखवू?&rdquo;
-              </p>
-              <p className="mt-3 text-caption text-ink-muted">
-                Submitted 29 Aug · 6 completed before this · no previous disputes · working in Marathi
-              </p>
-            </Panel>
-            <Panel title={`The ${tl(fam.labels.provider, lang)} says`}>
-              <p className="text-body">
-                &ldquo;I identified the pest from the photographs and I stand by that. I will not put a dose in writing
-                without seeing the field — the label rate depends on the stage of the crop and I would be guessing. I
-                offered a call to work it out and had no reply.&rdquo;
-              </p>
-              <p className="mt-3 text-caption text-ink-muted">
-                Submitted 30 Aug · 1,840 completed · 2 previous disputes, both ruled in their favour
-              </p>
-            </Panel>
-          </div>
-
           <Panel title="Evidence" note="Everything the ruling may cite. Anything not here was not considered.">
-            <ul className="divide-y divide-line text-small">
-              {[
-                ['Locked agenda, version 1', 'Hashed 28 Aug, 14:00. Identical copies held by both, in Marathi.', 'Above'],
-                ['Delivered work', 'Identification note with two annotated photographs, opened 28 Aug.', 'Open'],
-                ['Message thread', '9 messages. A call was offered on 28 Aug and not answered.', 'Open'],
-                ['Rubric', 'None — photo diagnosis has no assessment template.', '—'],
-                ['Recording', 'Not applicable — no session was held.', '—'],
-              ].map(([what, detail, action]) => (
-                <li key={what} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                  <span className="min-w-0">
-                    <span className="block font-medium">{what}</span>
-                    <span className="block text-ink-muted">{detail}</span>
-                  </span>
-                  {action !== '—' ? (
-                    <a href="#" className="text-brand hover:underline">
-                      {action}
-                    </a>
-                  ) : (
-                    <span className="text-ink-faint">{action}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {evidence.length === 0 ? (
+              <p className="text-small text-ink-muted">The API assembled no evidence for this dispute.</p>
+            ) : (
+              <ul className="divide-y divide-line text-small">
+                {evidence.map((e) => (
+                  <EvidenceItem key={e.id} item={e} lang={lang} />
+                ))}
+              </ul>
+            )}
           </Panel>
 
-          {/*
-            Advisory, and labelled as such at the point of use rather
-            than in a policy document. It cannot approve, refuse or move
-            a rupee.
-          */}
-          <Panel tone="caution" title="Automated coverage summary">
-            <p className="text-small">
-              Comparing the delivered work against the locked list, goal 1 — identify the pest — is addressed, with a
-              named organism and stated reasoning. Goal 2 asked for a product, a dose and an interval &ldquo;in
-              writing, so I can show it at the shop&rdquo;; the delivered note names a product class and no dose. The
-              refusal is stated and reasoned rather than omitted.
-            </p>
-            <p className="mt-3 text-caption text-ink-muted">
-              A suggestion for you to accept or reject. It has not moved anything and it cannot. You are ruling, not
-              confirming.
-            </p>
-          </Panel>
+          {rulings.length > 0 && (
+            <Panel title="Rulings so far">
+              <ul className="space-y-4 text-small">
+                {rulings.map((r) => (
+                  <li key={r.id}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Chip>Tier {r.tier}</Chip>
+                      <span className="font-medium">{OUTCOME_WORDS[r.outcome] ?? r.outcome}</span>
+                      {r.seekerRefundPaise && (
+                        <span className="text-ink-muted">
+                          · {money({ amountPaise: Number(BigInt(r.seekerRefundPaise)), currency: dispute.amount.currency })} to the seeker
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1.5 whitespace-pre-line text-ink-muted">{r.rationale}</p>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
         </div>
 
-        {/* -------------------------------------------------- ruling */}
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           {engagement && <EscrowRail escrow={engagement.escrow} audience="admin" />}
 
-          <Panel title="Rule">
-            <Eyebrow>Which row of the matrix</Eyebrow>
-            <div className="mt-2 space-y-1.5">
-              {[
-                'Goals substantively unaddressed',
-                'Goals partly addressed',
-                'Goals addressed, seeker dissatisfied',
-                'Genuinely ambiguous',
-              ].map((row) => (
-                <label
-                  key={row}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-md border border-line p-2.5 text-small hover:bg-surface-sunk"
-                >
-                  <input type="radio" name="row" className="h-4 w-4 accent-[color:var(--brand)]" />
-                  {row}
+          {canRule && (
+            <Panel title={dispute.apiStatus === 'appealed' ? 'Rule on the appeal' : 'Rule'}>
+              <form action={ruleDispute}>
+                <input type="hidden" name="disputeId" value={dispute.id} />
+                <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+                <fieldset>
+                  <legend className="text-small font-medium">Outcome</legend>
+                  <div className="mt-2 space-y-1.5">
+                    {(['refund_to_seeker', 'release_to_provider', 'split'] as const).map((o) => (
+                      <label
+                        key={o}
+                        className="flex cursor-pointer items-center gap-2.5 rounded-md border border-line p-2.5 text-small hover:bg-surface-sunk"
+                      >
+                        <input type="radio" name="outcome" value={o} required className="h-4 w-4 accent-[color:var(--brand)]" />
+                        {OUTCOME_WORDS[o]}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <label className="mt-3 block text-small">
+                  <span className="mb-1 block text-ink-muted">For a split: refund to the seeker, in whole rupees</span>
+                  <input
+                    name="refundRupees"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-body"
+                    placeholder={`Up to ${money(dispute.amount)}`}
+                  />
                 </label>
-              ))}
-            </div>
 
-            <Divider className="my-4" />
+                <TextArea
+                  label="Written reasons"
+                  name="rationale"
+                  rows={6}
+                  required
+                  minLength={40}
+                  className="mt-4"
+                  hint="Both parties receive this verbatim. Cite the specific goal and the specific evidence."
+                />
 
-            <Eyebrow>Outcome</Eyebrow>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {['Full refund', '75% refund', '50% refund', '25% refund', 'Free follow-up', 'Release in full'].map(
-                (o) => (
-                  <button
-                    key={o}
-                    type="button"
-                    className="rounded-pill border border-line px-3 py-1.5 text-caption font-medium hover:border-brand hover:bg-brand-soft"
-                  >
-                    {o}
-                  </button>
-                ),
-              )}
-            </div>
+                <Divider className="my-4" />
+                <Button full size="lg" type="submit">
+                  Issue the ruling
+                </Button>
+                <p className="mt-2 text-caption text-ink-muted">
+                  Signed with your name and logged. Issuing it moves no money — settling does.
+                </p>
+              </form>
+            </Panel>
+          )}
 
-            <TextArea
-              label="Written reasons"
-              name="reasons"
-              rows={5}
-              className="mt-4"
-              hint="Both parties receive this verbatim. Cite the specific goal and the specific evidence."
-            />
+          {canSettle && latest && (
+            <Panel title="Settle" tone="caution">
+              <p className="text-small">
+                The ruling stands: <span className="font-medium">{OUTCOME_WORDS[latest.outcome] ?? latest.outcome}</span>.
+                Settling carries it out against the escrow now.
+              </p>
+              <form action={settleDispute} className="mt-3">
+                <input type="hidden" name="disputeId" value={dispute.id} />
+                <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+                <Button full type="submit">
+                  Settle the escrow
+                </Button>
+              </form>
+            </Panel>
+          )}
 
-            <Divider className="my-4" />
-
-            <Button full size="lg">
-              Issue the ruling
-            </Button>
-            <p className="mt-2 text-caption text-ink-muted">
-              Signed with your name, logged, and appealable once within seven days — to a different reviewer.
-            </p>
-          </Panel>
+          {!canRule && !canSettle && (
+            <Card className="p-5">
+              <Eyebrow>Nothing to do</Eyebrow>
+              <p className="mt-2 text-small text-ink-muted">This dispute is {dispute.apiStatus}.</p>
+            </Card>
+          )}
 
           <Card className="p-5">
             <Eyebrow>Before you rule</Eyebrow>
             <p className="mt-2 text-small text-ink-muted">
-              If you find yourself splitting the difference to avoid a hard call, use the ambiguous row instead: refund
-              the {tl(fam.labels.seeker, lang)}, pay the {tl(fam.labels.provider, lang)}, and we carry it. A fudged
-              partial refund leaves both of them feeling cheated.
+              If you find yourself splitting the difference to avoid a hard call, rule the case you actually find, in
+              full. A fudged partial refund leaves both of them feeling cheated. A platform-side failure is never the
+              {` ${tl(fam.labels.provider, lang)}`}&rsquo;s cost.
             </p>
           </Card>
         </aside>
       </div>
     </AppShell>
+  );
+}
+
+function EvidenceItem({ item, lang }: { item: DisputeEvidence; lang: Parameters<typeof languageName>[1] }): JSX.Element {
+  return (
+    <li className="py-3 first:pt-0 last:pb-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium">{EVIDENCE_KIND[item.kind] ?? item.kind.replace(/_/g, ' ')}</span>
+        <Chip>{languageName(item.contentLang, lang)}</Chip>
+        {item.addedBy === null && <span className="text-caption text-ink-faint">assembled from the record</span>}
+      </div>
+      <p lang={item.contentLang} className="mt-1 whitespace-pre-line text-ink-muted">
+        {item.contentOriginal}
+      </p>
+    </li>
   );
 }

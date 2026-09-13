@@ -60,6 +60,13 @@ jobs:
       - name: Route parity — no client has gone backwards
         run: node scripts/parity.mjs --check
 
+      # Calling a route is not the same as calling it correctly. The app
+      # once called every route and sent the wrong body to about fifteen
+      # of them (TRACKER D70). This compares each client's body literal
+      # with the API controller's declared body type.
+      - name: Request bodies — clients send what the API reads
+        run: node scripts/contract-bodies.mjs --check
+
       - name: Install (api)
         working-directory: apps/api
         run: npm ci --no-audit --no-fund

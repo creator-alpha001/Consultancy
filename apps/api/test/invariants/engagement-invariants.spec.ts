@@ -46,6 +46,28 @@ describe('engagement transition invariants (raw SQL)', () => {
     await pool.query(`UPDATE agendas SET locked_at = now(), locked_hash = 'test-hash' WHERE id = $1`, [agenda.rows[0].id]);
   }
 
+  // ── 0055: agenda item deletes ─────────────────────────────────────
+
+  it('actually deletes an item from an UNLOCKED agenda (the trigger used to cancel it silently)', async () => {
+    const { engagementId } = await seedAgreedEngagement();
+    const agenda = await pool.query<{ id: string }>(
+      `INSERT INTO agendas (engagement_id, original_lang, expected_deliverable, success_criteria)
+       VALUES ($1, 'en', 'Notes', 'Clear answers') RETURNING id`,
+      [engagementId],
+    );
+    await pool.query(`INSERT INTO agenda_items (agenda_id, ordinal, label_lang, label_text) VALUES ($1, 0, 'en', 'A')`, [agenda.rows[0].id]);
+    const deleted = await pool.query(`DELETE FROM agenda_items WHERE agenda_id = $1`, [agenda.rows[0].id]);
+    expect(deleted.rowCount).toBe(1);
+  });
+
+  it('still refuses to delete an item from a LOCKED agenda', async () => {
+    const { engagementId } = await seedAgreedEngagement();
+    await seedLockedAgenda(engagementId);
+    await expect(
+      pool.query(`DELETE FROM agenda_items WHERE agenda_id = (SELECT id FROM agendas WHERE engagement_id = $1)`, [engagementId]),
+    ).rejects.toThrow(/locked/);
+  });
+
   it('rejects an invalid transition (draft -> working, skipping agreed)', async () => {
     const { seekerId, providerId } = await seedUsers(pool);
     const engagementId = await seedEngagement(pool, seekerId, providerId);

@@ -15,6 +15,8 @@ import {
   getSubmission,
 } from '@/lib/data';
 import { submitWork } from '@/app/actions/assessment';
+import { randomUUID } from 'node:crypto';
+import { agreeTerms, cancelEngagement, payIntoEscrow } from '@/app/actions/engagement';
 import type { Submission } from '@/lib/types';
 import { dateTime, until } from '@/lib/format';
 
@@ -31,8 +33,30 @@ export const dynamic = 'force-dynamic';
  * now. It does not render a disabled button for a transition that is not
  * legal — a greyed-out control is a question the user cannot answer.
  */
-export default async function EngagementPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
-  const { id } = await params;
+const NOTICES: Record<string, string> = {
+  agreed: 'Terms confirmed.',
+  locked: 'The goals are locked. Both of you hold the same copy.',
+  paid: 'Paid into escrow. It is held until the goals are met.',
+  completed: 'Released. Thank you.',
+  cancelled: 'Cancelled. Nothing was charged.',
+  reviewed: 'Review saved.',
+};
+
+const ERRORS: Record<string, string> = {
+  ENGAGEMENT_WRONG_STATUS: 'That is not possible at this stage.',
+  PAYMENT_CAPTURE_FAILED: 'The payment did not go through. Nothing was taken — try again.',
+  PROVIDER_PAID_WORK_BLOCKED: 'This person cannot take paid work right now.',
+  UNKNOWN: 'That did not go through. Try again.',
+};
+
+export default async function EngagementPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ notice?: string; error?: string }>;
+}): Promise<JSX.Element> {
+  const [{ id }, { notice, error }] = await Promise.all([params, searchParams]);
   const { lang } = await preview('seeker');
   const e = await getEngagement(id);
   if (!e) notFound();
@@ -65,6 +89,17 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
         sub={`with ${e.provider?.displayName ?? '—'}`}
         action={<StatusChip status={e.status} />}
       />
+
+      {notice && NOTICES[notice] && (
+        <div role="status" className="mb-5 rounded-md border border-verified-line bg-verified-soft px-4 py-3 text-small text-verified">
+          {NOTICES[notice]}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {ERRORS[error] ?? ERRORS.UNKNOWN}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-6">
@@ -209,6 +244,84 @@ function ActionPanel({
   disputeId: string | null;
   submission: Submission | null;
 }): JSX.Element | null {
+  /*
+   * Draft: the terms exist but nobody has confirmed them. The goals can be
+   * written now; nothing is charged.
+   */
+  if (e.status === 'draft') {
+    return (
+      <Panel tone="brand" title="Confirm the terms">
+        <p className="text-body">
+          {t(fam.engagementTypes.find((x) => x.code === e.type)?.label, lang) || e.type} with {e.provider?.displayName ?? '—'}, at the published price. Nothing is
+          charged until the {tl(fam.labels.agenda, lang)} is locked and you pay into escrow.
+        </p>
+        <div className="mt-4 space-y-2">
+          <ButtonLink href={`/engagements/${e.id}/agenda`} tone="secondary" full>
+            Write the {tl(fam.labels.agenda, lang)}
+          </ButtonLink>
+          <form action={agreeTerms}>
+            <input type="hidden" name="engagementId" value={e.id} />
+            <Button full size="lg" type="submit">
+              Confirm the terms
+            </Button>
+          </form>
+          <form action={cancelEngagement}>
+            <input type="hidden" name="engagementId" value={e.id} />
+            <Button full tone="quiet" type="submit">
+              Cancel — nothing has been charged
+            </Button>
+          </form>
+        </div>
+      </Panel>
+    );
+  }
+
+  /*
+   * Agreed: work starts only once BOTH the goals are locked and the money
+   * is held (#12). Each is its own step, shown with whether it is done.
+   */
+  if (e.status === 'agreed' && !e.scheduledAt) {
+    const locked = e.agenda?.state === 'locked';
+    // The API maps a held escrow to the 'awarded' stage; 'posted' means nothing is held.
+    const held = e.escrow.stage !== 'posted';
+    return (
+      <Panel tone="brand" title="Two steps before work starts">
+        <ol className="space-y-3 text-body">
+          <li className="flex items-start gap-2">
+            <Chip tone={locked ? 'verified' : 'caution'}>{locked ? 'Done' : 'To do'}</Chip>
+            <span>Lock the {tl(fam.labels.agenda, lang)}</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Chip tone={held ? 'verified' : 'caution'}>{held ? 'Done' : 'To do'}</Chip>
+            <span>Pay into escrow — held, not paid out, until the goals are met</span>
+          </li>
+        </ol>
+        <div className="mt-4 space-y-2">
+          {!locked && (
+            <ButtonLink href={`/engagements/${e.id}/agenda`} full size="lg">
+              Lock the {tl(fam.labels.agenda, lang)}
+            </ButtonLink>
+          )}
+          {!held && (
+            <form action={payIntoEscrow}>
+              <input type="hidden" name="engagementId" value={e.id} />
+              <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+              <Button full size="lg" tone={locked ? 'primary' : 'secondary'} type="submit">
+                Pay into escrow
+              </Button>
+            </form>
+          )}
+          <form action={cancelEngagement}>
+            <input type="hidden" name="engagementId" value={e.id} />
+            <Button full tone="quiet" type="submit">
+              Cancel
+            </Button>
+          </form>
+        </div>
+      </Panel>
+    );
+  }
+
   if (e.status === 'assessed' || e.status === 'delivered') {
     return (
       <Panel tone="caution" title="Your turn">

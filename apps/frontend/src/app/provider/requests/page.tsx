@@ -4,6 +4,20 @@ import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel, languageName } from '@/lib/pack';
 import { listBoard } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
+import { proposeOnPost } from '@/app/actions/board';
+
+const NOTICES: Record<string, string> = {
+  proposed: 'Offer sent. They see it with your verified skills beside it.',
+  withdrawn: 'Offer withdrawn.',
+};
+
+const ERRORS: Record<string, string> = {
+  AMOUNT_INVALID: 'Give your price as a whole number of rupees.',
+  PROPOSAL_NOT_ELIGIBLE: 'You are not verified for this skill, tier or language yet.',
+  PROPOSAL_QUOTA_EXCEEDED: 'You have used this week’s offers. The limit keeps replies considered rather than sprayed.',
+  PROPOSAL_ALREADY_EXISTS: 'You have already made an offer on this.',
+  UNKNOWN: 'That could not be sent. Try again.',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +33,14 @@ export const dynamic = 'force-dynamic';
  * The fee breakdown is shown live as the price is typed. A provider
  * should never discover the split after committing.
  */
-export default async function ProviderRequestsPage(): Promise<JSX.Element> {
+export default async function ProviderRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ post?: string; notice?: string; error?: string }>;
+}): Promise<JSX.Element> {
   const { fam, lang } = await preview('provider');
-  const board = await listBoard();
-  const selected = board[0];
+  const [{ post, notice, error }, board] = await Promise.all([searchParams, listBoard()]);
+  const selected = board.find((r) => r.id === post) ?? board[0];
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider/requests">
@@ -30,6 +48,17 @@ export default async function ProviderRequestsPage(): Promise<JSX.Element> {
         title="Open requests"
         sub={`Matched to the skills you are verified for and the languages you work in. Declining costs you nothing.`}
       />
+
+      {notice && NOTICES[notice] && (
+        <div role="status" className="mb-5 rounded-md border border-verified-line bg-verified-soft px-4 py-3 text-small text-verified">
+          {NOTICES[notice]}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {ERRORS[error] ?? ERRORS.UNKNOWN}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <ul className="grid gap-3">
@@ -61,24 +90,13 @@ export default async function ProviderRequestsPage(): Promise<JSX.Element> {
                     {r.proposalCount} of 5 replies in
                   </span>
                   <div className="ml-auto flex gap-2">
-                    <Button size="sm" tone="quiet">
-                      Not for me
-                    </Button>
-                    <Button size="sm">Write a proposal</Button>
+                    <a
+                      href={`/provider/requests?post=${encodeURIComponent(r.id)}`}
+                      className="inline-flex min-h-touch items-center rounded-md bg-brand px-3 text-small font-medium text-brand-ink"
+                    >
+                      Write an offer
+                    </a>
                   </div>
-                </div>
-
-                {/*
-                  What a provider needs to decide whether this person is
-                  worth an hour. Semi-private: visible to a provider
-                  considering a request, never public.
-                */}
-                <div className="mt-3 rounded-md bg-surface-sunk p-3">
-                  <Eyebrow>About this {tl(rf.labels.seeker, lang)}</Eyebrow>
-                  <p className="mt-1 text-small text-ink-muted">
-                    4 completed · came back to the same person twice · no disputes raised · answers questions within a
-                    day. Rated by others here as prepared and clear.
-                  </p>
                 </div>
               </Card>
             </li>
@@ -89,56 +107,42 @@ export default async function ProviderRequestsPage(): Promise<JSX.Element> {
         {/* ------------------------------------------------- composer */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
           {selected && (
-            <Panel title="Your proposal" note={`For ${selected.reference}`}>
-              <TextArea
-                label="What you would actually do"
-                name="pitch"
-                rows={6}
-                placeholder="Say how you would approach it and what they will get back. Naming what you would NOT do wins more of these than a lower price does."
-                hint="They read this before they read your price."
-              />
+            <form action={proposeOnPost}>
+              <input type="hidden" name="postId" value={selected.id} />
+              <Panel title="Your offer" note={`For ${selected.reference}`}>
+                <TextArea
+                  label="What you would actually do"
+                  name="message"
+                  rows={6}
+                  required
+                  placeholder="How you would approach it, what they will get back, and by when. Naming what you would NOT do wins more of these than a lower price does."
+                  hint="They read this before they read your price."
+                />
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Field label="Your price" name="price" type="number" defaultValue={1700} />
-                <Field label="Back within (hours)" name="hours" type="number" defaultValue={60} />
-              </div>
+                <div className="mt-4">
+                  <Field label="Your price (₹)" name="rupees" inputMode="numeric" pattern="\d*" required />
+                </div>
 
-              {/*
-                The split, before committing — not after. Opacity here
-                destroys trust faster than the rate itself does.
-              */}
-              <div className="mt-4 rounded-md border border-line bg-surface-sunk p-4">
-                <Eyebrow>If they award this to you</Eyebrow>
-                <dl className="mt-2 space-y-1.5 text-small">
-                  <div className="flex justify-between">
-                    <dt className="text-ink-muted">They pay</dt>
-                    <dd className="figure font-medium">₹1,700</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-ink-muted">Our fee (15%)</dt>
-                    <dd className="figure text-ink-muted">−₹255</dd>
-                  </div>
-                  <div className="flex justify-between border-t border-line pt-1.5">
-                    <dt className="font-medium">You receive</dt>
-                    <dd className="figure font-semibold">₹1,445</dd>
-                  </div>
-                </dl>
-                <p className="mt-2.5 text-caption text-ink-muted">
-                  If this person comes back to you, our fee falls to 12%, then 8%. We take less the longer you two
-                  work together.
+                <div className="mt-4 rounded-md border border-line bg-surface-sunk p-4">
+                  <Eyebrow>If they award this to you</Eyebrow>
+                  <p className="mt-2 text-small text-ink-muted">
+                    They pay this price into escrow. Our fee comes out of it at the rate in force when the work is
+                    agreed, and the rest is paid to you when the goals are met. The exact split is shown on the
+                    engagement before anything moves.
+                  </p>
+                </div>
+
+                <Divider className="my-4" />
+
+                <Button full size="lg" type="submit">
+                  Send offer
+                </Button>
+                <p className="mt-2 text-caption text-ink-muted">
+                  You are not committed until they award it and you both lock the {tl(fam.labels.agenda, lang)}. You
+                  can withdraw before that.
                 </p>
-              </div>
-
-              <Divider className="my-4" />
-
-              <Button full size="lg">
-                Send proposal
-              </Button>
-              <p className="mt-2 text-caption text-ink-muted">
-                You are not committed until they award it and you both lock the {tl(fam.labels.agenda, lang)}. You can
-                withdraw before that.
-              </p>
-            </Panel>
+              </Panel>
+            </form>
           )}
         </aside>
       </div>

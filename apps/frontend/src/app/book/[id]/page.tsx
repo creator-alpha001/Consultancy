@@ -7,6 +7,7 @@ import { preview, contextFor } from '@/lib/preview';
 import { t, tl, languageName } from '@/lib/pack';
 import { getProvider } from '@/lib/data';
 import { commitmentLine, money } from '@/lib/format';
+import { bookService } from '@/app/actions/engagement';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,18 +21,26 @@ export const dynamic = 'force-dynamic';
  * is the goals, worked out with the provider; this page hands off to it
  * rather than pretending to replace it.
  *
- * Like the rest of this prototype, the form does not submit — see
- * src/app/board/new/page.tsx for the same pattern and why.
+ * Submitting creates the engagement as a draft at the service's published
+ * price and goes straight to the agenda. Nothing is charged until the
+ * agenda is locked and the seeker pays into escrow.
  */
+const ERRORS: Record<string, string> = {
+  SERVICE_REQUIRED: 'Choose a service.',
+  CATEGORY_REQUIRED: 'Choose what this is about.',
+  LANGUAGE_REQUIRED: 'Choose the language you want to work in.',
+  PROVIDER_PAID_WORK_BLOCKED: 'This person cannot take paid work right now.',
+  UNKNOWN: 'That could not be started. Try again.',
+};
 export default async function BookPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ service?: string }>;
+  searchParams: Promise<{ service?: string; error?: string }>;
 }): Promise<JSX.Element> {
   const { id } = await params;
-  const { service: serviceId } = await searchParams;
+  const { service: serviceId, error } = await searchParams;
   const { lang } = await preview('seeker');
 
   const p = await getProvider(id);
@@ -70,7 +79,14 @@ export default async function BookPage({
         </EmptyState>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-          <form className="min-w-0 space-y-5">
+          <form action={bookService} className="min-w-0 space-y-5">
+            <input type="hidden" name="providerId" value={p.id} />
+            <input type="hidden" name="domainCode" value={domain?.code ?? ''} />
+            {error && (
+              <div role="alert" className="rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+                {ERRORS[error] ?? ERRORS.UNKNOWN}
+              </div>
+            )}
             <Panel title="Which service">
               <div className="space-y-2.5">
                 {p.services.map((s) => {
@@ -89,7 +105,7 @@ export default async function BookPage({
                         <input
                           type="radio"
                           name="service"
-                          value={s.id}
+                          value={`${s.id}|${s.type}|${s.price.amountPaise}|${s.price.currency}`}
                           defaultChecked={active}
                           className="mt-1 h-4 w-4 accent-brand"
                         />
@@ -132,21 +148,32 @@ export default async function BookPage({
               />
             </Panel>
 
-            <Panel title="Roughly when">
-              <Field
-                label="Preferred start"
-                name="preferredStart"
-                type="date"
-                hint={
-                  p.nextAvailable
-                    ? `Next open slot is ${new Date(p.nextAvailable).toLocaleString(lang === 'hi' ? 'hi-IN' : 'en-IN', { dateStyle: 'medium', timeStyle: 'short' })}. The exact time is arranged once the ${tl(fam.labels.agenda, lang)} is locked, not before.`
-                    : `The exact time is arranged once the ${tl(fam.labels.agenda, lang)} is locked, not before.`
-                }
-              />
+            <Panel title={`What is this about?`}>
+              <label className="block text-small">
+                <span className="mb-1.5 block font-medium">{t(fam.labels.category, lang)}</span>
+                <select
+                  name="categoryId"
+                  required
+                  className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-body"
+                >
+                  {(domain?.categories ?? [])
+                    .filter((c) => c.id)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {t(c.label, lang)}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <p className="mt-2 text-caption text-ink-muted">
+                The exact time, if this is live, is arranged once the {tl(fam.labels.agenda, lang)} is locked.
+              </p>
             </Panel>
 
             <div className="flex flex-wrap gap-3">
-              <Button size="lg">Continue to the {tl(fam.labels.agenda, lang)}</Button>
+              <Button size="lg" type="submit">
+                Continue to the {tl(fam.labels.agenda, lang)}
+              </Button>
               <ButtonLink href={`/providers/${p.id}`} tone="secondary" size="lg">
                 Back to profile
               </ButtonLink>

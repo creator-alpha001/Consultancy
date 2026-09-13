@@ -235,10 +235,18 @@ an authenticator app to hand.
 ## 5. Checking it works
 
 ```bash
-cd apps/api      && npm test        # 456 tests, against sankalp_test
-cd apps/frontend && npm test        # 317 unit tests, no database needed
+cd apps/api      && npm test        # against sankalp_test
+cd apps/frontend && npm test        # unit tests, no database needed
 cd apps/frontend && npm run typecheck && npm run build
+cd apps/app      && flutter analyze && flutter test
+
+node scripts/parity.mjs --check           # no client stopped calling a route (method-aware)
+node scripts/contract-bodies.mjs --check  # every client sends the body the API reads
 ```
+
+The last two need nothing running. `contract-bodies.mjs` exists because
+the app once called every route and sent the wrong body to about fifteen
+of them (TRACKER D70); route coverage alone could not see it.
 
 The API suites TRUNCATE, so they refuse to run against anything that is
 not visibly a test database — `.env.example` sets `TEST_DATABASE_URL`

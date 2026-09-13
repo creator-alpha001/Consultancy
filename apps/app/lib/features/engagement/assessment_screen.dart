@@ -627,9 +627,7 @@ class _SubmitScreenState extends ConsumerState<SubmitScreen> {
           .submit(
             widget.engagementId,
             note: note,
-            attachmentIds: <String>[
-              if (_attached != null) _attached!.attachmentId,
-            ],
+            attachmentId: _attached?.attachmentId,
           );
       ref
         ..invalidate(latestSubmissionProvider(widget.engagementId))

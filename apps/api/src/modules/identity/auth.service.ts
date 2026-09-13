@@ -17,6 +17,7 @@ import {
 } from './errors';
 import { AccountService, assertPasswordAcceptable } from './account.service';
 import { PasswordService } from './password.service';
+import { SecretBox } from './secret-box';
 import { MfaPolicyService } from './mfa-policy.service';
 import { SessionService } from './session.service';
 import { TotpService } from './totp.service';
@@ -99,6 +100,7 @@ export class AuthService {
     @Inject(MfaPolicyService) private readonly mfaPolicy: MfaPolicyService,
     @Inject(AgreementService) private readonly agreements: AgreementService,
     @Inject(AccountService) private readonly accounts: AccountService,
+    @Inject(SecretBox) private readonly secrets: SecretBox,
   ) {}
 
   private readonly log = new Logger(AuthService.name);
@@ -276,7 +278,9 @@ export class AuthService {
       `INSERT INTO auth_factors (user_id, type, secret)
        VALUES ($1, 'totp', $2)
        ON CONFLICT (user_id, type) DO UPDATE SET secret = EXCLUDED.secret, confirmed_at = NULL`,
-      [userId, secret],
+      // Sealed before it reaches the database (D18). The caller still
+      // receives the plain secret once, to put in an authenticator.
+      [userId, this.secrets.seal(secret)],
     );
 
     return {
@@ -291,8 +295,9 @@ export class AuthService {
       `SELECT secret FROM auth_factors WHERE user_id = $1 AND type = 'totp'`,
       [userId],
     );
-    const secret = res.rows[0]?.secret;
-    if (!secret) throw mfaNotEnrolled('this account');
+    const stored = res.rows[0]?.secret;
+    if (!stored) throw mfaNotEnrolled('this account');
+    const secret = this.secrets.open(stored);
     if (!this.totp.verify(secret, code)) throw mfaInvalid();
 
     await this.pool.query(
@@ -349,12 +354,24 @@ export class AuthService {
     return res.rows[0] ? mapUser(res.rows[0]) : null;
   }
 
+  /**
+   * The confirmed factor's secret, opened. A secret stored before
+   * encryption existed, or sealed with a retired key, is re-sealed with
+   * the current key here — so turning encryption on needs no migration
+   * that decrypts anything in bulk.
+   */
   private async confirmedFactorFor(userId: string): Promise<{ secret: string } | null> {
-    const res = await this.pool.query<{ secret: string }>(
-      `SELECT secret FROM auth_factors WHERE user_id = $1 AND type = 'totp' AND confirmed_at IS NOT NULL`,
+    const res = await this.pool.query<{ id: string; secret: string }>(
+      `SELECT id, secret FROM auth_factors WHERE user_id = $1 AND type = 'totp' AND confirmed_at IS NOT NULL`,
       [userId],
     );
-    return res.rows[0] ?? null;
+    const row = res.rows[0];
+    if (!row) return null;
+    const secret = this.secrets.open(row.secret);
+    if (this.secrets.needsReseal(row.secret)) {
+      await this.pool.query(`UPDATE auth_factors SET secret = $2 WHERE id = $1`, [row.id, this.secrets.seal(secret)]);
+    }
+    return { secret };
   }
 
   /** Constant-time match across the user's unused codes, then marks it used. */

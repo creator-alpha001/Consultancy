@@ -346,6 +346,8 @@ export function toEngagement(e: ApiEngagement): Engagement {
           outOfScope: e.agenda.outOfScope
             ? { original: e.agenda.outOfScope.original, originalLanguage: e.agenda.outOfScope.originalLanguage }
             : null,
+          expectedDeliverable: e.agenda.expectedDeliverable,
+          successCriteria: e.agenda.successCriteria,
           lockedAt: e.agenda.lockedAt,
           contentHash: e.agenda.contentHash,
           items: e.agenda.items.map((i) => ({
@@ -742,8 +744,11 @@ export function toDispute(d: ApiDisputeQueueItem): Dispute {
     // rather than with an invented highlight.
     claimedItems: [],
     status: (d.status === 'open' ? 'triage' : d.status) as Dispute['status'],
+    apiStatus: d.status,
     // The original language is authoritative and is never discarded (#20).
     summary: d.bodyOriginal,
+    summaryLang: d.bodyLang,
+    reasonCode: d.reasonCode,
   };
 }
 
@@ -784,6 +789,8 @@ export function toSafetyItem(r: ApiReport): SafetyItem {
     source: `${r.subjectType} · ${r.reasonCode.replace(/_/g, ' ')}`,
     excerpt: r.detailOriginal ?? '',
     heldFromPublic: r.holdsContent,
+    status: r.status,
+    excerptLang: r.detailLang,
   };
 }
 

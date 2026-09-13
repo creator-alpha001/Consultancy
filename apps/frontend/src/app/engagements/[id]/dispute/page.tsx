@@ -6,6 +6,15 @@ import { preview, contextFor } from '@/lib/preview';
 import { tl } from '@/lib/pack';
 import { getEngagement } from '@/lib/data';
 import { money } from '@/lib/format';
+import { raiseDispute } from '@/app/actions/engagement';
+
+const ERRORS: Record<string, string> = {
+  ITEMS_REQUIRED: 'Select at least one goal this case is about.',
+  BODY_TOO_SHORT: 'Say what happened in a few sentences — the reviewer reads exactly this.',
+  REASON_REQUIRED: 'A reason is required.',
+  DISPUTE_ALREADY_EXISTS: 'There is already a case open on this.',
+  UNKNOWN: 'That could not be opened. Try again.',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +27,14 @@ export const dynamic = 'force-dynamic';
  * good" is not a claim the platform can adjudicate; "item 3 was not
  * addressed" is.
  */
-export default async function RaiseDisputePage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
-  const { id } = await params;
+export default async function RaiseDisputePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}): Promise<JSX.Element> {
+  const [{ id }, { error }] = await Promise.all([params, searchParams]);
   const { lang } = await preview('seeker');
   const e = await getEngagement(id);
   if (!e || !e.agenda) notFound();
@@ -33,7 +48,17 @@ export default async function RaiseDisputePage({ params }: { params: Promise<{ i
         sub={`${money(e.escrow.held)} is held. Raising a case freezes it until a ruling is made — it is not a way to get a faster refund.`}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      {error && (
+        <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {ERRORS[error] ?? ERRORS.UNKNOWN}
+        </div>
+      )}
+
+      <form action={raiseDispute} className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <input type="hidden" name="engagementId" value={e.id} />
+        <input type="hidden" name="bodyLang" value={e.agenda.language} />
+        {/* No reason taxonomy is declared yet (TRACKER D61); the substance is the claimed goals and the account. */}
+        <input type="hidden" name="reasonCode" value="agenda_not_met" />
         <div className="min-w-0 space-y-5">
           <Panel
             title={`Which ${tl(fam.labels.agendaItem, lang)} are you claiming?`}
@@ -43,7 +68,7 @@ export default async function RaiseDisputePage({ params }: { params: Promise<{ i
               {e.agenda.items.map((item) => (
                 <li key={item.id}>
                   <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line p-3.5 hover:border-line-strong">
-                    <input type="checkbox" name="items" value={item.id} className="mt-1 h-4 w-4 accent-brand" />
+                    <input type="checkbox" name="claimedItem" value={item.text.original} className="mt-1 h-4 w-4 accent-brand" />
                     <span>
                       <span className="block text-body">{item.text.original}</span>
                       {item.successCriteria && (
@@ -111,11 +136,11 @@ export default async function RaiseDisputePage({ params }: { params: Promise<{ i
             </p>
           </Panel>
 
-          <Button full size="lg" tone="destructive">
+          <Button full size="lg" tone="destructive" type="submit">
             Open the case
           </Button>
         </aside>
-      </div>
+      </form>
     </AppShell>
   );
 }

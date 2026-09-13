@@ -3,7 +3,8 @@ import { AppShell } from '@/components/shell';
 import { Button, Chip, Divider, Eyebrow, PageHead, Panel } from '@/components/ui';
 import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
-import { listDomainsForOps } from '@/lib/data';
+import { listAuditLog, listDomainsForOps, listFeeSchedules } from '@/lib/data';
+import { dateTime } from '@/lib/format';
 import { setDomainListing } from '@/app/actions/pack';
 import { allFamilies, t } from '@/lib/pack';
 
@@ -12,10 +13,12 @@ export const dynamic = 'force-dynamic';
 /**
  * Configuration and the pack editor.
  *
- * Everything on this screen is editable without a deploy: fee rates, tax
- * rates, cancellation windows, clearance periods, SLA targets. Rates
- * change every budget cycle and a rate that needs an engineer is a rate
- * that will be wrong for a fortnight.
+ * **Everything shown here is read from the platform.** An earlier version
+ * drew a fee table ("Base fee 15%"), tax rates, windows and an audit log
+ * with named reviewers — none of it real. A console that shows invented
+ * configuration is worse than one that shows none, because people act on
+ * it. The fee schedule and the audit log now come from the API; settings
+ * the platform does not hold as data yet are listed as such.
  *
  * The pack list below is the architectural claim in its most literal
  * form: adding a domain is a manifest plus a category-to-skill mapping
@@ -26,7 +29,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminConfigPage(): Promise<JSX.Element> {
   await requireRole('admin', '/admin/config');
   const { fam, lang } = await preview('admin');
-  const opsDomains = await listDomainsForOps();
+  const [opsDomains, fees, audit] = await Promise.all([listDomainsForOps(), listFeeSchedules(), listAuditLog(25)]);
 
   return (
     <AppShell fam={fam} lang={lang} role="admin" current="/admin/config">
@@ -36,52 +39,44 @@ export default async function AdminConfigPage(): Promise<JSX.Element> {
       />
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Panel title="Rates and windows" action={<Button size="sm" tone="secondary">Edit</Button>}>
-          <dl className="divide-y divide-line text-small">
-            {[
-              ['Base fee', '15%'],
-              ['Fee, third to fifth engagement with the same pair', '12%'],
-              ['Fee, sixth onwards', '8%'],
-              ['Clearance period', '3 working days'],
-              ['Review window before auto-release', '72 hours'],
-              ['Provider must respond within', '24 hours'],
-              ['Recording retention', '90 days'],
-              ['Dispute reserve budget', '2% of volume'],
-            ].map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
-                <dt className="text-ink-muted">{k}</dt>
-                <dd className="figure font-semibold">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          {/*
-            Rates are read from a schedule by timestamp, never as the
-            latest row. A change here does not retroactively reprice work
-            that was already agreed.
-          */}
+        <Panel title="Platform fee" note="The rate in force now, per currency, read by timestamp — never as the most recent row.">
+          {fees.length === 0 ? (
+            <p className="text-small text-ink-muted">
+              No fee schedule exists. Money cannot move until one does — that is enforced, not a default.
+            </p>
+          ) : (
+            <dl className="divide-y divide-line text-small">
+              {fees.map((f) => (
+                <div key={f.currency} className="py-2.5 first:pt-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-ink-muted">{f.currency}</dt>
+                    <dd className="figure font-semibold">
+                      {f.current ? `${(f.current.platformFeeBps / 100).toFixed(2)}%` : 'None in force'}
+                    </dd>
+                  </div>
+                  {f.current && (
+                    <p className="mt-1 text-caption text-ink-muted">
+                      Since {dateTime(f.current.effectiveFrom)}
+                      {f.current.effectiveTo ? ` · until ${dateTime(f.current.effectiveTo)}` : ''} · {f.history.length}{' '}
+                      {f.history.length === 1 ? 'schedule' : 'schedules'} on record
+                    </p>
+                  )}
+                </div>
+              ))}
+            </dl>
+          )}
           <p className="mt-4 border-t border-line pt-3 text-caption text-ink-muted">
-            A change applies from the moment you save it, forwards. Work already agreed keeps the rate that was in
-            force when it was agreed — the schedule is read by timestamp, not by "most recent".
+            A change is a new effective-dated schedule, forwards only; work already agreed keeps the rate that was in
+            force when it was agreed. There is no form for it here yet. Every figure needs a chartered accountant&rsquo;s
+            confirmation before it touches a real rupee.
           </p>
         </Panel>
 
-        <Panel title="Tax" action={<Button size="sm" tone="secondary">Edit</Button>}>
-          <dl className="divide-y divide-line text-small">
-            {[
-              ['GST on our commission', '18%'],
-              ['TDS on gross provider payments', 'Per the rate in force'],
-              ['TCS under GST', 'Per the rate in force'],
-              ['Provider registration threshold', 'Configured per state'],
-            ].map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
-                <dt className="text-ink-muted">{k}</dt>
-                <dd className="font-semibold">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="mt-4 border-t border-line pt-3 text-caption text-ink-muted">
-            Held as data rather than as logic, because these change every budget cycle. Every figure here needs
-            confirming with a chartered accountant before it goes anywhere near a real rupee.
+        <Panel title="Not yet held as data">
+          <p className="text-small text-ink-muted">
+            Tax rates (GST on commission, TDS, TCS), the clearance period, the review window before auto-release and
+            dispute reserve budgets are not configurable platform data yet, so nothing is shown for them rather than a
+            guess. Recording retention is fixed at 90 days in the schema.
           </p>
         </Panel>
 
@@ -210,27 +205,26 @@ export default async function AdminConfigPage(): Promise<JSX.Element> {
           </div>
         </Panel>
 
-        <Panel title="Audit log" className="lg:col-span-2" action={<Button size="sm" tone="secondary">Export</Button>}>
-          <ul className="divide-y divide-line text-small">
-            {[
-              ['31 Aug, 16:04', 'R. Iyer', 'Approved credential crd_8 at credential-verified, for polity_answer_writing', 'Result list confirms roll number for 2020.'],
-              ['31 Aug, 11:20', 'S. Banerjee', 'Ruled DSP-308, 50% refund', 'Two of four goals substantively unaddressed.'],
-              ['30 Aug, 09:15', 'R. Iyer', 'Changed clearance period from 5 days to 3 days', 'Provider feedback; chargeback exposure reviewed with finance.'],
-              ['29 Aug, 18:41', 'System', 'Held payout to A. Fernandes', 'Penny-drop verification failed twice.'],
-            ].map(([when, who, what, why]) => (
-              <li key={when} className="py-3 first:pt-0 last:pb-0">
-                <div className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="figure text-ink-muted">{when}</span>
-                  <span className="font-medium">{who}</span>
-                  <span>{what}</span>
-                </div>
-                <p className="mt-0.5 text-caption text-ink-muted">Reason given: {why}</p>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 border-t border-line pt-3 text-caption text-ink-muted">
-            Append-only. Every action carries an actor and a reason, and nothing in this console can remove a line.
-          </p>
+        <Panel title="Audit log" className="lg:col-span-2" note="The 25 most recent entries, newest first. Append-only: nothing in this console can remove a line.">
+          {audit.length === 0 ? (
+            <p className="text-small text-ink-muted">Nothing has been recorded yet.</p>
+          ) : (
+            <ul className="divide-y divide-line text-small">
+              {audit.map((e) => (
+                <li key={e.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex flex-wrap items-baseline gap-x-3">
+                    <span className="figure text-ink-muted">{dateTime(e.createdAt)}</span>
+                    <span className="font-medium">{e.actorName ?? 'The platform'}</span>
+                    <span>{e.action.replace(/[._]/g, ' ')}</span>
+                    <span className="text-ink-muted">· {e.subjectType.replace(/_/g, ' ')}</span>
+                  </div>
+                  {typeof e.detail.note === 'string' && e.detail.note && (
+                    <p className="mt-0.5 text-caption text-ink-muted">Reason given: {e.detail.note}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       </div>
     </AppShell>

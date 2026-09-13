@@ -7,6 +7,8 @@ import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel, languageName } from '@/lib/pack';
 import { getBoardRequest, listProposals } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
+import { randomUUID } from 'node:crypto';
+import { acceptProposal } from '@/app/actions/board';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +29,14 @@ export const dynamic = 'force-dynamic';
  * 900px, because a five-column table at 360px is unreadable and a
  * horizontal scroll to compare is worse than no comparison at all.
  */
-export default async function BoardRequestPage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
+export default async function BoardRequestPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}): Promise<JSX.Element> {
+  const { error } = await searchParams;
   const { id } = await params;
   const { lang } = await preview('seeker');
   const [request, proposals] = await Promise.all([getBoardRequest(id), listProposals(id)]);
@@ -50,6 +59,14 @@ export default async function BoardRequestPage({ params }: { params: Promise<{ i
         <Chip tone="neutral">Budget {money(request.budget)}</Chip>
         <Chip tone="neutral">Posted {ago(request.postedAt)}</Chip>
       </div>
+
+      {error && (
+        <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {error === 'PROPOSAL_WRONG_STATUS' || error === 'BOARD_POST_WRONG_STATUS'
+            ? 'This offer can no longer be awarded.'
+            : 'That could not be awarded. Try again.'}
+        </div>
+      )}
 
       <section aria-labelledby="proposals">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -113,7 +130,14 @@ export default async function BoardRequestPage({ params }: { params: Promise<{ i
                           <dd className="text-small font-medium">{ago(p.submittedAt)}</dd>
                         </div>
                       </dl>
-                      <Button full>Award to {p.provider.displayName.split(' ')[0]}</Button>
+                      <form action={acceptProposal}>
+                        <input type="hidden" name="postId" value={request.id} />
+                        <input type="hidden" name="proposalId" value={p.id} />
+                        <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+                        <Button full type="submit">
+                          Award to {p.provider.displayName.split(' ')[0]}
+                        </Button>
+                      </form>
                       <ButtonLink href={`/board/${request.id}/ask/${p.id}`} tone="secondary" full size="sm">
                         Ask a question first
                       </ButtonLink>

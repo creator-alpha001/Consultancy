@@ -21,6 +21,11 @@ import { Avatar, Chip } from './ui';
 interface NavItem {
   href: string;
   label: string;
+  /**
+   * A count to show beside the item. Only ever a real one: the preview
+   * build drew fixed numbers here ("Disputes 3"), which told an operator
+   * there was work waiting whether or not there was.
+   */
   badge?: number;
 }
 
@@ -149,8 +154,8 @@ function navFor(role: Role, fam: FamilyPack, lang: Lang): NavItem[] {
   if (role === 'provider') {
     return [
       { href: '/provider', label: 'Dashboard' },
-      { href: '/provider/requests', label: 'Open requests', badge: 4 },
-      { href: '/provider/work', label: 'My work', badge: 2 },
+      { href: '/provider/requests', label: 'Open requests' },
+      { href: '/provider/work', label: 'My work' },
       { href: '/provider/earnings', label: 'Earnings' },
       { href: '/provider/standing', label: 'Verification' },
     ];
@@ -158,9 +163,9 @@ function navFor(role: Role, fam: FamilyPack, lang: Lang): NavItem[] {
   if (role === 'admin') {
     return [
       { href: '/admin', label: 'Overview' },
-      { href: '/admin/verification', label: 'Verification', badge: 3 },
-      { href: '/admin/disputes', label: 'Disputes', badge: 3 },
-      { href: '/admin/safety', label: 'Safety', badge: 1 },
+      { href: '/admin/verification', label: 'Verification' },
+      { href: '/admin/disputes', label: 'Disputes' },
+      { href: '/admin/safety', label: 'Safety' },
       { href: '/admin/money', label: 'Money' },
       { href: '/admin/config', label: 'Config' },
     ];
@@ -272,7 +277,7 @@ function RoleMenu({ role, dark }: { role: Role; dark: boolean }): JSX.Element {
         aria-haspopup="true"
         aria-label="Account and product menu"
       >
-        <Avatar name={role === 'admin' ? 'Ops' : role === 'provider' ? 'D M' : 'A R'} size="sm" />
+        <Avatar name={role === 'admin' ? 'Ops' : 'You'} size="sm" />
         <span aria-hidden="true">▾</span>
       </button>
       <div className="invisible absolute right-0 top-full z-40 w-72 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">

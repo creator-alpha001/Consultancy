@@ -233,6 +233,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             subjectType: widget.subjectType,
             subjectId: widget.subjectId,
             reasonCode: _reasonCode!,
+            lang: ref.read(langProvider),
             detail: _detail.text.trim().isEmpty ? null : _detail.text.trim(),
           );
       if (mounted) setState(() => _done = true);

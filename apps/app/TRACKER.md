@@ -37,7 +37,7 @@ a piece of debt — belongs in the root file with a `D` number, not here.
 | Route coverage | **130/130 (100%)**, against `apps/frontend`'s 76/152 (50%). The two emailed-link landings (reset, verify) are web pages by design and exempt. Parity is method-blind (root D64); a method-aware pass found and closed two hidden gaps |
 | Screens built | **34 — none stubbed** |
 | Screens stubbed | **0** (table below is empty, and a test keeps it that way) |
-| Dart tests | 107 across 10 files |
+| Dart tests | 107 across 10 files. Request bodies are checked against the API by `scripts/contract-bodies.mjs` (root D70) |
 | Driven against a real API | `./scripts/dev.sh app-drive` |
 
 Run `node scripts/parity.mjs --missing apps/app` for the routes still

@@ -44,8 +44,11 @@ export class AssessmentController {
     @Body() body: { contentRef?: string; attachmentId?: string; note?: string },
   ): Promise<SubmissionRow> {
     await this.access.assertSeeker(engagementId, actor);
-    if (!body.contentRef && !body.attachmentId) {
-      throw new BadRequestException('either attachmentId or contentRef is required');
+    // Work can be a file, a link, or written straight into the note — a
+    // written answer or question is work too. Only an empty submission
+    // is refused.
+    if (!body.contentRef && !body.attachmentId && !body.note?.trim()) {
+      throw new BadRequestException('attach a file, give a link, or write the work in the note');
     }
     return this.submissions.submit({
       engagementId,

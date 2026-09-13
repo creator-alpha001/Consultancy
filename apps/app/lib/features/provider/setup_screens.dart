@@ -37,7 +37,13 @@ class _SubmitCredentialSheetState
     extends ConsumerState<SubmitCredentialSheet> {
   final Map<String, TextEditingController> _fields =
       <String, TextEditingController>{};
-  String? _typeId;
+
+  /// The credential type, by its CODE — the only identifier a type has.
+  String? _typeCode;
+
+  /// The skills this credential is evidence for. Verification is per
+  /// skill, never per person (#5), so the provider says which.
+  final Set<String> _skillCodes = <String>{};
   PickedUpload? _document;
   bool _busy = false;
   String? _error;
@@ -85,16 +91,24 @@ class _SubmitCredentialSheetState
                   for (final Map<String, dynamic> t in list)
                     ChoiceChip(
                       label: PackText(_label(t, lang)),
-                      selected: _typeId == t['id'],
+                      selected: _typeCode == t['code'],
                       onSelected: (_) =>
-                          setState(() => _typeId = t['id'] as String?),
+                          setState(() => _typeCode = t['code'] as String?),
                     ),
                 ],
               ),
             ),
           ),
 
-          if (_typeId != null) ...<Widget>[
+          if (_typeCode != null) ...<Widget>[
+            _SkillPicker(
+              domainCode: widget.domainCode,
+              lang: lang,
+              selected: _skillCodes,
+              onChanged: (String code, bool on) => setState(
+                () => on ? _skillCodes.add(code) : _skillCodes.remove(code),
+              ),
+            ),
             Panel(
               title: 'The details',
               note: 'Enough for someone to check it against the source.',
@@ -146,7 +160,9 @@ class _SubmitCredentialSheetState
           if (_error != null) Note(_error!, tone: ChipTone.danger),
 
           FilledButton(
-            onPressed: _busy || _typeId == null ? null : _submit,
+            onPressed: _busy || _typeCode == null || _skillCodes.isEmpty
+                ? null
+                : _submit,
             child: const PackText('Send it for checking'),
           ),
         ],
@@ -170,16 +186,21 @@ class _SubmitCredentialSheetState
   /// be core deciding what a family needs to know.
   List<String> _fieldsFor(List<Map<String, dynamic>>? types) {
     final Map<String, dynamic>? t = types
-        ?.where((Map<String, dynamic> x) => x['id'] == _typeId)
+        ?.where((Map<String, dynamic> x) => x['code'] == _typeCode)
         .firstOrNull;
-    final Object? fields = t?['verifierFields'] ?? t?['requiredFields'];
-    if (fields is List) {
+    // `inputs` is what the type's verifier declares it needs. A document
+    // field is the attachment below, not something to type.
+    final Object? inputs = t?['inputs'];
+    if (inputs is List) {
       return <String>[
-        for (final Object? f in fields)
-          if (f is String) f,
+        for (final Object? f in inputs)
+          if (f is Map<String, dynamic> &&
+              f['key'] is String &&
+              f['kind'] != 'document')
+            f['key'] as String,
       ];
     }
-    return const <String>['reference'];
+    return const <String>[];
   }
 
   Future<void> _pick() async {
@@ -210,8 +231,9 @@ class _SubmitCredentialSheetState
       await ref
           .read(repositoryProvider)
           .submitCredential(
-            credentialTypeId: _typeId!,
+            credentialTypeCode: _typeCode!,
             domainCode: widget.domainCode,
+            skillCodes: _skillCodes.toList(),
             verifierData: <String, dynamic>{
               for (final MapEntry<String, TextEditingController> e
                   in _fields.entries)
@@ -701,5 +723,72 @@ class _EditAvailabilitySheetState
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+/// The family's skills, to say which ones a credential is evidence for.
+///
+/// Read from the domain's resolved family, never listed here: a skill is
+/// pack data, and core names none of them (#1).
+class _SkillPicker extends ConsumerWidget {
+  const _SkillPicker({
+    required this.domainCode,
+    required this.lang,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final String domainCode;
+  final String lang;
+  final Set<String> selected;
+  final void Function(String code, bool on) onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<Map<String, dynamic>> domain = ref.watch(
+      domainProvider(domainCode),
+    );
+    return domain.when(
+      loading: () => const Panel(child: LinearProgressIndicator()),
+      error: (Object e, _) => const SizedBox.shrink(),
+      data: (Map<String, dynamic> d) {
+        final Object? family = d['family'];
+        final Object? rawSkills = family is Map<String, dynamic>
+            ? family['skills']
+            : null;
+        final List<Map<String, dynamic>> skills = <Map<String, dynamic>>[
+          if (rawSkills is List)
+            for (final Object? s in rawSkills)
+              if (s is Map<String, dynamic> && s['code'] is String) s,
+        ];
+        return Panel(
+          title: 'Which skills does this prove?',
+          note:
+              'Choose only what this credential genuinely shows. Each skill is '
+              'checked, and verified, on its own.',
+          child: Wrap(
+            spacing: Space.sm,
+            runSpacing: Space.sm,
+            children: <Widget>[
+              for (final Map<String, dynamic> s in skills)
+                FilterChip(
+                  label: PackText(_skillLabel(s, lang)),
+                  selected: selected.contains(s['code']),
+                  onSelected: (bool on) => onChanged(s['code'] as String, on),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  static String _skillLabel(Map<String, dynamic> s, String lang) {
+    final Object? labels = s['labels'];
+    if (labels is Map<String, dynamic>) {
+      final Object? v = labels[lang] ?? labels['en'];
+      if (v is String) return v;
+    }
+    return (s['code'] as String).replaceAll(RegExp(r'[._]'), ' ');
   }
 }

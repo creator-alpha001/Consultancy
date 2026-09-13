@@ -7,6 +7,7 @@ import '../../api/models/engagement.dart';
 import '../../api/models/provider.dart';
 import '../../api/models/session.dart';
 import '../../data.dart';
+import '../../money/paise.dart';
 import '../../providers.dart';
 import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
@@ -200,8 +201,15 @@ class ExtensionSheet extends ConsumerStatefulWidget {
 
 class _ExtensionSheetState extends ConsumerState<ExtensionSheet> {
   int _minutes = 15;
+  final TextEditingController _rupees = TextEditingController();
   bool _busy = false;
   String? _error;
+
+  @override
+  void dispose() {
+    _rupees.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -244,6 +252,18 @@ class _ExtensionSheetState extends ConsumerState<ExtensionSheet> {
                 ),
             ],
           ),
+          const SizedBox(height: Space.md),
+          // The price of the extra time is stated up front, once. The
+          // other person accepts exactly this, or declines it.
+          TextField(
+            controller: _rupees,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Price for the extra time',
+              prefixText: '₹ ',
+              helperText: 'Paid separately, only if they accept.',
+            ),
+          ),
           if (_error != null) ...<Widget>[
             const SizedBox(height: Space.md),
             Note(_error!, tone: ChipTone.danger),
@@ -259,6 +279,11 @@ class _ExtensionSheetState extends ConsumerState<ExtensionSheet> {
   }
 
   Future<void> _request() async {
+    final int? rupees = int.tryParse(_rupees.text.trim());
+    if (rupees == null || rupees <= 0) {
+      setState(() => _error = 'Say what the extra time costs, in rupees.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -266,7 +291,12 @@ class _ExtensionSheetState extends ConsumerState<ExtensionSheet> {
     try {
       await ref
           .read(repositoryProvider)
-          .requestExtension(widget.sessionId, minutes: _minutes);
+          .requestExtension(
+            widget.sessionId,
+            minutes: _minutes,
+            // Rupees in, paise out, converted once at the edge.
+            amount: Paise(rupees * 100),
+          );
       ref.invalidate(extensionsProvider(widget.sessionId));
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);

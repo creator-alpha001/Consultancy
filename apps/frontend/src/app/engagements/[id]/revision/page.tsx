@@ -62,9 +62,10 @@ export default async function RevisionPage({ params }: { params: Promise<{ id: s
             </ul>
           </Card>
           <div className="space-y-2">
-            <Button full size="lg">
-              Send revision request
-            </Button>
+            {/* No API exists for this yet; a button that submitted nothing would mislead. */}
+            <p role="note" className="rounded-md border border-line bg-surface-sunk px-4 py-3 text-small text-ink-muted">
+              Asking for a revision is not available yet. Until it is, say what is missing in a message, or raise a dispute against the specific goals — the money stays held either way.
+            </p>
             <ButtonLink href={`/engagements/${e.id}`} tone="quiet" full>
               Not yet — go back
             </ButtonLink>

@@ -160,9 +160,9 @@ Fields they never declared but have work in are still shown, inferred from their
 | | |
 |---|---|
 | **Two-factor for mentors is off** | See the decisions above. Switch it on before launch |
-| **Two-factor secrets are stored unencrypted** | TRACKER D18. Needs KMS-backed encryption |
+| **Two-factor secrets: key custody is ops' job** | Secrets are now encrypted at rest (AES-256-GCM, `MFA_ENCRYPTION_KEY`, required in production). Where the key is kept and how often it is rotated is an operational decision |
 | **No breach-list password check** | TRACKER D21 |
 | **SES never exercised for real** | No AWS account here. The transport is written against the SDK and tested with a logging transport |
 | **No push, SMS or WhatsApp** | Only email exists (D28) |
 | **No account deletion or data export** | A retention and legal decision, not yet made |
-| **Web shell is still a preview build** | Fixed avatars, sample badges and a role switcher in the header. The account page is real; the chrome around it is not |
+| **Web shell still has a preview role switcher** | The header's sample badges and initials are gone; the "switch product" menu from the preview build remains |

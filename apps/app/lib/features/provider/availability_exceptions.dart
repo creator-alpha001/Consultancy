@@ -98,7 +98,6 @@ class _AvailabilityExceptionsState
             // in the provider's own zone, and turning it into a UTC
             // timestamp is how a day off lands on the wrong day.
             date: DateFormat('yyyy-MM-dd').format(picked),
-            available: false,
           );
       ref.invalidate(availabilityProvider);
     } on ApiException catch (e) {

@@ -6,6 +6,8 @@ import { preview, contextFor } from '@/lib/preview';
 import { t, tl, plural } from '@/lib/pack';
 import { getEngagement } from '@/lib/data';
 import { money, until } from '@/lib/format';
+import { randomUUID } from 'node:crypto';
+import { completeEngagement } from '@/app/actions/engagement';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +22,14 @@ export const dynamic = 'force-dynamic';
  *
  * The button names the consequence and the amount.
  */
-export default async function CompletePage({ params }: { params: Promise<{ id: string }> }): Promise<JSX.Element> {
-  const { id } = await params;
+export default async function CompletePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}): Promise<JSX.Element> {
+  const [{ id }, { error }] = await Promise.all([params, searchParams]);
   const { lang } = await preview('seeker');
   const e = await getEngagement(id);
   if (!e || !e.agenda) notFound();
@@ -106,9 +114,20 @@ export default async function CompletePage({ params }: { params: Promise<{ id: s
 
             <div className="mt-4 space-y-2">
               {/* The button names its consequence and its amount. */}
-              <Button full size="lg">
-                Confirm and release {money(e.escrow.providerNet)}
-              </Button>
+              {error && (
+                <p role="alert" className="text-small text-danger">
+                  {error === 'ENGAGEMENT_WRONG_STATUS'
+                    ? 'This cannot be released at this stage.'
+                    : 'That did not go through. Nothing was released — try again.'}
+                </p>
+              )}
+              <form action={completeEngagement}>
+                <input type="hidden" name="engagementId" value={e.id} />
+                <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+                <Button full size="lg" type="submit">
+                  Confirm and release {money(e.escrow.providerNet)}
+                </Button>
+              </form>
               <ButtonLink href={`/engagements/${e.id}`} tone="quiet" full>
                 Not yet — go back
               </ButtonLink>

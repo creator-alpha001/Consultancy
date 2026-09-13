@@ -129,6 +129,10 @@ export interface Agenda {
   state: 'draft' | 'pending_provider' | 'negotiating' | 'locked' | 'superseded';
   items: AgendaItem[];
   outOfScope: LocalisedText | null;
+  /** What comes back to the seeker, in the agenda's own language. */
+  expectedDeliverable?: string;
+  /** How they will know it worked. */
+  successCriteria?: string;
   language: string;
   lockedAt: string | null;
   /** The evidence artefact. Rendered, never recomputed on the client. */
@@ -322,7 +326,12 @@ export interface Dispute {
   amount: Money;
   claimedItems: string[];
   status: 'triage' | 'negotiation' | 'adjudication' | 'appeal' | 'ruled';
+  /** The API's own status — `open`, `ruled`, `appealed`, `settled`, `withdrawn` — for deciding what an admin may do next. */
+  apiStatus: string;
   summary: string;
+  /** The language `summary` was written in. The original is authoritative (#20). */
+  summaryLang: string;
+  reasonCode: string;
 }
 
 export interface CredentialSubmission {
@@ -349,6 +358,10 @@ export interface SafetyItem {
   excerpt: string;
   /** Distress content is held from public view, never "rejected" (#25). */
   heldFromPublic: boolean;
+  /** `open` (nobody has it) or `reviewing` (a reviewer has claimed it). */
+  status: string;
+  /** The language `excerpt` was written in. */
+  excerptLang: string | null;
 }
 
 export interface ActionItem {

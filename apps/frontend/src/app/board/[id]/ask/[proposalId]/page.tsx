@@ -57,16 +57,16 @@ export default async function AskProposerPage({
 
           <Divider className="my-5" />
 
-          <TextArea
-            label="Your question"
-            name="question"
-            rows={4}
-            required
-            placeholder="Ask about approach, availability, or anything the pitch left unclear."
-          />
-          <div className="mt-3">
-            <Button>Send question</Button>
-          </div>
+          {/*
+            There is no way to message someone before awarding yet — the
+            API has no thread for an offer. A form that looked like it sent
+            a question and sent nothing would be worse than saying so.
+          */}
+          <p className="text-small text-ink-muted">
+            Asking a question before awarding is not available yet. Their message above is what they offered. If you
+            award it, you can talk it through while agreeing the goals — nothing is charged until the goals are locked
+            and you pay into escrow, and you can cancel before then.
+          </p>
         </Panel>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">

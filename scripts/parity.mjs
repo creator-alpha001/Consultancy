@@ -39,8 +39,8 @@ const INVENTORY = join(ROOT, 'packages/contract/routes.json');
 const BASELINE = join(ROOT, 'packages/contract/parity-baseline.json');
 
 const CLIENTS = [
-  { name: 'apps/frontend', dir: join(ROOT, 'apps/frontend/src'), exts: ['.ts', '.tsx'] },
-  { name: 'apps/app', dir: join(ROOT, 'apps/app/lib'), exts: ['.dart'] },
+  { name: 'apps/frontend', dir: join(ROOT, 'apps/frontend/src'), exts: ['.ts', '.tsx'], kind: 'ts' },
+  { name: 'apps/app', dir: join(ROOT, 'apps/app/lib'), exts: ['.dart'], kind: 'dart' },
 ];
 
 /**
@@ -131,7 +131,40 @@ function pathMatcher(path) {
         : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
     )
     .join('/');
-  return new RegExp(`${escaped}(?=['"\`?\\s]|$)`);
+  return new RegExp(`${escaped}(?=['"\`?\\s]|$)`, 'g');
+}
+
+/**
+ * Which HTTP method a call site at `index` uses, or null when it cannot
+ * tell.
+ *
+ * THE METHOD MATTERS AS MUCH AS THE PATH (TRACKER D64). Matching paths
+ * alone counted `POST /me/packages` as covered because a client called
+ * `GET /me/packages`, and `POST /sessions/:id/files` because a client
+ * listed the files — two features nobody had built, reported green.
+ *
+ * Dart: the verb is the ApiClient method just before the path literal
+ * (`_api.post<…>('/x')`, `getOrNull`, the `_objects` GET helper).
+ * TypeScript: a call is a GET unless a `method:` appears in its options
+ * before the next call begins.
+ *
+ * Null means "could not tell" and counts as any method — a heuristic that
+ * is unsure must not invent a gap.
+ */
+function methodAt(kind, src, index, pathLength) {
+  if (kind === 'dart') {
+    const before = src.slice(Math.max(0, index - 200), index);
+    const verbs = [...before.matchAll(/\b(getOrNull|get|post|delete|put|patch|_objects)\s*(?:<|\()/g)];
+    const last = verbs[verbs.length - 1];
+    if (!last) return null;
+    const verb = last[1];
+    return verb === 'getOrNull' || verb === '_objects' ? 'GET' : verb.toUpperCase();
+  }
+  const after = src.slice(index + pathLength, index + pathLength + 400);
+  const nextCall = after.search(/\b(?:api|apiAsUser|apiOrNull|apiListOrEmpty|apiAsEnrolling|fetch)\s*[<(]/);
+  const window = nextCall === -1 ? after : after.slice(0, nextCall);
+  const m = /method:\s*['"`](GET|POST|PUT|PATCH|DELETE)['"`]/.exec(window);
+  return m ? m[1] : 'GET';
 }
 
 function main() {
@@ -145,7 +178,15 @@ function main() {
   const covered = {};
   for (const client of CLIENTS) {
     const src = sources.get(client.name);
-    covered[client.name] = matchers.filter(({ re }) => re.test(src)).map(({ route }) => `${route.method} ${route.path}`);
+    covered[client.name] = matchers
+      .filter(({ route, re }) => {
+        for (const m of src.matchAll(re)) {
+          const method = methodAt(client.kind, src, m.index, m[0].length);
+          if (method === null || method === route.method) return true;
+        }
+        return false;
+      })
+      .map(({ route }) => `${route.method} ${route.path}`);
   }
 
   const report = { total: inventory.routes.length, clients: {} };

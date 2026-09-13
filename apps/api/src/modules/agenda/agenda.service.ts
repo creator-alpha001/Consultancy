@@ -53,12 +53,18 @@ export class AgendaService {
   constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
   private validateItems(items: AgendaItemInput[]): void {
+    // A body in the wrong shape is the caller's mistake and gets a 422
+    // saying so — not a TypeError surfacing as a 500.
+    if (!Array.isArray(items)) throw agendaInvalid('items must be a list of { labelLang, labelText }');
     if (items.length < MIN_GOALS || items.length > MAX_GOALS) {
       throw agendaInvalid(`an agenda needs between ${MIN_GOALS} and ${MAX_GOALS} goals`, {
         count: items.length,
       });
     }
     for (const item of items) {
+      if (typeof item?.labelText !== 'string' || typeof item.labelLang !== 'string') {
+        throw agendaInvalid('every goal needs labelText and labelLang');
+      }
       if (!item.labelText.trim()) {
         throw agendaInvalid('every goal needs non-empty text');
       }
@@ -67,24 +73,62 @@ export class AgendaService {
 
   async createDraft(input: CreateAgendaInput): Promise<AgendaRow> {
     this.validateItems(input.items);
+    for (const field of ['originalLang', 'expectedDeliverable', 'successCriteria'] as const) {
+      if (typeof input[field] !== 'string' || !input[field].trim()) {
+        throw agendaInvalid(`${field} is required`, { field });
+      }
+    }
 
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const agendaRes = await client.query<AgendaDbRow>(
-        `INSERT INTO agendas (engagement_id, original_lang, expected_deliverable, out_of_scope, success_criteria, context)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [
-          input.engagementId,
-          input.originalLang,
-          input.expectedDeliverable,
-          input.outOfScope ?? '',
-          input.successCriteria,
-          input.context ?? '',
-        ],
+      /*
+       * Saving a draft twice replaces it. The active agenda is unique per
+       * engagement, so a second save used to hit that index and fail with
+       * a 500 — which meant a draft could be written once and never
+       * corrected. An unlocked draft is still being worked out, so it is
+       * rewritten in place; a locked one is refused, and changes to it go
+       * through a change order (#11).
+       */
+      const existing = await client.query<AgendaDbRow>(
+        `SELECT * FROM agendas WHERE engagement_id = $1 AND superseded_at IS NULL FOR UPDATE`,
+        [input.engagementId],
       );
-      const agenda = agendaRes.rows[0];
+      let agenda: AgendaDbRow;
+      if (existing.rows[0]) {
+        if (existing.rows[0].locked_at) throw agendaAlreadyLocked(existing.rows[0].id);
+        await client.query(`DELETE FROM agenda_items WHERE agenda_id = $1`, [existing.rows[0].id]);
+        const updated = await client.query<AgendaDbRow>(
+          `UPDATE agendas
+              SET original_lang = $2, expected_deliverable = $3, out_of_scope = $4, success_criteria = $5, context = $6
+            WHERE id = $1
+            RETURNING *`,
+          [
+            existing.rows[0].id,
+            input.originalLang,
+            input.expectedDeliverable,
+            input.outOfScope ?? '',
+            input.successCriteria,
+            input.context ?? '',
+          ],
+        );
+        agenda = updated.rows[0];
+      } else {
+        const agendaRes = await client.query<AgendaDbRow>(
+          `INSERT INTO agendas (engagement_id, original_lang, expected_deliverable, out_of_scope, success_criteria, context)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [
+            input.engagementId,
+            input.originalLang,
+            input.expectedDeliverable,
+            input.outOfScope ?? '',
+            input.successCriteria,
+            input.context ?? '',
+          ],
+        );
+        agenda = agendaRes.rows[0];
+      }
 
       const items: AgendaItemDbRow[] = [];
       for (const [index, item] of input.items.entries()) {

@@ -246,6 +246,8 @@ class AgendaDraftForm extends ConsumerStatefulWidget {
 class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
   final List<TextEditingController> _goals = <TextEditingController>[];
   final TextEditingController _outOfScope = TextEditingController();
+  final TextEditingController _deliverable = TextEditingController();
+  final TextEditingController _criteria = TextEditingController();
   bool _busy = false;
   String? _error;
 
@@ -258,6 +260,8 @@ class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
     }
     if (_goals.isEmpty) _goals.add(TextEditingController());
     _outOfScope.text = widget.engagement.agenda?.outOfScope ?? '';
+    _deliverable.text = widget.engagement.agenda?.expectedDeliverable ?? '';
+    _criteria.text = widget.engagement.agenda?.successCriteria ?? '';
   }
 
   @override
@@ -266,6 +270,8 @@ class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
       c.dispose();
     }
     _outOfScope.dispose();
+    _deliverable.dispose();
+    _criteria.dispose();
     super.dispose();
   }
 
@@ -353,6 +359,36 @@ class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
         ),
 
         Panel(
+          title: 'What comes back to you',
+          note:
+              'The thing you will hold at the end, and how you will know it '
+              'worked. Both are part of what a disagreement is judged against.',
+          child: Column(
+            children: <Widget>[
+              TextField(
+                controller: _deliverable,
+                minLines: 1,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'What you will receive',
+                  hintText: 'e.g. written notes on each page, and a short call',
+                ),
+              ),
+              const SizedBox(height: Space.md),
+              TextField(
+                controller: _criteria,
+                minLines: 1,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'I will know this worked if…',
+                  hintText: 'e.g. every goal above has a specific answer',
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        Panel(
           title: 'Anything not included?',
           note:
               'Optional, and it protects you both. Saying what is out of '
@@ -392,6 +428,13 @@ class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
       setState(() => _error = 'Write at least one goal first.');
       return null;
     }
+    if (_deliverable.text.trim().isEmpty || _criteria.text.trim().isEmpty) {
+      setState(
+        () => _error =
+            'Say what comes back to you, and how you will know it worked.',
+      );
+      return null;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -403,6 +446,8 @@ class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
             widget.engagement.id,
             items: _texts,
             language: widget.engagement.language,
+            expectedDeliverable: _deliverable.text.trim(),
+            successCriteria: _criteria.text.trim(),
             outOfScope: _outOfScope.text.trim().isEmpty
                 ? null
                 : _outOfScope.text.trim(),

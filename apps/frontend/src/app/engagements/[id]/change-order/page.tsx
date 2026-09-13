@@ -66,9 +66,10 @@ export default async function ChangeOrderPage({ params }: { params: Promise<{ id
             </ul>
           </Card>
           <Divider />
-          <Button full size="lg">
-            Send the proposed change
-          </Button>
+          {/* No API exists for this yet; a button that submitted nothing would mislead. */}
+            <p role="note" className="rounded-md border border-line bg-surface-sunk px-4 py-3 text-small text-ink-muted">
+              Changing a locked list is not available yet. The locked list stands as agreed; if it no longer fits, the engagement can be disputed against it.
+            </p>
           <p className="text-caption text-ink-muted">
             This does not touch escrow or the due date on its own — those change only if the accepted version changes
             them explicitly.

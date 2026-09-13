@@ -9,8 +9,13 @@
     "It carries no types, on purpose — see apps/api/scripts/dump-routes.ts."
   ],
   "generatedFrom": "apps/api",
-  "count": 157,
+  "count": 159,
   "routes": [
+    {
+      "method": "GET",
+      "path": "/admin/audit-log",
+      "operationId": "OpsReadController_auditLog"
+    },
     {
       "method": "GET",
       "path": "/admin/catalogue",
@@ -75,6 +80,11 @@
       "method": "POST",
       "path": "/admin/families/manifest",
       "operationId": "PackEditorController_publishFamily"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/fee-schedules",
+      "operationId": "OpsReadController_feeSchedules"
     },
     {
       "method": "POST",

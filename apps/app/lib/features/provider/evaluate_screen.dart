@@ -416,8 +416,6 @@ class _AnnotationEditor extends ConsumerStatefulWidget {
 
 class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
   final TextEditingController _body = TextEditingController();
-  String? _dimensionCode;
-  bool _isActionItem = false;
   bool _busy = false;
 
   @override
@@ -437,7 +435,9 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
 
     return Panel(
       title: 'Marks on the work',
-      note: 'Specific notes. Marking one as a next step puts it on their list.',
+      note:
+          'Specific notes. Each one goes on their list of things to act on — '
+          'they tick them off as they do.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -480,27 +480,6 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
             ),
           ),
           const SizedBox(height: Space.md),
-          if (widget.dimensions.isNotEmpty)
-            Wrap(
-              spacing: Space.sm,
-              runSpacing: Space.sm,
-              children: <Widget>[
-                for (final AssessmentDimension d in widget.dimensions)
-                  ChoiceChip(
-                    label: PackText(d.label(widget.lang)),
-                    selected: _dimensionCode == d.code,
-                    onSelected: (bool on) =>
-                        setState(() => _dimensionCode = on ? d.code : null),
-                  ),
-              ],
-            ),
-          CheckboxListTile(
-            value: _isActionItem,
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: const PackText('Something for them to do next'),
-            onChanged: (bool? v) => setState(() => _isActionItem = v ?? false),
-          ),
           OutlinedButton(
             onPressed: _busy || _body.text.trim().isEmpty ? null : _add,
             child: const PackText('Add this mark'),
@@ -530,8 +509,9 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
           .annotate(
             widget.evaluationId,
             body: _body.text.trim(),
-            dimensionCode: _dimensionCode,
-            isActionItem: _isActionItem,
+            // The language the evaluator is writing in. The original is
+            // what counts in a dispute (#20).
+            lang: widget.lang,
           );
       _body.clear();
       ref.invalidate(latestEvaluationProvider(widget.engagementId));
@@ -541,8 +521,6 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _isActionItem = false;
-          _dimensionCode = null;
         });
       }
     }

@@ -141,17 +141,11 @@ export default async function ProviderWorkDetail({ params }: { params: Promise<{
           )}
 
           <Panel title="Files to return">
-            <div className="rounded-md border border-dashed border-line-strong p-6 text-center">
-              <p className="text-body font-medium">Add your marked-up files</p>
-              <p className="mt-1 text-small text-ink-muted">
-                Private, and watermarked with the viewer&rsquo;s name when opened.
-              </p>
-              <div className="mt-3">
-                <Button tone="secondary" size="sm">
-                  Choose files
-                </Button>
-              </div>
-            </div>
+            {/* No upload exists on the web yet (TRACKER D51); the app can attach files. */}
+            <p className="text-small text-ink-muted">
+              Returning a marked-up file is not available on the web yet. Your scores and remarks above are the
+              assessment; to attach a file, use the app.
+            </p>
           </Panel>
         </div>
 
