@@ -113,3 +113,22 @@ export function initials(name: string): string {
     .map((p) => p[0]?.toUpperCase() ?? '')
     .join('');
 }
+
+/**
+ * What a service promises, in words.
+ *
+ * A type makes one promise or two: contact time ("45 min"), a deadline
+ * ("back within 72 hr"), or — for a combined format — both, in the order
+ * they happen. Rendered from whichever figures the rate actually
+ * carries, so nothing here has to know which type it is looking at, and
+ * a rate that states neither says nothing rather than "0 min".
+ */
+export function commitmentLine(s: {
+  durationMinutes?: number | null;
+  slaHours?: number | null;
+}): string {
+  const back = s.slaHours ? `back within ${s.slaHours} hr` : '';
+  const live = s.durationMinutes ? `${s.durationMinutes} min live` : '';
+  if (back && live) return `${back}, then ${live}`;
+  return back || live;
+}

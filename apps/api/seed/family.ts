@@ -36,8 +36,21 @@ export function civilServicesExamsFamily(): FamilyManifestInput {
       // table) — it belongs here, in pack data, and nowhere else.
       category: { en: 'Paper', hi: 'प्रश्नपत्र' },
     },
-    engagementTypes: ['document_review', 'live_session', 'written_qa', 'async_task'],
+    // `review_with_live` is a combined format, and nothing about it is
+    // particular to this family: an audited document tells someone WHAT
+    // is wrong, and a call afterwards is what tells them why and what to
+    // do next. Sold separately they are two bookings, two agendas and
+    // two escrows for one need. Every family below carries it for the
+    // same reason.
+    engagementTypes: ['document_review', 'review_with_live', 'live_session', 'written_qa', 'async_task'],
     flagshipEngagement: 'document_review',
+
+    // No `engagementTypeLabels` here on purpose. These formats are
+    // platform concepts and their neutral names ("Document Audit",
+    // "Live Consultation") read correctly in this family as they do in
+    // any other. A family should override a name only where its own
+    // people would genuinely not recognise the neutral one — the way
+    // `labels.category` overrides "Area" with "Paper" above.
 
     skills: [
       // ── Shared across every domain in the family. This block is the

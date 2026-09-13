@@ -105,17 +105,25 @@ function sourceOf(client) {
  * path parameter becomes "one or more characters that are not a slash or
  * a quote". Literal segments must still match literally, which is what
  * keeps this from matching everything.
+ *
+ * THE END ANCHOR IS THE LOAD-BEARING PART. Without it a short path is a
+ * substring of every longer one that shares its prefix, so `POST
+ * /attachments` counted as covered because the client happened to call
+ * `/attachments/$id/link` — a route nobody had written a line for was
+ * reported green, which is precisely the failure this whole script
+ * exists to catch. A path must therefore END where the route ends: at a
+ * quote, a backtick, whitespace, or a query string.
  */
 function pathMatcher(path) {
   const escaped = path
     .split('/')
     .map((seg) =>
       /^\{.+\}$/.test(seg)
-        ? '[^/\'"`\\s]+'
+        ? '[^/\'"`\\s?]+'
         : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
     )
     .join('/');
-  return new RegExp(escaped);
+  return new RegExp(`${escaped}(?=['"\`?\\s]|$)`);
 }
 
 function main() {

@@ -45,11 +45,24 @@ export async function setRate(formData: FormData): Promise<void> {
     back('/provider/services', { error: 'Enter the price as a whole number of rupees.' });
   }
 
-  const commitmentRaw = String(formData.get('commitment') ?? '').trim();
-  const commitment = commitmentRaw === '' ? null : Number(commitmentRaw);
-  if (commitment !== null && (!Number.isInteger(commitment) || commitment <= 0)) {
-    back('/provider/services', { error: 'The time commitment has to be a whole number.' });
-  }
+  /*
+   * Two promises, because some kinds of work make two: a deadline to
+   * return the work, contact time, or both. The form offers both boxes
+   * and the server ignores whichever this type does not make — a form
+   * that had to know which applied would be a form that goes stale the
+   * moment a family adds a format.
+   */
+  const whole = (field: string): number | null => {
+    const raw = String(formData.get(field) ?? '').trim();
+    if (raw === '') return null;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n <= 0) {
+      back('/provider/services', { error: 'A time commitment has to be a whole number.' });
+    }
+    return n;
+  };
+  const turnaroundHours = whole('turnaroundHours');
+  const durationMinutes = whole('durationMinutes');
 
   try {
     await apiAsUser('/me/rates', {
@@ -57,7 +70,8 @@ export async function setRate(formData: FormData): Promise<void> {
       body: JSON.stringify({
         engagementType,
         amountPaise: String(rupees * 100),
-        commitment,
+        turnaroundHours,
+        durationMinutes,
       }),
       idempotencyKey: `rate:${engagementType}:${rupees}`,
     });

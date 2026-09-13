@@ -11,7 +11,13 @@ import {
   SkillInput,
 } from './types';
 
-const ENGAGEMENT_TYPES: EngagementType[] = ['document_review', 'live_session', 'written_qa', 'async_task'];
+const ENGAGEMENT_TYPES: EngagementType[] = [
+  'document_review',
+  'live_session',
+  'review_with_live',
+  'written_qa',
+  'async_task',
+];
 
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === 'string' && v.length > 0;
@@ -103,6 +109,34 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
   const flagshipEngagement = v.engagementType(m.flagshipEngagement, 'flagshipEngagement');
   if (flagshipEngagement && engagementTypes.length > 0 && !engagementTypes.includes(flagshipEngagement)) {
     v.fail('flagshipEngagement', 'must be one of the family\'s own engagementTypes');
+  }
+
+  /*
+   * What the family calls each type. Every entry must name a type the
+   * family actually offers — a label for a type nobody can book is a
+   * silent typo, and this is the only place it can still be caught.
+   */
+  const engagementTypeLabels: Record<string, { label?: LabelMap; blurb?: LabelMap }> = {};
+  if (m.engagementTypeLabels !== undefined) {
+    const raw = m.engagementTypeLabels as Record<string, unknown>;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      v.fail('engagementTypeLabels', 'must be an object keyed by engagement type');
+    } else {
+      for (const [typeCode, value] of Object.entries(raw)) {
+        const path = `engagementTypeLabels.${typeCode}`;
+        if (!engagementTypes.includes(typeCode as EngagementType)) {
+          v.fail(path, 'names a type this family does not offer');
+          continue;
+        }
+        const entry = (value ?? {}) as Record<string, unknown>;
+        const label = entry.label === undefined ? undefined : v.labelMap(entry.label, `${path}.label`);
+        const blurb = entry.blurb === undefined ? undefined : v.labelMap(entry.blurb, `${path}.blurb`);
+        engagementTypeLabels[typeCode] = {
+          ...(label ? { label } : {}),
+          ...(blurb ? { blurb } : {}),
+        };
+      }
+    }
   }
 
   const skills = v.array<SkillInput>(m.skills, 'skills', (item, p) => {
@@ -336,6 +370,7 @@ export function validateFamilyManifest(raw: unknown): FamilyManifestInput {
       ...(categoryLabel ? { category: categoryLabel } : {}),
     },
     engagementTypes,
+    engagementTypeLabels,
     flagshipEngagement: flagshipEngagement!,
     skills,
     assessmentTemplates,

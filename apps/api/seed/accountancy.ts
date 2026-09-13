@@ -47,7 +47,7 @@ export function accountancyFamily(): FamilyManifestInput {
     // A compliance question is usually a document to be checked or a
     // written answer, not an hour of video — so the flagship is the
     // document review, as it is for the exam family, for a different reason.
-    engagementTypes: ['document_review', 'written_qa', 'live_session', 'async_task'],
+    engagementTypes: ['document_review', 'review_with_live', 'written_qa', 'live_session', 'async_task'],
     flagshipEngagement: 'document_review',
 
     skills: [
@@ -306,7 +306,7 @@ export function accountancyDomains(): DomainManifestInput[] {
           skills: ['gst_notice_response'],
         },
       ],
-      priceBands: { document_review: [50000, 300000], written_qa: [20000, 80000] },
+      priceBands: { document_review: [50000, 300000], written_qa: [20000, 80000], review_with_live: [100000, 900000] },
     },
     {
       ...common,
@@ -324,7 +324,7 @@ export function accountancyDomains(): DomainManifestInput[] {
         { slug: 'tds', labels: { en: 'TDS', hi: 'टीडीएस' }, skills: ['tds_compliance'] },
         { slug: 'notices', labels: { en: 'Notices & assessment', hi: 'नोटिस एवं निर्धारण' }, skills: ['tax_notice_response'] },
       ],
-      priceBands: { document_review: [60000, 400000], written_qa: [20000, 100000] },
+      priceBands: { document_review: [60000, 400000], written_qa: [20000, 100000], review_with_live: [120000, 1200000] },
     },
     {
       ...common,
@@ -335,7 +335,7 @@ export function accountancyDomains(): DomainManifestInput[] {
         { slug: 'internal', labels: { en: 'Internal controls', hi: 'आंतरिक नियंत्रण' }, skills: ['internal_controls_review'] },
         { slug: 'reporting', labels: { en: 'Financial reporting', hi: 'वित्तीय रिपोर्टिंग' }, skills: ['ind_as_reporting', 'transfer_pricing'] },
       ],
-      priceBands: { document_review: [150000, 900000], live_session: [80000, 300000] },
+      priceBands: { document_review: [150000, 900000], live_session: [80000, 300000], review_with_live: [300000, 2700000] },
     },
     {
       ...common,
@@ -346,7 +346,7 @@ export function accountancyDomains(): DomainManifestInput[] {
         { slug: 'annual', labels: { en: 'Annual filings', hi: 'वार्षिक फाइलिंग' }, skills: ['roc_annual_filing'] },
         { slug: 'books', labels: { en: 'Books & accounting setup', hi: 'बहीखाता व्यवस्था' }, skills: ['bookkeeping_setup'] },
       ],
-      priceBands: { document_review: [40000, 250000], live_session: [50000, 200000] },
+      priceBands: { document_review: [40000, 250000], live_session: [50000, 200000], review_with_live: [80000, 750000] },
     },
   ];
 }

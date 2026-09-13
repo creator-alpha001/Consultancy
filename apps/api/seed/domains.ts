@@ -163,6 +163,9 @@ function statePcsDomain(spec: StatePcsSpec): DomainManifestInput {
     priceBands: {
       document_review: spec.documentReviewBand,
       live_session: [spec.documentReviewBand[0] * 2, spec.documentReviewBand[1] * 2],
+      // The combined format spans both promises, so its band starts
+      // above a review alone and tops out below buying the two apart.
+      review_with_live: [spec.documentReviewBand[0] * 2, spec.documentReviewBand[1] * 3],
     },
   };
 }
@@ -254,6 +257,7 @@ function upscCse(): DomainManifestInput {
     priceBands: {
       document_review: [8000, 25000],
       live_session: [20000, 60000],
+      review_with_live: [22000, 70000],
     },
   };
 }

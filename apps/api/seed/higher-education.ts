@@ -43,7 +43,7 @@ export function higherEducationFamily(): FamilyManifestInput {
     // A statement of purpose comes back marked up, so document review
     // leads — but a mock interview genuinely needs live video, which is
     // why this family carries live_session as a first-class type.
-    engagementTypes: ['document_review', 'live_session', 'written_qa', 'async_task'],
+    engagementTypes: ['document_review', 'review_with_live', 'live_session', 'written_qa', 'async_task'],
     flagshipEngagement: 'document_review',
 
     skills: [
@@ -312,7 +312,7 @@ export function higherEducationDomains(): DomainManifestInput[] {
       languages: ['en', 'hi'],
       defaultLanguage: 'en',
       categories: stages(true),
-      priceBands: { document_review: [80000, 500000], live_session: [100000, 400000] },
+      priceBands: { document_review: [80000, 500000], live_session: [100000, 400000], review_with_live: [160000, 1500000] },
     },
     {
       ...common,
@@ -321,7 +321,7 @@ export function higherEducationDomains(): DomainManifestInput[] {
       languages: ['en', 'hi'],
       defaultLanguage: 'en',
       categories: stages(true),
-      priceBands: { document_review: [70000, 450000], live_session: [90000, 350000] },
+      priceBands: { document_review: [70000, 450000], live_session: [90000, 350000], review_with_live: [140000, 1350000] },
     },
     {
       ...common,
@@ -330,7 +330,7 @@ export function higherEducationDomains(): DomainManifestInput[] {
       languages: ['en', 'hi'],
       defaultLanguage: 'en',
       categories: stages(true),
-      priceBands: { document_review: [60000, 400000], live_session: [80000, 300000] },
+      priceBands: { document_review: [60000, 400000], live_session: [80000, 300000], review_with_live: [120000, 1200000] },
     },
     {
       ...common,
@@ -341,7 +341,7 @@ export function higherEducationDomains(): DomainManifestInput[] {
       languages: ['hi', 'en', 'mr', 'bn'],
       defaultLanguage: 'hi',
       categories: stages(false),
-      priceBands: { document_review: [20000, 150000], live_session: [30000, 120000] },
+      priceBands: { document_review: [20000, 150000], live_session: [30000, 120000], review_with_live: [40000, 450000] },
     },
   ];
 }

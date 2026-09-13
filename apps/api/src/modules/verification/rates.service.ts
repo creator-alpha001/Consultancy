@@ -17,16 +17,42 @@ export interface ProviderRate {
   turnaroundHours: number | null;
 }
 
+export type CommitmentKind = 'duration' | 'turnaround';
+
 /**
- * Which commitment an engagement type takes.
+ * Which commitments an engagement type makes, most-prominent first.
  *
- * `live_session` is the only type whose promise is contact time; the rest
- * are "you get it back by". Derived from the type rather than stored,
- * because it is a property of what the work IS — a family adding a new
- * live format should not have to remember to flag it somewhere else.
+ * A type promises contact time ("forty-five minutes with you"), a
+ * deadline ("back within three days"), or — for a combined format —
+ * both. Derived from the type rather than stored, because it is a
+ * property of what the work IS: a family adding a live format should not
+ * have to remember to flag it somewhere else.
+ *
+ * The order matters. The first kind is the headline promise, and is what
+ * a single unlabelled commitment figure is taken to mean; a combined
+ * type states its deadline first because that is what the seeker is
+ * waiting on before the call can happen at all.
+ *
+ * This table is the last hardcoded piece of engagement-type knowledge in
+ * core, and 0052 moved the database's version of it here on purpose —
+ * SQL could not express it without naming a family's type in core DDL.
+ * It belongs in the manifest beside `engagementTypes`; TRACKER.md D-
+ * records that. Until then, a new combined type is one line here.
  */
-export function commitmentKindFor(engagementType: string): 'duration' | 'turnaround' {
-  return engagementType === 'live_session' ? 'duration' : 'turnaround';
+export function commitmentKindsFor(engagementType: string): CommitmentKind[] {
+  switch (engagementType) {
+    case 'live_session':
+      return ['duration'];
+    case 'review_with_live':
+      return ['turnaround', 'duration'];
+    default:
+      return ['turnaround'];
+  }
+}
+
+/** The headline promise. Kept for callers that only render one figure. */
+export function commitmentKindFor(engagementType: string): CommitmentKind {
+  return commitmentKindsFor(engagementType)[0];
 }
 
 /**
@@ -142,8 +168,21 @@ export class RatesService {
     skillId?: string | null;
     amountPaise: string;
     currency?: string;
-    /** Minutes for live work, hours-to-return for async. One or the other. */
+    /**
+     * The type's headline promise as a bare number — minutes or hours,
+     * whichever `commitmentKindsFor` says comes first. The older shape,
+     * kept because a client with one commitment box should not have to
+     * know which unit it is in.
+     */
     commitment?: number | null;
+    /**
+     * The same promises named rather than ordered. A client that offers
+     * both boxes sends these; whichever the type does not make is
+     * IGNORED rather than rejected, so a form does not have to know
+     * which fields apply to the type the provider just picked.
+     */
+    durationMinutes?: number | null;
+    turnaroundHours?: number | null;
   }): Promise<ProviderRate> {
     // Parsed as BigInt, not Number: an amount in paise is a bigint
     // everywhere on this platform, and Number would silently round a
@@ -163,22 +202,39 @@ export class RatesService {
     }
 
     // A price with no stated commitment is half a listing: the seeker is
-    // told what it costs and not what they get. Which unit applies is a
-    // property of the engagement type, so the caller supplies one number
-    // and this decides what it means.
-    const kind = commitmentKindFor(input.engagementType);
-    const commitment = input.commitment ?? null;
-    if (commitment !== null && (!Number.isInteger(commitment) || commitment <= 0)) {
-      throw new AppError(
-        'RATE_COMMITMENT_INVALID',
-        kind === 'duration'
-          ? 'give the session length in whole minutes'
-          : 'give the turnaround in whole hours',
-        { status: HttpStatus.UNPROCESSABLE_ENTITY },
-      );
+    // told what it costs and not what they get. Which unit each figure
+    // is in is a property of the engagement type, so the caller supplies
+    // bare numbers in order and this decides what they mean.
+    const kinds = commitmentKindsFor(input.engagementType);
+    const named: Record<CommitmentKind, number | null> = {
+      duration: input.durationMinutes ?? null,
+      turnaround: input.turnaroundHours ?? null,
+    };
+    // The bare figure fills the headline promise, and only when the
+    // named field for it was not sent — a client using the old shape
+    // and one using the new never disagree about the same number.
+    if (input.commitment != null && named[kinds[0]] == null) {
+      named[kinds[0]] = input.commitment;
     }
-    const durationMinutes = kind === 'duration' ? commitment : null;
-    const turnaroundHours = kind === 'turnaround' ? commitment : null;
+
+    const byKind: Record<CommitmentKind, number | null> = { duration: null, turnaround: null };
+    for (const kind of kinds) {
+      const value = named[kind];
+      if (value === null || value === undefined) continue;
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new AppError(
+          'RATE_COMMITMENT_INVALID',
+          kind === 'duration'
+            ? 'give the session length in whole minutes'
+            : 'give the turnaround in whole hours',
+          { status: HttpStatus.UNPROCESSABLE_ENTITY },
+        );
+      }
+      byKind[kind] = value;
+    }
+
+    const durationMinutes = byKind.duration;
+    const turnaroundHours = byKind.turnaround;
 
     const skillId = input.skillId ?? null;
     // Two statements rather than one ON CONFLICT: the uniqueness is

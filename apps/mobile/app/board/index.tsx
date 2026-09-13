@@ -33,7 +33,7 @@ interface BoardPost {
  */
 export default function Board(): JSX.Element {
   const router = useRouter();
-  const { me, lang } = useStore();
+  const { me, lang, domain } = useStore();
   const words = useWords();
   const [posts, setPosts] = useState<BoardPost[] | null>(null);
 
@@ -80,7 +80,7 @@ export default function Board(): JSX.Element {
               <Card key={p.id} onPress={() => router.push(`/board/${p.id}`)}>
                 <Row between align="flex-start">
                   <Text style={[type.bodyStrong, { color: C.ink, flex: 1 }]}>
-                    {engagementTypeLabel(p.engagementType)}
+                    {engagementTypeLabel(p.engagementType, { domain, lang })}
                   </Text>
                   <Text style={[type.bodyStrong, { color: C.ink }]}>
                     {rupees(p.budgetMinPaise)}–{rupees(p.budgetMaxPaise)}

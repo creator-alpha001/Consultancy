@@ -125,11 +125,24 @@ export const PLATFORM: Omit<FamilyPack, 'domains'> = {
     assessment: { en: 'Review', hi: 'समीक्षा' },
     category: { en: 'Area', hi: 'क्षेत्र' },
   },
+  /*
+   * The neutral name for every engagement type the platform knows. A
+   * family renames any of them through its manifest's
+   * `engagementTypeLabels`; these are what a screen says when it is
+   * standing in no field at all.
+   *
+   * The codes here MUST match the API's `EngagementType`. They did not
+   * for a while — this list carried `async_qa` and `package`, neither of
+   * which the server has ever returned, so `written_qa` and `async_task`
+   * fell through to a humanised code and were shown to people as
+   * "Written qa".
+   */
   engagementTypes: [
-    { code: 'live_session', label: { en: 'Live session', hi: 'लाइव सत्र' }, blurb: { en: 'Video, voice or chat against goals agreed in advance.' } },
-    { code: 'async_qa', label: { en: 'Written Q&A', hi: 'लिखित प्रश्नोत्तर' }, blurb: { en: 'A question in, a considered written answer out, within an agreed time.' } },
-    { code: 'document_review', label: { en: 'Work review', hi: 'कार्य समीक्षा' }, blurb: { en: 'Send something you have made; get it read and marked up.' } },
-    { code: 'package', label: { en: 'Package', hi: 'पैकेज' }, blurb: { en: 'A run of work at an agreed cadence, priced together.' } },
+    { code: 'document_review', label: { en: 'Document Audit', hi: 'दस्तावेज़ ऑडिट' }, blurb: { en: 'Send something you have written or made; get it read closely and marked up.' } },
+    { code: 'review_with_live', label: { en: 'Document Audit + Live Consultation', hi: 'दस्तावेज़ ऑडिट + लाइव परामर्श' }, blurb: { en: 'Your document audited and returned by the agreed deadline, then a live consultation to go through it — what to change, and what to do next. One set of goals, one payment held in escrow.' } },
+    { code: 'live_session', label: { en: 'Live Consultation', hi: 'लाइव परामर्श' }, blurb: { en: 'Video, voice or chat against goals agreed in advance.' } },
+    { code: 'written_qa', label: { en: 'Written Q&A', hi: 'लिखित प्रश्नोत्तर' }, blurb: { en: 'A question in, a considered written answer out, within an agreed time.' } },
+    { code: 'async_task', label: { en: 'Async task', hi: 'असिंक्रोनस कार्य' }, blurb: { en: 'Files exchanged and work delivered without meeting — plans, drafts, reviews.' } },
   ],
   credentialTypes: [
     { code: 'government_id', label: { en: 'Government ID' } },

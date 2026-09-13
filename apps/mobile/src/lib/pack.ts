@@ -91,6 +91,15 @@ export interface ResolvedDomain {
   };
   engagementTypes: string[];
   flagshipEngagement: string;
+  /**
+   * The family a domain belongs to, as the API resolves it. Only the
+   * part this app reads is declared: `engagementTypeLabels` is what a
+   * family calls each kind of work, and without it every screen fell
+   * back to humanising the code.
+   */
+  family?: {
+    engagementTypeLabels?: Record<string, { label?: LabelMap; blurb?: LabelMap }>;
+  };
   /** What a seeker rates a provider on. Family data — core names none of them. */
   reviewDimensions?: Array<{ code: string; labels: LabelMap }>;
   languages: string[];
@@ -139,18 +148,31 @@ export function factLabel(key: string): string {
 }
 
 /**
- * A core engagement-type code as a person reads it: "document_review" →
- * "Document review", "written_qa" → "Written Q&A".
+ * What a kind of work is called.
  *
- * These are platform concepts, not domain ones, so formatting them here
- * hardcodes no domain knowledge — the same argument as `factLabel`. It is
- * still English-only: when the app grows a real i18n catalogue these move
- * into it. Recorded in TRACKER as D33 rather than left implicit.
+ * The family's own word wins where it has one, and that word can only
+ * come from the family's manifest — core must never learn it. Failing
+ * that, the code is formatted into something that at
+ * least does not look like a database column: "written_qa" becomes
+ * "Written Q&A". That fallback is still English-only; when the app grows
+ * a real i18n catalogue it moves into it (TRACKER D33).
+ *
+ * The fallback is what every screen used to get unconditionally, which
+ * is why a combined format read as "Review with live" rather than the
+ * name its family had published for it.
  */
-export function engagementTypeLabel(code: string): string {
+export function engagementTypeLabel(
+  code: string,
+  pack?: { domain?: ResolvedDomain | null; lang?: string },
+): string {
+  const declared = pack?.domain?.family?.engagementTypeLabels?.[code]?.label;
+  if (declared) {
+    const named = declared[pack?.lang ?? 'en'] ?? declared.en ?? Object.values(declared)[0];
+    if (named) return named;
+  }
   const spaced = code.replace(/[_-]+/g, ' ');
   const cased = spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
-  return cased.replace(/\bqa\b/i, 'Q&A');
+  return cased.replace(/qa/i, 'Q&A');
 }
 
 /** A domain code as something a person reads: "upsc_cse" → "UPSC CSE". */

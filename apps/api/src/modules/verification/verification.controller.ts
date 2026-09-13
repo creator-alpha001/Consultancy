@@ -188,8 +188,11 @@ export class VerificationController {
       engagementType?: string;
       skillId?: string | null;
       amountPaise?: string;
-      /** Minutes for a live session, hours-to-return for async work. */
+      /** The type's headline promise as a bare number. Older shape. */
       commitment?: number | null;
+      /** The promises named. Whichever the type does not make is ignored. */
+      durationMinutes?: number | null;
+      turnaroundHours?: number | null;
     },
   ): Promise<ProviderRate> {
     if (!body.engagementType) throw new BadRequestException('engagementType is required');
@@ -200,6 +203,8 @@ export class VerificationController {
       skillId: body.skillId ?? null,
       amountPaise: body.amountPaise,
       commitment: body.commitment ?? null,
+      durationMinutes: body.durationMinutes ?? null,
+      turnaroundHours: body.turnaroundHours ?? null,
     });
   }
 

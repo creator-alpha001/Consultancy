@@ -1,7 +1,22 @@
 import { LabelMap } from '../../common/label-map';
 
 export type { LabelMap };
-export type EngagementType = 'document_review' | 'live_session' | 'written_qa' | 'async_task';
+/**
+ * The mediums an engagement can take. Family manifests pick a subset.
+ *
+ * `review_with_live` is a COMBINED medium, not a bundle of two
+ * engagements: one agenda, one escrow, one release, but two promises —
+ * the work comes back annotated by a deadline AND there is contact time
+ * afterwards to talk about it. It is the only type so far whose
+ * commitment is not a single number, which is why `commitmentKindsFor`
+ * returns a list rather than one kind.
+ */
+export type EngagementType =
+  | 'document_review'
+  | 'live_session'
+  | 'review_with_live'
+  | 'written_qa'
+  | 'async_task';
 
 // ─────────────────────────── raw manifests (as authored) ───────────────────────────
 // These mirror SPEC-PLATFORM.md §12 exactly. If a piece of domain
@@ -180,6 +195,16 @@ export interface FamilyManifestInput {
     category?: LabelMap;
   };
   engagementTypes: EngagementType[];
+  /**
+   * What this family CALLS each of its engagement types, by code.
+   *
+   * The neutral name for a type lives in core; the family's own word for
+   * it lives here. The exam family calls `document_review` "Copy
+   * Evaluation" because that is what an aspirant would say — and core
+   * must never learn that word (vocabulary table). Omitted entirely, or
+   * omitted for one type, and the client falls back to the neutral name.
+   */
+  engagementTypeLabels?: Record<string, { label?: LabelMap; blurb?: LabelMap }>;
   flagshipEngagement: EngagementType;
   skills: SkillInput[];
   assessmentTemplates: AssessmentTemplateInput[];
@@ -246,6 +271,8 @@ export interface ResolvedFamily {
   version: string;
   labels: FamilyManifestInput['labels'];
   engagementTypes: EngagementType[];
+  /** The family's own name for each type. Empty = every type keeps its neutral name. */
+  engagementTypeLabels: Record<string, { label?: LabelMap; blurb?: LabelMap }>;
   flagshipEngagement: EngagementType;
   /**
    * What a seeker rates a provider on. Family data — core names none of

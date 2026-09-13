@@ -29,6 +29,51 @@ describe('validateFamilyManifest', () => {
    * can only ever come from pack data, never from core code
    * (CLAUDE.md vocabulary table).
    */
+  /**
+   * A family's own word for a kind of work.
+   *
+   * The platform's names for its formats are neutral by design and read
+   * correctly in most fields, so no seeded family overrides one today.
+   * The mechanism still has to work and has to be checked: a family
+   * whose people would not recognise a neutral name must be able to
+   * publish its own, and that word can only ever arrive through the
+   * manifest — never through core. The examples below are deliberately
+   * fictional for that reason.
+   */
+  describe('engagementTypeLabels', () => {
+    it('is optional — a family that renames nothing still validates', () => {
+      const parsed = validateFamilyManifest(familyManifestV1());
+      expect(parsed.engagementTypeLabels).toEqual({});
+    });
+
+    it('round-trips what the family calls a type it offers', () => {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      raw.engagementTypeLabels = {
+        document_review: { label: { en: 'Manuscript appraisal', hi: 'पांडुलिपि मूल्यांकन' } },
+      };
+      const parsed = validateFamilyManifest(raw);
+      expect(parsed.engagementTypeLabels.document_review?.label?.en).toBe('Manuscript appraisal');
+    });
+
+    it('refuses a name for a type the family does not offer', () => {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      raw.engagementTypeLabels = { review_with_live: { label: { en: 'Manuscript appraisal, then a reading' } } };
+      // The family fixture does not offer review_with_live. A label for
+      // a type nobody can book is a silent typo, and this is the last
+      // place it can be caught.
+      expect(issuesOf(() => validateFamilyManifest(raw)).join(' ')).toContain('engagementTypeLabels.review_with_live');
+    });
+
+    it('accepts that same name once the family offers the type', () => {
+      const raw = familyManifestV1() as Record<string, unknown>;
+      raw.engagementTypes = [...(raw.engagementTypes as string[]), 'review_with_live'];
+      raw.engagementTypeLabels = { review_with_live: { label: { en: 'Manuscript appraisal, then a reading' } } };
+      expect(validateFamilyManifest(raw).engagementTypeLabels.review_with_live?.label?.en).toBe(
+        'Manuscript appraisal, then a reading',
+      );
+    });
+  });
+
   describe('labels.category', () => {
     it('is optional — a family that names no taxonomy still validates', () => {
       const raw = familyManifestV1() as Record<string, unknown>;

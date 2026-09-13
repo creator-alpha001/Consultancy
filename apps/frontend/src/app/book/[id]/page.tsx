@@ -6,7 +6,7 @@ import {
 import { preview, contextFor } from '@/lib/preview';
 import { t, tl, languageName } from '@/lib/pack';
 import { getProvider } from '@/lib/data';
-import { money } from '@/lib/format';
+import { commitmentLine, money } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +75,8 @@ export default async function BookPage({
               <div className="space-y-2.5">
                 {p.services.map((s) => {
                   const type = fam.engagementTypes.find((e) => e.code === s.type);
+                  const typeLabel = type ? t(type.label, lang) : s.type;
+                  const blurb = type ? t(type.blurb, lang) : '';
                   const active = service?.id === s.id;
                   return (
                     <label
@@ -92,12 +94,23 @@ export default async function BookPage({
                           className="mt-1 h-4 w-4 accent-brand"
                         />
                         <span>
-                          <span className="block text-body font-medium">{s.titleKey}</span>
-                          <span className="mt-0.5 block text-caption text-ink-muted">
-                            {type ? t(type.label, lang) : s.type}
-                            {s.durationMinutes ? ` · ${s.durationMinutes} min` : ''}
-                            {s.slaHours ? ` · back within ${s.slaHours} hr` : ''}
+                          {/*
+                            * The family's word for this kind of work, from
+                            * the pack. A rate that names a skill leads with
+                            * the skill and says the format underneath; one
+                            * that does not leads with the format. Neither
+                            * ever shows the raw code, which is what this
+                            * used to do when a rate had no skill.
+                            */}
+                          <span className="block text-body font-medium">
+                            {s.titleKey || typeLabel}
                           </span>
+                          <span className="mt-0.5 block text-caption text-ink-muted">
+                            {[s.titleKey ? typeLabel : '', commitmentLine(s)].filter(Boolean).join(' · ')}
+                          </span>
+                          {s.titleKey ? null : blurb ? (
+                            <span className="mt-1.5 block text-caption text-ink-muted">{blurb}</span>
+                          ) : null}
                         </span>
                       </span>
                       <span className="figure flex-none text-small font-semibold">{money(s.price)}</span>

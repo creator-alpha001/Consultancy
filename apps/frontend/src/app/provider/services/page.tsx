@@ -4,7 +4,7 @@ import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
 import { t, tl } from '@/lib/pack';
 import { listMyRates } from '@/lib/data';
-import { money } from '@/lib/format';
+import { commitmentLine, money } from '@/lib/format';
 import { removeRate, setRate } from '@/app/actions/provider';
 
 export const dynamic = 'force-dynamic';
@@ -59,9 +59,10 @@ export default async function ProviderServicesPage({
                     <div className="min-w-0">
                       <p className="text-body font-medium">{type ? t(type.label, lang) : r.engagementType}</p>
                       <p className="mt-0.5 text-caption text-ink-muted">
-                        {r.durationMinutes ? `${r.durationMinutes} min` : ''}
-                        {r.turnaroundHours ? `back within ${r.turnaroundHours} hr` : ''}
-                        {!r.durationMinutes && !r.turnaroundHours ? 'No time commitment set' : ''}
+                        {commitmentLine({
+                          durationMinutes: r.durationMinutes,
+                          slaHours: r.turnaroundHours,
+                        }) || 'No time commitment set'}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -85,7 +86,7 @@ export default async function ProviderServicesPage({
 
           <form action={setRate}>
             <Eyebrow>Add or change a price</Eyebrow>
-            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <Select
                 label="Kind of work"
                 name="engagementType"
@@ -93,12 +94,26 @@ export default async function ProviderServicesPage({
                 hint="Setting a price for a kind you already price replaces it."
               />
               <Field label="Price in rupees" name="rupees" type="number" required placeholder="1500" />
+              {/*
+                * Both boxes, always. Which of them a kind of work
+                * actually makes is decided by the server from the kind —
+                * a combined format makes both promises, and a form that
+                * only ever offered one could not describe it. Filling in
+                * one that does not apply is ignored, not an error.
+                */}
               <Field
-                label="Time commitment"
-                name="commitment"
+                label="Back within (hours)"
+                name="turnaroundHours"
+                type="number"
+                placeholder="72"
+                hint="For work you return by a deadline. Leave blank for purely live work."
+              />
+              <Field
+                label="Live time (minutes)"
+                name="durationMinutes"
                 type="number"
                 placeholder="45"
-                hint="Minutes for live work, hours to return async work. Optional."
+                hint="For work that includes time with the person. Leave blank if there is none."
               />
             </div>
             <div className="mt-4">

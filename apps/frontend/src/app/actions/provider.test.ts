@@ -108,15 +108,36 @@ describe('setRate — rupees in, paise out', () => {
 
   it('sends no time commitment when none was given, rather than zero', async () => {
     apiAnswers(200, {});
-    await landsOn(() => setRate(form({ engagementType: 'async_qa', rupees: '800', commitment: '' })));
+    await landsOn(() =>
+      setRate(form({ engagementType: 'written_qa', rupees: '800', turnaroundHours: '', durationMinutes: '' })),
+    );
     // Zero minutes is a promise; "not stated" is the truth.
-    expect(sentBody().commitment).toBeNull();
+    expect(sentBody().turnaroundHours).toBeNull();
+    expect(sentBody().durationMinutes).toBeNull();
   });
 
   it('carries a stated commitment through', async () => {
     apiAnswers(200, {});
-    await landsOn(() => setRate(form({ engagementType: 'live_session', rupees: '800', commitment: '45' })));
-    expect(sentBody().commitment).toBe(45);
+    await landsOn(() => setRate(form({ engagementType: 'live_session', rupees: '800', durationMinutes: '45' })));
+    expect(sentBody().durationMinutes).toBe(45);
+  });
+
+  it('carries both promises for a kind of work that makes two', async () => {
+    apiAnswers(200, {});
+    await landsOn(() =>
+      setRate(
+        form({
+          engagementType: 'review_with_live',
+          rupees: '2400',
+          turnaroundHours: '72',
+          durationMinutes: '45',
+        }),
+      ),
+    );
+    // The combined format is the whole reason these are two fields: a
+    // single box could only ever describe half of what was sold.
+    expect(sentBody().turnaroundHours).toBe(72);
+    expect(sentBody().durationMinutes).toBe(45);
   });
 
   it('sends an idempotency key, so a double-click is one price', async () => {

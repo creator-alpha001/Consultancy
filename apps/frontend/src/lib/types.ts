@@ -21,7 +21,13 @@ export type Role = 'seeker' | 'provider' | 'admin';
 
 export type VerificationTier = 't0' | 't1' | 't2' | 't3' | 't4';
 
-export type EngagementType = 'live_session' | 'async_qa' | 'document_review' | 'package';
+/** Mirrors the API's `EngagementType`. Keep the two in step. */
+export type EngagementType =
+  | 'document_review'
+  | 'review_with_live'
+  | 'live_session'
+  | 'written_qa'
+  | 'async_task';
 
 export type EngagementStatus =
   | 'draft'

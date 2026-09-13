@@ -7,7 +7,7 @@ import { RatingDistribution } from '@/components/charts';
 import { preview, contextFor } from '@/lib/preview';
 import { t, tl } from '@/lib/pack';
 import { getProvider } from '@/lib/data';
-import { dateLong, money, percent } from '@/lib/format';
+import { commitmentLine, dateLong, money, percent } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -192,6 +192,7 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
             <ul className="mt-3 space-y-2.5">
               {p.services.map((s) => {
                 const type = fam.engagementTypes.find((e) => e.code === s.type);
+                const typeLabel = type ? t(type.label, lang) : s.type;
                 return (
                   <li key={s.id}>
                     <a
@@ -200,11 +201,9 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-small font-semibold">{s.titleKey}</p>
+                          <p className="text-small font-semibold">{s.titleKey || typeLabel}</p>
                           <p className="mt-0.5 text-caption text-ink-muted">
-                            {type ? t(type.label, lang) : s.type}
-                            {s.durationMinutes ? ` · ${s.durationMinutes} min` : ''}
-                            {s.slaHours ? ` · back within ${s.slaHours} hr` : ''}
+                            {[s.titleKey ? typeLabel : '', commitmentLine(s)].filter(Boolean).join(' · ')}
                           </p>
                         </div>
                         <span className="figure flex-none text-small font-semibold">{money(s.price)}</span>

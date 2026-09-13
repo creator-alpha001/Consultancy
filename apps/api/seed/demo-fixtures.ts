@@ -24,9 +24,13 @@ async function main() {
   if (cats.rows.length === 0) throw new Error('no mapped categories — seed the domain first');
 
   const people = [
-    { email: 'asha.rathore@demo.local', langs: ['hi', 'en'], tier: 't3', live: 95_000, minutes: 45 },
-    { email: 'vikram.kulkarni@demo.local', langs: ['en'], tier: 't3', live: 120_000, minutes: 60 },
-    { email: 'meera.banerjee@demo.local', langs: ['hi', 'en'], tier: 't2', live: 70_000, minutes: 30 },
+    // `review` is what a document audit costs and how long it takes to
+    // come back; `live` is contact time. `combined` is the two together
+    // as one bookable thing — priced under the sum, which is the whole
+    // reason to sell it as one product rather than two bookings.
+    { email: 'asha.rathore@demo.local', langs: ['hi', 'en'], tier: 't3', live: 95_000, minutes: 45, review: 95_000, hours: 72, combined: 165_000 },
+    { email: 'vikram.kulkarni@demo.local', langs: ['en'], tier: 't3', live: 120_000, minutes: 60, review: 110_000, hours: 48, combined: 205_000 },
+    { email: 'meera.banerjee@demo.local', langs: ['hi', 'en'], tier: 't2', live: 70_000, minutes: 30, review: 60_000, hours: 96, combined: 115_000 },
   ];
 
   for (const p of people) {
@@ -78,17 +82,34 @@ async function main() {
       [providerId],
     );
 
-    // A published price for a live session, with the duration it buys.
-    // Booking offers only the engagement types a provider has priced —
-    // there is no price negotiation, so an unpriced type is simply not
-    // on sale (and every mentor here was unbookable for live work).
-    await pool.query(
-      `INSERT INTO provider_rates
-         (provider_id, engagement_type, skill_id, currency, amount_paise, duration_minutes)
-       VALUES ($1, 'live_session', NULL, 'INR', $2, $3)
-       ON CONFLICT DO NOTHING`,
-      [providerId, p.live, p.minutes],
-    );
+    // Published prices, with what each one actually promises. Booking
+    // offers only the engagement types a provider has priced — there is
+    // no price negotiation, so an unpriced type is simply not on sale.
+    //
+    // Three rows rather than one: the two single-promise formats, and
+    // the combined one that makes both. Note that the combined row
+    // carries a turnaround AND a duration in the same row — the thing
+    // 0044 forbade and 0052 allows, because for this format they are one
+    // product's two halves rather than two products.
+    const priced: Array<[string, number, number | null, number | null]> = [
+      ['document_review', p.review, null, p.hours],
+      ['review_with_live', p.combined, p.minutes, p.hours],
+      ['live_session', p.live, p.minutes, null],
+    ];
+    for (const [type, amount, minutes, hours] of priced) {
+      await pool.query(
+        `INSERT INTO provider_rates
+           (provider_id, engagement_type, skill_id, currency, amount_paise, duration_minutes, turnaround_hours)
+         VALUES ($1, $2, NULL, 'INR', $3, $4, $5)
+         ON CONFLICT (provider_id, engagement_type) WHERE skill_id IS NULL
+         DO UPDATE SET amount_paise = EXCLUDED.amount_paise,
+                       duration_minutes = EXCLUDED.duration_minutes,
+                       turnaround_hours = EXCLUDED.turnaround_hours,
+                       active = true,
+                       updated_at = now()`,
+        [providerId, type, amount, minutes, hours],
+      );
+    }
 
     console.log(`provider ${p.email} verified on ${skillIds.length} skills at ${p.tier}`);
   }

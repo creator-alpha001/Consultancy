@@ -39,7 +39,7 @@ interface Proposal {
 export default function BoardPostDetail(): JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { me, lang } = useStore();
+  const { me, lang, domain } = useStore();
   const words = useWords();
 
   const [post, setPost] = useState<BoardPost | null>(null);
@@ -120,7 +120,7 @@ export default function BoardPostDetail(): JSX.Element {
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Request' }} />
-      <H1>{engagementTypeLabel(post.engagementType)}</H1>
+      <H1>{engagementTypeLabel(post.engagementType, { domain, lang })}</H1>
       <Row gap={space.sm} wrap>
         <Chip label={languageName(post.language, lang)} />
         <Chip label={post.status.replace(/_/g, ' ')} tone={post.status === 'open' ? 'good' : 'neutral'} />

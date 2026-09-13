@@ -60,6 +60,7 @@ export class DomainLoaderService {
       version: m.version,
       labels: m.labels,
       engagementTypes: m.engagementTypes,
+      engagementTypeLabels: m.engagementTypeLabels ?? {},
       flagshipEngagement: m.flagshipEngagement,
       reviewDimensions: m.reviewDimensions ?? [],
       skills: m.skills ?? [],

@@ -84,7 +84,7 @@ export default function NewPost(): JSX.Element {
           {(domain?.engagementTypes ?? []).map((t) => (
             <Chip
               key={t}
-              label={engagementTypeLabel(t)}
+              label={engagementTypeLabel(t, { domain, lang })}
               selected={t === engagementType}
               onPress={() => setEngagementType(t)}
             />

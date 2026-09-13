@@ -206,7 +206,14 @@ export function toProviderProfile(p: ApiProviderProfile): ProviderProfile {
     services: p.rates.map((r) => ({
       id: r.id,
       type: r.engagementType as ProviderProfile['services'][number]['type'],
-      titleKey: label(r.skillLabels, r.skillCode ?? r.engagementType),
+      /*
+       * The skill this rate is for, when it names one. Empty otherwise —
+       * NOT the engagement type's code, which is what used to land here
+       * and put "document_review" in front of people as a service name.
+       * The screens fall back to the type's pack label, which is the
+       * translated word for it; this layer has no language to do that in.
+       */
+      titleKey: r.skillCode ? label(r.skillLabels, r.skillCode) : '',
       durationMinutes: r.durationMinutes,
       slaHours: r.turnaroundHours,
       price: paise(r.amountPaise, r.currency) ?? { amountPaise: 0, currency: r.currency },
