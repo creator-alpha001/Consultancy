@@ -46,6 +46,7 @@ class _BoardPostScreenState extends ConsumerState<BoardPostScreen> {
     final AsyncValue<List<Proposal>> proposals = ref.watch(
       proposalsProvider(widget.postId),
     );
+    final String? meId = ref.watch(authProvider).user?.id;
     final bool isProvider = ref.watch(authProvider).user?.isProvider ?? false;
 
     return Scaffold(
@@ -65,14 +66,29 @@ class _BoardPostScreenState extends ConsumerState<BoardPostScreen> {
             _PostDetail(post: p),
 
             if (isProvider && p.isOpen)
-              _ProposeButton(post: p)
-            else
+              // An offer already sent is the answer to "can I offer?",
+              // so the form gives way to it. Showing an empty form to
+              // someone who has already proposed invites a duplicate the
+              // API would refuse.
+              _MyOffer(
+                post: p,
+                proposals: proposals,
+                meId: meId,
+                whenNone: _ProposeButton(post: p),
+              )
+            else ...<Widget>[
               _Proposals(
                 post: p,
                 proposals: proposals,
                 order: _order,
                 onOrder: (ProposalOrder o) => setState(() => _order = o),
               ),
+              // Only the person who asked can take it down, and only
+              // while it is still open — the redirect decides what to
+              // draw, never what is allowed (CLAUDE.md #28).
+              if (p.isOpen && meId != null && p.seeker?.id == meId)
+                _TakeItDown(post: p),
+            ],
           ],
         ),
       ),
@@ -448,6 +464,187 @@ class _ProposeButtonState extends ConsumerState<_ProposeButton> {
           );
       ref.invalidate(proposalsProvider(widget.post.id));
       if (mounted) Navigator.of(context).pop();
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// A provider looking at a request they have already offered on.
+///
+/// Withdrawing is allowed only while the offer is still `submitted`;
+/// once the seeker has chosen it there is an engagement, and the way out
+/// of an engagement is cancelling that, not un-sending the offer.
+class _MyOffer extends ConsumerStatefulWidget {
+  const _MyOffer({
+    required this.post,
+    required this.proposals,
+    required this.meId,
+    required this.whenNone,
+  });
+
+  final BoardPost post;
+  final AsyncValue<List<Proposal>> proposals;
+  final String? meId;
+
+  /// What to show if there is no offer from this provider yet.
+  final Widget whenNone;
+
+  @override
+  ConsumerState<_MyOffer> createState() => _MyOfferState();
+}
+
+class _MyOfferState extends ConsumerState<_MyOffer> {
+  bool _busy = false;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<Proposal> list =
+        widget.proposals.valueOrNull ?? const <Proposal>[];
+    final String? meId = widget.meId;
+
+    Proposal? mine;
+    for (final Proposal p in list) {
+      if (meId != null && p.providerId == meId) mine = p;
+    }
+    if (mine == null) return widget.whenNone;
+
+    return Panel(
+      title: 'Your offer',
+      trailing: StatusChip(
+        mine.isOpen ? 'Waiting' : mine.status,
+        tone: mine.isOpen ? ChipTone.brand : ChipTone.neutral,
+      ),
+      note: mine.isOpen
+          ? 'Sent. They will see it alongside the others — never ordered '
+                'by price.'
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if ((mine.message ?? '').isNotEmpty)
+            PackText(mine.message!, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: Space.md),
+          Row(
+            children: <Widget>[
+              if (mine.turnaroundHours != null)
+                Field(
+                  label: 'Turnaround',
+                  value: PackText('${mine.turnaroundHours} hours'),
+                ),
+              const Spacer(),
+              Money(mine.amount, style: theme.textTheme.titleMedium),
+            ],
+          ),
+          if (_error != null) ...<Widget>[
+            const SizedBox(height: Space.md),
+            Note(_error!, tone: ChipTone.danger),
+          ],
+          if (mine.isOpen) ...<Widget>[
+            const SizedBox(height: Space.lg),
+            OutlinedButton(
+              onPressed: _busy ? null : () => _withdraw(mine!.id),
+              child: const PackText('Withdraw the offer'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _withdraw(String proposalId) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(repositoryProvider).withdrawProposal(proposalId);
+      ref.invalidate(proposalsProvider(widget.post.id));
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// The seeker withdrawing their own request.
+///
+/// Offers already made are not a debt: nobody has been paid, nothing is
+/// held, and closing the request simply stops more arriving. The copy
+/// says how many people offered, because taking down a request four
+/// people answered is a different act from taking down one nobody saw.
+class _TakeItDown extends ConsumerStatefulWidget {
+  const _TakeItDown({required this.post});
+
+  final BoardPost post;
+
+  @override
+  ConsumerState<_TakeItDown> createState() => _TakeItDownState();
+}
+
+class _TakeItDownState extends ConsumerState<_TakeItDown> {
+  bool _busy = false;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) => Panel(
+    title: 'No longer needed?',
+    note: widget.post.proposalCount == 0
+        ? 'Closing it stops it being shown. Nothing has been charged.'
+        : 'Closing it declines the offers you have. Nothing has been '
+              'charged and nobody is owed anything.',
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (_error != null) ...<Widget>[
+          Note(_error!, tone: ChipTone.danger),
+          const SizedBox(height: Space.md),
+        ],
+        OutlinedButton(
+          onPressed: _busy ? null : _cancel,
+          child: const PackText('Close this request'),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _cancel() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const PackText('Close this request?'),
+        content: const PackText(
+          'It stops being shown and any offers are declined. You can post '
+          'again whenever you want.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const PackText('Leave it up'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const PackText('Close it'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(repositoryProvider).cancelBoardPost(widget.post.id);
+      ref
+        ..invalidate(boardPostProvider(widget.post.id))
+        ..invalidate(boardPostsProvider);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {

@@ -92,14 +92,17 @@ class LockedAgendaView extends ConsumerWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Icon(
-                        i.addressed
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                        size: 18,
-                        color: i.addressed
-                            ? BaseColors.verified
-                            : BaseColors.inkFaint,
+                      _Tick(
+                        item: i,
+                        engagementId: engagement.id,
+                        // Ticking belongs to whoever is doing the work.
+                        // Async work has no session room to tick from,
+                        // so for those engagements this is the only
+                        // place it can happen.
+                        enabled:
+                            (ref.watch(authProvider).user?.isProvider ??
+                                false) &&
+                            !i.addressed,
                       ),
                       const SizedBox(width: Space.sm),
                       Expanded(
@@ -168,6 +171,66 @@ class LockedAgendaView extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+/// Marking one goal as covered.
+///
+/// The single mutation a locked agenda still permits (CLAUDE.md #11).
+/// It is one-way: unticking a goal that was covered would be rewriting
+/// the record of what happened, which is exactly what locking exists to
+/// prevent.
+class _Tick extends ConsumerStatefulWidget {
+  const _Tick({
+    required this.item,
+    required this.engagementId,
+    required this.enabled,
+  });
+
+  final AgendaItem item;
+  final String engagementId;
+  final bool enabled;
+
+  @override
+  ConsumerState<_Tick> createState() => _TickState();
+}
+
+class _TickState extends ConsumerState<_Tick> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget icon = Icon(
+      widget.item.addressed
+          ? Icons.check_circle
+          : Icons.radio_button_unchecked,
+      size: 18,
+      color: widget.item.addressed
+          ? BaseColors.verified
+          : BaseColors.inkFaint,
+    );
+    if (!widget.enabled) return icon;
+
+    return Semantics(
+      button: true,
+      label: 'Mark this goal as covered',
+      child: InkWell(
+        onTap: _busy ? null : _tick,
+        child: Padding(padding: const EdgeInsets.all(2), child: icon),
+      ),
+    );
+  }
+
+  Future<void> _tick() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(repositoryProvider).tickAgendaItem(widget.item.id);
+      ref.invalidate(engagementProvider(widget.engagementId));
+    } on ApiException {
+      // The agenda refreshes from the server either way.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
 

@@ -109,6 +109,64 @@ describe('session invariants (raw SQL)', () => {
     expect(res.rows[0].recording_active).toBe(true);
   });
 
+  // ── Recording runs (0053) ────────────────────────────────────────────
+
+  async function seedConsentingSession(): Promise<string> {
+    const { seekerId, providerId } = await seedUsers(pool);
+    const sessionId = await seedSession(seekerId, providerId);
+    await pool.query(`INSERT INTO session_participants (session_id, user_id) VALUES ($1, $2), ($1, $3)`, [
+      sessionId, seekerId, providerId,
+    ]);
+    await pool.query(
+      `INSERT INTO session_consents (session_id, user_id, consent_given) VALUES ($1, $2, true), ($1, $3, true)`,
+      [sessionId, seekerId, providerId],
+    );
+    return sessionId;
+  }
+
+  it('rejects starting a recording run without every participant consenting', async () => {
+    const { seekerId, providerId } = await seedUsers(pool);
+    const sessionId = await seedSession(seekerId, providerId);
+    await pool.query(`INSERT INTO session_participants (session_id, user_id) VALUES ($1, $2), ($1, $3)`, [
+      sessionId, seekerId, providerId,
+    ]);
+    await pool.query(
+      `INSERT INTO session_consents (session_id, user_id, consent_given) VALUES ($1, $2, true), ($1, $3, false)`,
+      [sessionId, seekerId, providerId],
+    );
+    await expect(
+      pool.query(`INSERT INTO session_recordings (session_id, provider) VALUES ($1, 'x')`, [sessionId]),
+    ).rejects.toThrow(/cannot start a recording/);
+  });
+
+  it('rejects a second open recording run for the same session', async () => {
+    const sessionId = await seedConsentingSession();
+    await pool.query(`INSERT INTO session_recordings (session_id, provider) VALUES ($1, 'x')`, [sessionId]);
+    await expect(
+      pool.query(`INSERT INTO session_recordings (session_id, provider) VALUES ($1, 'x')`, [sessionId]),
+    ).rejects.toThrow(/duplicate key/);
+  });
+
+  it('rejects reopening a stopped run, rewriting its identity, or deleting it', async () => {
+    const sessionId = await seedConsentingSession();
+    const run = await pool.query<{ id: string }>(
+      `INSERT INTO session_recordings (session_id, provider, provider_reference) VALUES ($1, 'x', '{"sid":"1"}') RETURNING id`,
+      [sessionId],
+    );
+    const id = run.rows[0].id;
+
+    await expect(
+      pool.query(`UPDATE session_recordings SET provider_reference = '{"sid":"2"}' WHERE id = $1`, [id]),
+    ).rejects.toThrow(/immutable/);
+
+    await pool.query(`UPDATE session_recordings SET stopped_at = now() WHERE id = $1`, [id]);
+    await expect(
+      pool.query(`UPDATE session_recordings SET stopped_at = NULL WHERE id = $1`, [id]),
+    ).rejects.toThrow(/already stopped/);
+
+    await expect(pool.query(`DELETE FROM session_recordings WHERE id = $1`, [id])).rejects.toThrow(/never deleted/);
+  });
+
   it('rejects a duplicate transcript for the same session', async () => {
     const { seekerId, providerId } = await seedUsers(pool);
     const sessionId = await seedSession(seekerId, providerId);

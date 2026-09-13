@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/api_error.dart';
 import '../../api/models/user.dart';
 import '../../data.dart';
 import '../../providers.dart';
@@ -74,6 +75,8 @@ class AccountScreen extends ConsumerWidget {
                             'Working in ${(d['workingLanguage'] ?? 'en').toString().toUpperCase()}'
                             '${d['isPrimary'] == true ? ' · main' : ''}',
                         leading: const Icon(Icons.folder_outlined, size: 20),
+                        onTap: () =>
+                            context.push('/fields/${d['domainCode']}'),
                       ),
                   ],
                 ),
@@ -126,6 +129,7 @@ class AccountScreen extends ConsumerWidget {
             ),
 
           const _Devices(),
+          const _RecoveryCodes(),
 
           Panel(
             title: 'Legal',
@@ -193,6 +197,111 @@ class _DevicesState extends ConsumerState<_Devices> {
       if (mounted) {
         setState(() => _done = 'Every other device has been signed out.');
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// New recovery codes.
+///
+/// 2FA is mandatory for providers and admins (CLAUDE.md #32), which
+/// makes losing both the authenticator and the codes an account someone
+/// cannot get back into — and it is an account that moves money. So
+/// minting a fresh set is offered here rather than left to support.
+///
+/// Regenerating invalidates the old set immediately. The screen says so
+/// before the tap, not after, because a half-migrated set is worse than
+/// either.
+class _RecoveryCodes extends ConsumerStatefulWidget {
+  const _RecoveryCodes();
+
+  @override
+  ConsumerState<_RecoveryCodes> createState() => _RecoveryCodesState();
+}
+
+class _RecoveryCodesState extends ConsumerState<_RecoveryCodes> {
+  bool _busy = false;
+  String? _error;
+  List<String>? _codes;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Panel(
+      title: 'Recovery codes',
+      note: _codes == null
+          ? 'For getting back in if you lose your authenticator. Making new '
+                'ones cancels the old ones straight away.'
+          : 'These are shown once. Only their hashes are kept, so this '
+                'screen cannot show them to you again.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (_codes != null) ...<Widget>[
+            for (final String c in _codes!)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Space.sm),
+                child: SelectableText(
+                  c,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: Space.md),
+          ],
+          if (_error != null) ...<Widget>[
+            Note(_error!, tone: ChipTone.danger),
+            const SizedBox(height: Space.md),
+          ],
+          OutlinedButton(
+            onPressed: _busy ? null : _regenerate,
+            child: PackText(
+              _codes == null ? 'Make new codes' : 'Make another set',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _regenerate() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const PackText('Make new recovery codes?'),
+        content: const PackText(
+          'Your existing codes stop working the moment these are made. '
+          'Have somewhere to write the new ones down.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const PackText('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const PackText('Make them'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final List<String> codes = await ref
+          .read(repositoryProvider)
+          .regenerateRecoveryCodes();
+      if (mounted) setState(() => _codes = codes);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

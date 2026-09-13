@@ -4,12 +4,14 @@ import 'package:intl/intl.dart';
 
 import '../../api/api_error.dart';
 import '../../api/models/session.dart';
+import '../../api/uploads.dart';
 import '../../data.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/generated_tokens.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import '../shared/attachments.dart';
 
 /// Chat inside a session, and the files shared in it.
 ///
@@ -234,58 +236,109 @@ class _Bubble extends StatelessWidget {
 /// Sharing one creates the grant — that is the whole access model
 /// (CLAUDE.md #29): there is no public link, and a viewer reaches the
 /// file through a signed URL with a short expiry, watermarked with their
-/// identity. Uploading is not built on either client yet, so this lists
-/// what is there and says so rather than offering a button that does
-/// nothing.
-class _SharedFiles extends ConsumerWidget {
+/// identity. The upload and the share are two calls because an
+/// attachment exists before it belongs anywhere; the API grants the other
+/// participants inside the share's own transaction.
+class _SharedFiles extends ConsumerStatefulWidget {
   const _SharedFiles({required this.sessionId});
 
   final String sessionId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<Map<String, dynamic>>> files = ref.watch(
-      sessionFilesProvider(sessionId),
-    );
+  ConsumerState<_SharedFiles> createState() => _SharedFilesState();
+}
 
-    return files.maybeWhen(
-      data: (List<Map<String, dynamic>> list) {
-        if (list.isEmpty) return const SizedBox.shrink();
-        return Padding(
-          padding: const EdgeInsets.only(top: Space.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Divider(height: Space.lg),
-              PackText(
-                'Shared in this session',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium?.copyWith(color: BaseColors.inkMuted),
-              ),
-              const SizedBox(height: Space.sm),
-              for (final Map<String, dynamic> f in list)
-                Row(
-                  children: <Widget>[
-                    const Icon(
-                      Icons.attach_file,
-                      size: 16,
-                      color: BaseColors.inkMuted,
-                    ),
-                    const SizedBox(width: Space.sm),
-                    Expanded(
-                      child: PackText(
-                        (f['filename'] ?? f['name'] ?? 'A file').toString(),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        );
-      },
-      orElse: () => const SizedBox.shrink(),
+class _SharedFilesState extends ConsumerState<_SharedFiles> {
+  bool _busy = false;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) {
+    final AsyncValue<List<Map<String, dynamic>>> files = ref.watch(
+      sessionFilesProvider(widget.sessionId),
     );
+    final List<Map<String, dynamic>> list =
+        files.asData?.value ?? const <Map<String, dynamic>>[];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Divider(height: Space.lg),
+          if (list.isNotEmpty) ...<Widget>[
+            PackText(
+              'Shared in this session',
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: BaseColors.inkMuted),
+            ),
+            const SizedBox(height: Space.sm),
+            for (final Map<String, dynamic> f in list) _row(context, f),
+          ],
+          if (_error != null) Note(_error!, tone: ChipTone.danger),
+          TextButton.icon(
+            icon: _busy
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.attach_file, size: 18),
+            label: PackText(_busy ? 'Uploading' : 'Share a file'),
+            onPressed: _busy ? null : _share,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, Map<String, dynamic> f) {
+    final String? id = f['attachmentId'] as String?;
+    final String name = (f['originalFilename'] as String?) ?? 'A file';
+    final bool isImage =
+        (f['contentType'] as String?)?.startsWith('image/') ?? false;
+    return NavRow(
+      title: name,
+      subtitle: 'Opens with a fresh private link',
+      leading: Icon(
+        isImage ? Icons.image_outlined : Icons.description_outlined,
+        size: 18,
+      ),
+      onTap: id == null
+          ? null
+          : () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => AttachmentView(
+                  attachmentId: id,
+                  title: name,
+                  isImage: isImage,
+                ),
+              ),
+            ),
+    );
+  }
+
+  Future<void> _share() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final PickedUpload? picked = await ref
+          .read(uploadsProvider)
+          .pickAndUpload();
+      // Null means the picker was dismissed — not an error.
+      if (picked == null) return;
+      await ref
+          .read(repositoryProvider)
+          .shareSessionFile(widget.sessionId, picked.attachmentId);
+      ref.invalidate(sessionFilesProvider(widget.sessionId));
+    } on UploadRefused catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }

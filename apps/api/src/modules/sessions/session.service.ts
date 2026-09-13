@@ -5,8 +5,15 @@ import { AgendaService } from '../agenda/agenda.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { AvailabilityService } from './availability.service';
 import { SessionExtensionService } from './session-extension.service';
-import { recordingConsentIncomplete, sessionNotFound, sessionWrongStatus } from './errors';
-import { ROOM_PROVIDER, RoomProvider } from './room/room-provider.interface';
+import {
+  recordingConsentIncomplete,
+  recordingUnavailable,
+  roomNotJoinable,
+  sessionNotFound,
+  sessionWrongStatus,
+} from './errors';
+import { RECORDING_PROVIDER, RecordingProvider, StartedRecording } from './room/recording-provider.interface';
+import { JoinCredentials, ROOM_PROVIDER, RoomProvider } from './room/room-provider.interface';
 import { ScheduleSessionInput, SessionMode, SessionRow, SessionStatus } from './types';
 
 interface SessionDbRow {
@@ -55,6 +62,7 @@ export class SessionService {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(ROOM_PROVIDER) private readonly roomProvider: RoomProvider,
+    @Inject(RECORDING_PROVIDER) private readonly recorder: RecordingProvider,
     @Inject(AgendaService) private readonly agendas: AgendaService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(AvailabilityService) private readonly availability: AvailabilityService,
@@ -109,12 +117,41 @@ export class SessionService {
 
   async createRoom(sessionId: string): Promise<SessionRow> {
     const session = await this.get(sessionId);
+    // A room is named once. Re-provisioning on every join would hand the
+    // second person a different room from the first.
+    if (session.roomReference) return session;
     const result = await this.roomProvider.createRoom({ sessionId, mode: session.mode });
     const res = await this.pool.query<SessionDbRow>(
       `UPDATE sessions SET room_provider = $2, room_reference = $3 WHERE id = $1 RETURNING *`,
       [sessionId, result.roomProvider, result.roomReference],
     );
     return mapSession(res.rows[0]);
+  }
+
+  /**
+   * Credentials for ONE user to join ONE session's room.
+   *
+   * The caller has already proven the actor is a participant; the token
+   * is bound to that actor's media identity, so it cannot be handed to
+   * someone else to join as them. It lives until two hours past the
+   * scheduled end (bounded to 1-24h), long enough for an overrun or an
+   * extension without a mid-call expiry, and a client refreshes it by
+   * calling the same route again.
+   */
+  async joinCredentials(sessionId: string, userId: string): Promise<{ session: SessionRow; join: JoinCredentials }> {
+    const current = await this.get(sessionId);
+    if (current.status !== 'scheduled' && current.status !== 'in_progress') {
+      throw roomNotJoinable(sessionId, current.status);
+    }
+    const session = await this.createRoom(sessionId);
+    const untilEnd = Math.floor((session.scheduledEnd.getTime() - Date.now()) / 1000) + 2 * 3600;
+    const expiresInSeconds = Math.min(24 * 3600, Math.max(3600, untilEnd));
+    const join = this.roomProvider.issueJoin({
+      roomReference: session.roomReference as string,
+      userId,
+      expiresInSeconds,
+    });
+    return { session, join };
   }
 
   /**
@@ -143,46 +180,171 @@ export class SessionService {
       subjectId: sessionId,
       detail: { consentGiven },
     });
+
+    // Withdrawing consent mid-recording stops the recorder. #21 is consent
+    // to be recorded, not consent to having once agreed.
+    if (!consentGiven) {
+      const session = await this.get(sessionId);
+      if (session.recordingActive) await this.setRecording(sessionId, false);
+    }
   }
 
+  /**
+   * Starts or stops the cloud recorder.
+   *
+   * Order matters, and each direction fails safe differently:
+   *
+   *  * START asks the vendor first, then writes the flag and the run in
+   *    one transaction. If that write is refused (the consent triggers),
+   *    the recorder just started is stopped again, so no recording exists
+   *    that the database does not know about.
+   *  * STOP asks the vendor first, and only then clears the flag. If the
+   *    vendor cannot be reached the flag stays on - see
+   *    `recordingUnavailable`.
+   *
+   * No vendor call is made inside a transaction (CLAUDE.md #9).
+   * Repeating either request is a no-op, so a retried tap never starts a
+   * second recorder.
+   */
   async setRecording(sessionId: string, active: boolean): Promise<SessionRow> {
+    const session = await this.get(sessionId);
+    const open = await this.openRun(sessionId);
+
     if (active) {
-      const counts = await this.pool.query<{ participants: string; consenting: string }>(
-        `SELECT
-           (SELECT count(*) FROM session_participants WHERE session_id = $1) AS participants,
-           (SELECT count(*) FROM session_consents WHERE session_id = $1 AND consent_given) AS consenting`,
-        [sessionId],
-      );
-      const total = Number(counts.rows[0].participants);
-      const consenting = Number(counts.rows[0].consenting);
-      if (total === 0 || consenting < total) {
-        throw recordingConsentIncomplete(sessionId, consenting, total);
+      if (open) return session;
+      await this.assertFullConsent(sessionId);
+      // The recorder joins the room by name, so the room must exist.
+      const roomReference = (await this.createRoom(sessionId)).roomReference as string;
+
+      let started: StartedRecording;
+      try {
+        started = await this.recorder.start({ sessionId, roomReference });
+      } catch {
+        throw recordingUnavailable(sessionId, 'start');
+      }
+
+      try {
+        const row = await this.writeRunStarted(sessionId, started);
+        await this.audit.record({
+          actorId: null,
+          action: 'session.recording_started',
+          subjectType: 'session',
+          subjectId: sessionId,
+          detail: { provider: started.provider },
+        });
+        return row;
+      } catch (err) {
+        await this.recorder.stop({ roomReference, reference: started.reference }).catch(() => undefined);
+        throw err;
       }
     }
-    // §9: "90-day retention extended only under legal hold." The clock
-    // starts when recording first starts, and is never shortened by a
-    // later start — a second recording in the same session does not
-    // reset the retention of the first.
-    const res = await this.pool.query<SessionDbRow>(
-      `UPDATE sessions
-          SET recording_active = $2,
-              recording_retention_until = CASE
-                WHEN $2 AND recording_retention_until IS NULL THEN now() + interval '90 days'
-                ELSE recording_retention_until
-              END
-        WHERE id = $1
-        RETURNING *`,
-      [sessionId, active],
+
+    if (!open) {
+      if (!session.recordingActive) return session;
+      // A flag with no run behind it predates run bookkeeping (0053).
+      return this.clearRecordingFlag(sessionId, null);
+    }
+
+    let stopped: { files: unknown; note: string | null };
+    try {
+      stopped = await this.recorder.stop({
+        roomReference: session.roomReference as string,
+        reference: open.reference,
+      });
+    } catch {
+      throw recordingUnavailable(sessionId, 'stop');
+    }
+    return this.clearRecordingFlag(sessionId, { runId: open.id, files: stopped.files, note: stopped.note });
+  }
+
+  private async assertFullConsent(sessionId: string): Promise<void> {
+    const counts = await this.pool.query<{ participants: string; consenting: string }>(
+      `SELECT
+         (SELECT count(*) FROM session_participants WHERE session_id = $1) AS participants,
+         (SELECT count(*) FROM session_consents WHERE session_id = $1 AND consent_given) AS consenting`,
+      [sessionId],
     );
-    if (!res.rows[0]) throw sessionNotFound(sessionId);
+    const total = Number(counts.rows[0].participants);
+    const consenting = Number(counts.rows[0].consenting);
+    if (total === 0 || consenting < total) {
+      throw recordingConsentIncomplete(sessionId, consenting, total);
+    }
+  }
+
+  private async openRun(sessionId: string): Promise<{ id: string; reference: Record<string, string> } | null> {
+    const res = await this.pool.query<{ id: string; provider_reference: Record<string, string> }>(
+      `SELECT id, provider_reference FROM session_recordings WHERE session_id = $1 AND stopped_at IS NULL`,
+      [sessionId],
+    );
+    const row = res.rows[0];
+    return row ? { id: row.id, reference: row.provider_reference } : null;
+  }
+
+  private async writeRunStarted(sessionId: string, started: StartedRecording): Promise<SessionRow> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO session_recordings (session_id, provider, provider_reference, storage_prefix)
+         VALUES ($1, $2, $3, $4)`,
+        [sessionId, started.provider, JSON.stringify(started.reference), started.storagePrefix],
+      );
+      // SPEC-PLATFORM.md section 9: "90-day retention extended only under
+      // legal hold." The clock starts when recording first starts, and is
+      // never shortened by a later start - a second recording in the same
+      // session does not reset the retention of the first.
+      const res = await client.query<SessionDbRow>(
+        `UPDATE sessions
+            SET recording_active = true,
+                recording_retention_until = COALESCE(recording_retention_until, now() + interval '90 days')
+          WHERE id = $1
+          RETURNING *`,
+        [sessionId],
+      );
+      await client.query('COMMIT');
+      return mapSession(res.rows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async clearRecordingFlag(
+    sessionId: string,
+    run: { runId: string; files: unknown; note: string | null } | null,
+  ): Promise<SessionRow> {
+    const client = await this.pool.connect();
+    let row: SessionDbRow;
+    try {
+      await client.query('BEGIN');
+      if (run) {
+        await client.query(
+          `UPDATE session_recordings SET stopped_at = now(), files = $2, stop_note = $3 WHERE id = $1`,
+          [run.runId, JSON.stringify(run.files ?? null), run.note],
+        );
+      }
+      const res = await client.query<SessionDbRow>(
+        `UPDATE sessions SET recording_active = false WHERE id = $1 RETURNING *`,
+        [sessionId],
+      );
+      await client.query('COMMIT');
+      row = res.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
     await this.audit.record({
       actorId: null,
-      action: active ? 'session.recording_started' : 'session.recording_stopped',
+      action: 'session.recording_stopped',
       subjectType: 'session',
       subjectId: sessionId,
-      detail: {},
+      detail: run?.note ? { note: run.note } : {},
     });
-    return mapSession(res.rows[0]);
+    return mapSession(row);
   }
 
   async start(sessionId: string): Promise<SessionRow> {
@@ -207,6 +369,15 @@ export class SessionService {
   async end(sessionId: string): Promise<SessionRow> {
     const session = await this.get(sessionId);
     if (session.status !== 'in_progress') throw sessionWrongStatus(sessionId, session.status, ['in_progress']);
+
+    // The recorder stops with the session. If the vendor cannot be
+    // reached the session still ends - nobody is kept in a finished
+    // session by a vendor outage - and the recorder exits on its own idle
+    // timeout once both have left. The run stays open so it is visible.
+    if (session.recordingActive) {
+      await this.setRecording(sessionId, false).catch(() => undefined);
+    }
+
     const res = await this.pool.query<SessionDbRow>(
       `WITH closed AS (
          -- Anyone still disconnected at the end stops accruing here.

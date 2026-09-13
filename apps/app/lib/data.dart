@@ -76,6 +76,33 @@ sessionMessagesProvider = FutureProvider.family<List<SessionMessage>, String>(
   (Ref ref, String id) => ref.watch(repositoryProvider).sessionMessages(id),
 );
 
+/// Bookable slots, computed by the SERVER. The client never evaluates a
+/// weekly rule — see BookSessionScreen for why that matters.
+final FutureProviderFamily<List<Slot>, String> slotsProvider =
+    FutureProvider.family<List<Slot>, String>(
+      (Ref ref, String providerId) =>
+          ref.watch(repositoryProvider).slots(providerId),
+    );
+
+final FutureProviderFamily<List<Map<String, dynamic>>, String>
+extensionsProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+      (Ref ref, String sessionId) =>
+          ref.watch(repositoryProvider).extensions(sessionId),
+    );
+
+/// Bundles a seeker has bought but not yet drawn down.
+final FutureProvider<List<Map<String, dynamic>>> myPackagePurchasesProvider =
+    FutureProvider<List<Map<String, dynamic>>>(
+      (Ref ref) => ref.watch(repositoryProvider).myPackagePurchases(),
+    );
+
+/// How long is left in a live session.
+final FutureProviderFamily<SessionTimer, String> sessionTimerProvider =
+    FutureProvider.family<SessionTimer, String>(
+      (Ref ref, String id) => ref.watch(repositoryProvider).timer(id),
+    );
+
 /// Files shared during a session. Sharing one creates the grant — that
 /// is the whole access model (CLAUDE.md #29).
 final FutureProviderFamily<List<Map<String, dynamic>>, String>
@@ -102,9 +129,27 @@ final FutureProviderFamily<List<Proposal>, String> proposalsProvider =
           ref.watch(repositoryProvider).proposals(postId),
     );
 
+/// One field, fully resolved: its categories, languages, price bands and
+/// calendar, all from the manifest. Nothing here is written in the app.
+final FutureProviderFamily<Map<String, dynamic>, String> domainProvider =
+    FutureProvider.family<Map<String, dynamic>, String>(
+      (Ref ref, String code) => ref.watch(repositoryProvider).domain(code),
+    );
+
 final FutureProvider<List<BoardQuestion>> questionsProvider =
     FutureProvider<List<BoardQuestion>>(
       (Ref ref) => ref.watch(repositoryProvider).questions(),
+    );
+
+/// One question and its answers.
+///
+/// Deliberately NOT derived from the list: a question held for review or
+/// escalated for distress is absent from the public listing, and reading
+/// its detail from a cached list would silently show nothing where the
+/// server has something to say.
+final FutureProviderFamily<BoardQuestion, String> questionProvider =
+    FutureProvider.family<BoardQuestion, String>(
+      (Ref ref, String id) => ref.watch(repositoryProvider).question(id),
     );
 
 // ── assessment ───────────────────────────────────────────────────────
@@ -191,6 +236,14 @@ final FutureProvider<PaidWorkStatus> paidWorkStatusProvider =
 final FutureProvider<List<ServicePackage>> myPackagesProvider =
     FutureProvider<List<ServicePackage>>(
       (Ref ref) => ref.watch(repositoryProvider).myPackages(),
+    );
+
+/// The credential types a domain accepts, each declaring what it needs.
+final FutureProviderFamily<List<Map<String, dynamic>>, String>
+credentialTypesProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+      (Ref ref, String domainCode) =>
+          ref.watch(repositoryProvider).credentialTypes(domainCode),
     );
 
 /// What a person may report something for. FAMILY data — core names

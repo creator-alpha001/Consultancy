@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/api_client.dart';
 import 'api/repository.dart';
+import 'api/uploads.dart';
 import 'config.dart';
 import 'pack/pack.dart';
 import 'pack/pack_repository.dart';
@@ -36,6 +37,13 @@ final ChangeNotifierProvider<AuthController> authProvider =
 /// Every API call the app makes. Screens read this, never the raw client.
 final Provider<Repository> repositoryProvider = Provider<Repository>(
   (Ref ref) => Repository(ref.watch(apiClientProvider)),
+);
+
+/// Uploading files. Separate from [Repository] because it is the one
+/// place that turns bytes into a request, and because its size limit is
+/// a client-side courtesy rather than an API call.
+final Provider<Uploads> uploadsProvider = Provider<Uploads>(
+  (Ref ref) => Uploads(ref.watch(apiClientProvider)),
 );
 
 final Provider<PackRepository> packRepositoryProvider = Provider<PackRepository>(

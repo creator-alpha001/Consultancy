@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../api/api_error.dart';
 import '../../api/models/assessment.dart';
 import '../../api/models/engagement.dart';
+import '../../api/uploads.dart';
 import '../../data.dart';
 import '../../pack/pack.dart';
 import '../../providers.dart';
@@ -13,6 +14,7 @@ import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import '../shared/attachments.dart';
 
 /// The work, and what was made of it.
 ///
@@ -77,7 +79,6 @@ class _SubmissionPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeData theme = Theme.of(context);
     final AsyncValue<Map<String, dynamic>?> raw = ref.watch(
       latestSubmissionProvider(engagement.id),
     );
@@ -125,23 +126,22 @@ class _SubmissionPanel extends ConsumerWidget {
                 Field(label: 'What you said', value: PackText(s.note)),
               if (s.hasFile) ...<Widget>[
                 const SizedBox(height: Space.md),
-                Row(
-                  children: <Widget>[
-                    const Icon(
-                      Icons.attach_file,
-                      size: 18,
-                      color: BaseColors.inkMuted,
-                    ),
-                    const SizedBox(width: Space.sm),
-                    Expanded(
-                      child: PackText(
-                        s.isImage ? 'A scan or photo' : 'A document',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: BaseColors.inkMuted,
-                        ),
+                // Opening it mints a fresh signed link, watermarked with
+                // whoever asked, expiring in five minutes (CLAUDE.md
+                // #29). Nothing durable is held here.
+                NavRow(
+                  title: s.isImage ? 'A scan or photo' : 'A document',
+                  subtitle: 'Opens with a fresh private link',
+                  leading: const Icon(Icons.attach_file, size: 18),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AttachmentView(
+                        attachmentId: s.attachmentId!,
+                        title: 'Your work',
+                        isImage: s.isImage,
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ],
@@ -467,12 +467,16 @@ class SubmitScreen extends ConsumerStatefulWidget {
 
 class _SubmitScreenState extends ConsumerState<SubmitScreen> {
   final TextEditingController _note = TextEditingController();
+  final TextEditingController _textEquivalent = TextEditingController();
+  PickedUpload? _attached;
   bool _busy = false;
+  bool _uploading = false;
   String? _error;
 
   @override
   void dispose() {
     _note.dispose();
+    _textEquivalent.dispose();
     super.dispose();
   }
 
@@ -495,18 +499,74 @@ class _SubmitScreenState extends ConsumerState<SubmitScreen> {
             ),
           ),
         ),
-        // File upload is genuinely not built — neither client can upload
-        // yet (TRACKER D51 on storage). Saying so beats a button that
-        // does nothing.
-        const Note(
-          'Attaching a file is not built yet. A note on its own is enough to '
-          'start, and you can send the file another way for now.',
-          tone: ChipTone.caution,
-          icon: Icons.construction_outlined,
+        Panel(
+          title: 'Attach your work',
+          note:
+              'A scan, a photo or a PDF, up to 10 MB. It is private: only '
+              'you and the person assessing it can open it, through a link '
+              'that expires.',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              if (_attached != null) ...<Widget>[
+                Row(
+                  children: <Widget>[
+                    const Icon(
+                      Icons.check_circle_outline,
+                      size: 18,
+                      color: BaseColors.verified,
+                    ),
+                    const SizedBox(width: Space.sm),
+                    Expanded(
+                      child: PackText(
+                        '${_attached!.filename} · ${_attached!.readableSize}',
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Remove the attachment',
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() => _attached = null),
+                    ),
+                  ],
+                ),
+                // Required, not optional, when the work is an image:
+                // handwritten or image content must have a text
+                // equivalent (Definition of Done). The provider reads
+                // this; so does anyone using a screen reader.
+                if (_attached!.isImage) ...<Widget>[
+                  const SizedBox(height: Space.md),
+                  TextField(
+                    controller: _textEquivalent,
+                    minLines: 2,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'What does the image show?',
+                      helperText:
+                          'Needed for a scan or photo, so the work is '
+                          'readable without seeing it.',
+                    ),
+                  ),
+                ],
+              ] else
+                OutlinedButton.icon(
+                  icon: _uploading
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.attach_file),
+                  label: PackText(_uploading ? 'Uploading' : 'Choose a file'),
+                  onPressed: _uploading || _busy ? null : _pick,
+                ),
+            ],
+          ),
         ),
         if (_error != null) Note(_error!, tone: ChipTone.danger),
         FilledButton(
-          onPressed: _busy || _note.text.trim().isEmpty ? null : _submit,
+          onPressed: _busy || !_canSubmit ? null : _submit,
           child: _busy
               ? const SizedBox(
                   height: 18,
@@ -519,15 +579,58 @@ class _SubmitScreenState extends ConsumerState<SubmitScreen> {
     ),
   );
 
+  /// A note is always enough. An IMAGE, though, needs its text
+  /// equivalent before it can be sent.
+  bool get _canSubmit {
+    if (_note.text.trim().isEmpty && _attached == null) return false;
+    if ((_attached?.isImage ?? false) && _textEquivalent.text.trim().isEmpty) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _pick() async {
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+    try {
+      final PickedUpload? picked = await ref
+          .read(uploadsProvider)
+          .pickAndUpload();
+      // Null means the picker was dismissed. That is not an error and
+      // must not be shown as one.
+      if (picked != null && mounted) setState(() => _attached = picked);
+    } on UploadRefused catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
   Future<void> _submit() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
+      final String equivalent = _textEquivalent.text.trim();
+      final String note = <String>[
+        _note.text.trim(),
+        if (equivalent.isNotEmpty) 'What the image shows: $equivalent',
+      ].where((String s) => s.isNotEmpty).join('\n\n');
+
       await ref
           .read(repositoryProvider)
-          .submit(widget.engagementId, note: _note.text.trim());
+          .submit(
+            widget.engagementId,
+            note: note,
+            attachmentIds: <String>[
+              if (_attached != null) _attached!.attachmentId,
+            ],
+          );
       ref
         ..invalidate(latestSubmissionProvider(widget.engagementId))
         ..invalidate(engagementProvider(widget.engagementId));

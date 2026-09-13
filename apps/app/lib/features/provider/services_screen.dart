@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../api/api_error.dart';
 import '../../api/models/provider.dart';
 import '../../api/models/supply.dart';
 import '../../data.dart';
+import '../../money/paise.dart';
 import '../../providers.dart';
 import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import 'availability_exceptions.dart';
+import 'setup_screens.dart';
 
 /// What a provider offers, and for how much.
 ///
@@ -67,11 +71,20 @@ class ProviderServicesScreen extends ConsumerWidget {
                             s.type?.neutralLabel ??
                             'Service',
                         subtitle: _commitment(s),
-                        trailing: Money(s.amount),
+                        trailing: _RemoveRate(rateId: s.id, amount: s.amount),
                       ),
                   ],
                 ),
               ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const PackText('Publish a price'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AddRateSheet(),
+                ),
+              ),
+            ),
             packages.maybeWhen(
               data: (List<ServicePackage> p) => p.isEmpty
                   ? const SizedBox.shrink()
@@ -85,12 +98,24 @@ class ProviderServicesScreen extends ConsumerWidget {
                               subtitle:
                                   '${x.sessionCount} sessions'
                                   '${x.perSession != null ? ' · ${x.perSession!.formatCompact()} each' : ''}',
-                              trailing: Money(x.amount),
+                              trailing: _WithdrawPackage(
+                                packageId: x.id,
+                                amount: x.amount,
+                              ),
                             ),
                         ],
                       ),
                     ),
               orElse: () => const SizedBox.shrink(),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.inventory_2_outlined),
+              label: const PackText('Offer a bundle'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AddPackageSheet(),
+                ),
+              ),
             ),
           ],
         ),
@@ -151,10 +176,23 @@ class ProviderAvailabilityScreen extends ConsumerWidget {
                             '${_hhmm(r.startMinute)} – ${_hhmm(r.endMinute)}'
                             ' · ${r.timezone}',
                         leading: const Icon(Icons.schedule, size: 20),
+                        trailing: _RemoveRule(ruleId: r.id),
                       ),
                   ],
                 ),
               ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.schedule),
+              label: PackText(
+                a.rules.isEmpty ? 'Set your hours' : 'Add hours',
+              ),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => EditAvailabilitySheet(policy: a.policy),
+                ),
+              ),
+            ),
+            AvailabilityExceptions(exceptions: a.exceptions),
             Panel(
               title: 'Booking rules',
               note:
@@ -214,4 +252,148 @@ class ProviderAvailabilityScreen extends ConsumerWidget {
 
   static String _hours(int minutes) =>
       minutes % 60 == 0 ? '${minutes ~/ 60} hours' : '$minutes min';
+}
+
+
+/// Removing a published price.
+///
+/// Withdrawing a price does not touch work already agreed at it — an
+/// engagement carries its own amount, snapshotted when it was created.
+/// Taking a bundle off sale.
+///
+/// It stops new purchases and nothing else: bundles people have already
+/// bought keep every session they paid for. Withdrawing an offer is not
+/// a way to cancel work already owed.
+class _WithdrawPackage extends ConsumerStatefulWidget {
+  const _WithdrawPackage({required this.packageId, required this.amount});
+
+  final String packageId;
+  final Paise amount;
+
+  @override
+  ConsumerState<_WithdrawPackage> createState() => _WithdrawPackageState();
+}
+
+class _WithdrawPackageState extends ConsumerState<_WithdrawPackage> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Money(widget.amount),
+      IconButton(
+        icon: const Icon(Icons.close, size: 18),
+        tooltip: 'Stop offering this bundle',
+        onPressed: _busy ? null : _withdraw,
+      ),
+    ],
+  );
+
+  Future<void> _withdraw() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const PackText('Stop offering this bundle?'),
+        content: const PackText(
+          'Nobody new can buy it. Anyone who already has one keeps every '
+          'session they paid for.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const PackText('Keep it'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const PackText('Withdraw it'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(repositoryProvider).withdrawPackage(widget.packageId);
+      ref.invalidate(myPackagesProvider);
+    } on ApiException {
+      // The list refreshes from the server either way.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _RemoveRate extends ConsumerStatefulWidget {
+  const _RemoveRate({required this.rateId, required this.amount});
+
+  final String rateId;
+  final Paise amount;
+
+  @override
+  ConsumerState<_RemoveRate> createState() => _RemoveRateState();
+}
+
+class _RemoveRateState extends ConsumerState<_RemoveRate> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Money(widget.amount),
+      IconButton(
+        icon: const Icon(Icons.close, size: 18),
+        tooltip: 'Stop offering this',
+        onPressed: _busy ? null : _remove,
+      ),
+    ],
+  );
+
+  Future<void> _remove() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(repositoryProvider).removeRate(widget.rateId);
+      ref
+        ..invalidate(myRatesProvider)
+        ..invalidate(readinessProvider);
+    } on ApiException {
+      // The list refreshes from the server either way.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _RemoveRule extends ConsumerStatefulWidget {
+  const _RemoveRule({required this.ruleId});
+
+  final String ruleId;
+
+  @override
+  ConsumerState<_RemoveRule> createState() => _RemoveRuleState();
+}
+
+class _RemoveRuleState extends ConsumerState<_RemoveRule> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    icon: const Icon(Icons.close, size: 18),
+    tooltip: 'Remove these hours',
+    onPressed: _busy ? null : _remove,
+  );
+
+  Future<void> _remove() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(repositoryProvider).removeAvailabilityRule(widget.ruleId);
+      ref.invalidate(availabilityProvider);
+    } on ApiException {
+      // As above.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 }

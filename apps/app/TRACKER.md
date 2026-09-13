@@ -34,10 +34,10 @@ a piece of debt — belongs in the root file with a `D` number, not here.
 | | |
 |---|---|
 | Journeys | Both. Seeker and provider, one binary, shell chosen from `user.role` |
-| Route coverage | **110/123 (89%)**, against `apps/frontend`'s 60/143 (42%) |
+| Route coverage | **123/123 (100%)**, against `apps/frontend`'s 60/143 (42%). Parity is method-blind (root D64); a method-aware pass found and closed two hidden gaps |
 | Screens built | **30 — none stubbed** |
 | Screens stubbed | **0** (table below is empty, and a test keeps it that way) |
-| Dart tests | 95 across 6 files |
+| Dart tests | 103 across 9 files |
 | Driven against a real API | `./scripts/dev.sh app-drive` |
 
 Run `node scripts/parity.mjs --missing apps/app` for the routes still
@@ -57,13 +57,13 @@ than written down.
 | Home | Built — the catalogue, each family in its own accent |
 | Find | Built — filtered by field and language. No sort control of any kind (#15) |
 | Provider profile | Built — achievements via `publicFields` allow-list, per-skill tiers, track record including refunds |
-| Book | Built — field, category and language. No price negotiation |
+| Book | Built — field, category and language, and a live session picks from server-computed slots. No price negotiation |
 | Work list | Built — ordered by whose turn it is, not by date |
 | Engagement hub | Built — the two gates (#12) as separate, named steps |
 | Agenda | Built — draft, lock behind confirmation, and an immutable locked view with no edit affordance (#11) |
 | Assessment | Built — scores against the category's own dimensions, marks, action items. Renders the **no-template** case as a named state (#3) |
 | Sessions list | Built |
-| Session room | Built — both-party in-session consent (#21), live checklist, audio-only as a choice (#22), and append-only chat |
+| Session room | Built — both-party in-session consent (#21), live checklist, audio-only as a choice (#22), append-only chat, and sharing a file (upload, then grant) with each shared file openable through a fresh signed link |
 | Money | Built — every figure from the ledger; nothing summed locally (#7) |
 | Progress | Built — own history only. No comparison to anyone (#17) |
 | Board | Built — list, asking a free question with its distress path (#25), and reading a request with its offers |
@@ -82,7 +82,7 @@ than written down.
 | Dashboard | Built — readiness blockers separated from advisory steps |
 | Earnings | Built — platform fee stated, failed payouts shown |
 | Verification standing | Built — per-skill tiers, never one badge |
-| Services | Built — one published price each |
+| Services | Built — one published price each, and bundles of two or more sessions published and withdrawn |
 | Availability | Built — rules shown, never evaluated client-side |
 | Evaluate | Built — scores against the bound template only; no way to add a dimension (#16) |
 | Training | Built — entirely pack data; the platform grades, not this screen |
@@ -111,7 +111,9 @@ a row here is a red build.
   moderation, reconciliation and the pack editor are web surfaces. An
   admin is signed in and told so.
 - **No SFU infrastructure.** A managed vendor only, per the stack table.
-  `lib/room/room_client.dart` is the seam, with a working fake.
+  `lib/room/room_client.dart` is the seam; `lib/room/agora_room_client.dart`
+  is Agora behind it, chosen by the `provider` the API names in its join
+  credentials, with the fake used whenever the API issued no real room.
 - **No offline write queue.** Reads cache; writes need connectivity. A
   queued mutation against an escrow and an append-only ledger is a
   correctness problem, not a convenience, and is not being taken on
@@ -126,20 +128,19 @@ a row here is a red build.
 | | |
 |---|---|
 | **Fonts are not bundled** | Inter and Noto Sans Devanagari are declared in a commented-out `pubspec.yaml` block; the `.ttf` files are missing. The *selection* mechanism exists and is tested (`lib/theme/script.dart`), and both names fall through to the platform font — which does cover Devanagari on Android — so the app is readable and merely not yet on-brand. Must be bundled, never fetched: a font download on a patchy network is a blank screen. |
-| **File upload and viewing** | Neither client can upload (root D51). The submission screen takes a note and says plainly that attaching is not built. |
-| **Slot picking** | A live session is created with its price and language, but the picker over `/providers/:id/slots` does not exist, so a session cannot be scheduled from the app. |
+| **Viewing a document in-app** | Upload is built (root D51): submissions, credential documents and session files. Images open in-app; a PDF shows its live signed link rather than a viewer. |
 | **Generated types** | Routes are generated; types are hand-written on both clients (root D57). An endpoint whose response *shape* changes breaks neither build. |
 | **Push notifications** | Not started. The API's `outbox` relay is the right seam. A marketplace where a proposal arrives silently does not work, so this matters before launch. |
-| **Video is a fake, on every client** | `FakeRoomClient` connects to nothing, and the API's `HundredMsSandboxRoomProvider` returns a made-up room reference without a network call. Everything AROUND the video is real and hits the API — both-party consent, the live checklist, audio-only, ending the session. `apps/frontend`'s room is further behind: 286 lines of local React state that call no API at all. |
+| **Video has never run against a real Agora project** | The Agora SDK is wired (root D65): voice-first join, camera toggle, mic mute, dual-stream, the SDK's audio fall-back, weak-quality switch to voice only, automatic drop/return reports, token renewal. None of it has joined a real channel — no Agora credentials exist here and no device either. The first real call is the test. A recorder that idles out is not yet noticed (root D66). `apps/frontend`'s room still calls no API at all. |
 | **In-session chat is mobile-only** | The API has served `GET/POST /sessions/:id/messages` since M5. `apps/app` now uses it; `apps/frontend` still makes no session-message call anywhere. |
 | **A QR code for second-factor enrolment** | The API returns a `provisioningUri` and the screen ignores it, offering the raw key for manual entry instead. A QR renderer or `url_launcher` would make setup a tap. |
-| **Uploading a file** | Still nowhere, on either client. Submissions take a note; the session file list reads but cannot add. |
+| **A bundle of a combined format** | The bundle sheet sends one commitment, read as minutes for a live session and hours otherwise, because `provider_packages` still allows only one (root D54). |
 
 ---
 
 ## Verification — what is real, and what cannot be
 
-**Real, on every push:** `flutter analyze`, 95 Dart tests, and route
+**Real, on every push:** `flutter analyze`, 103 Dart tests, and route
 parity, all in CI.
 
 The Dart suite carries three kinds of test worth knowing about:
@@ -180,11 +181,11 @@ cannot find by name is one a screen reader cannot find either.
   it the session token is memory-only, so a reload signs you out — which
   is why `test/drive.mjs` taps through the app rather than deep-linking.
   A shipped build uses the platform keystore instead.
-- **The room is a fake.** `FakeRoomClient` connects to nothing. Consent,
-  the live checklist, the timer and audio-only are all real and
-  testable; adaptive bitrate and the network-quality indicator are not
-  modellable without real infrastructure, and are not faked, because a
-  field saying "the bitrate adapted" would be a lie with a schema.
+- **The room is real code with no real room behind it.** Agora is
+  wired, but tests use `FakeRoomClient`, and nothing here has joined a
+  channel. The web target always uses the fake. iOS also needs
+  `permission_handler`'s Podfile macros for microphone and camera before
+  the permission prompt will appear — unverifiable without a Mac.
 
 ---
 
@@ -201,5 +202,6 @@ Android toolchain finished locally, and none of the iOS half can be done
 without a Mac.
 
 The two things that would most change what the app can do are not
-screens either: **real video** (a vendor SDK behind `RoomClient`) and
-**file upload**, which is blocked on both clients.
+screens either: **a first real call** (Agora is wired; it needs a project,
+credentials and a device) and
+**file upload on the web**, which `apps/app` now has and `apps/frontend` does not.

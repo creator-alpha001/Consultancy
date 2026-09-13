@@ -165,7 +165,7 @@ class _QuickLinks extends StatelessWidget {
       children: <Widget>[
         NavRow(
           title: 'Ask for help',
-          subtitle: 'Post what you need and let people come to you',
+          subtitle: 'Ask a question, or post work for people to offer on',
           leading: const Icon(Icons.forum_outlined, size: 20),
           onTap: () => context.push('/board'),
         ),

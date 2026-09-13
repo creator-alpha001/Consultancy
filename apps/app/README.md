@@ -68,6 +68,16 @@ control a screen reader cannot find either.
 so that run exercises a deliberately different storage path from a shipped
 build.
 
+## Sessions: real calls
+
+`lib/room/` holds the video seam. The API names the vendor in the join
+credentials it issues, and the app follows: `agora` joins a real Agora
+channel through `agora_rtc_engine`, anything else (the API's sandbox, or
+the web target) uses a fake that connects to nothing. Calls are
+voice-first — camera off at join — and the room reports dropped
+connections to the API on its own. A real call needs a real phone and an
+API configured for Agora; see [`docs/VIDEO-SESSIONS.md`](../../docs/VIDEO-SESSIONS.md).
+
 ## Two things worth knowing
 
 **The session token lives in the platform keystore.** The web app never lets

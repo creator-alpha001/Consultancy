@@ -11,6 +11,7 @@ import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import '../shared/attachments.dart';
 
 /// Assessing a piece of work.
 ///
@@ -257,14 +258,23 @@ class _TheirWork extends StatelessWidget {
               Field(label: 'What they said', value: PackText(s.note)),
             if (s.hasFile) ...<Widget>[
               const SizedBox(height: Space.md),
-              Note(
-                s.isImage
-                    ? 'A scan or photo. Opening it needs the file viewer, '
-                          'which is not built yet.'
-                    : 'A document. Opening it needs the file viewer, which '
-                          'is not built yet.',
-                tone: ChipTone.caution,
-                icon: Icons.attach_file,
+              // A fresh signed link per view, watermarked with the
+              // viewer, five minutes to live (CLAUDE.md #29). A
+              // provider marking someone's work is exactly the case
+              // that watermark exists for.
+              NavRow(
+                title: s.isImage ? 'A scan or photo' : 'A document',
+                subtitle: 'Opens with a fresh private link',
+                leading: const Icon(Icons.attach_file, size: 18),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AttachmentView(
+                      attachmentId: s.attachmentId!,
+                      title: 'Their work',
+                      isImage: s.isImage,
+                    ),
+                  ),
+                ),
               ),
             ],
           ],
@@ -446,6 +456,16 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
                   ),
                   const SizedBox(width: Space.sm),
                   Expanded(child: PackText(a.body)),
+                  // Removable only while the evaluation is still being
+                  // written. Once it is returned the seeker has read it,
+                  // and quietly deleting a mark they were shown would be
+                  // editing the record of what was said.
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    tooltip: 'Remove this mark',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _busy ? null : () => _remove(a.id),
+                  ),
                 ],
               ),
             ),
@@ -488,6 +508,18 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
         ],
       ),
     );
+  }
+
+  Future<void> _remove(String annotationId) async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(repositoryProvider).removeAnnotation(annotationId);
+      ref.invalidate(latestEvaluationProvider(widget.engagementId));
+    } on ApiException {
+      // As with adding: the list refreshes from the server either way.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _add() async {

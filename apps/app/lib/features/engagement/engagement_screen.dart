@@ -10,6 +10,8 @@ import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import '../provider/availability_exceptions.dart';
+import '../session/book_session.dart';
 
 /// The engagement hub: one screen that always says what happens next.
 ///
@@ -60,6 +62,7 @@ class EngagementScreen extends ConsumerWidget {
             _NextStep(engagement: e),
             EscrowRail(escrow: e.escrow),
             _Links(engagement: e),
+            _CallItOff(engagement: e),
           ],
         ),
       ),
@@ -143,6 +146,35 @@ class _NextStepState extends ConsumerState<_NextStep> {
   Widget build(BuildContext context) {
     final Engagement e = widget.engagement;
     final ThemeData theme = Theme.of(context);
+
+    // Before either gate: both parties confirm this is the work they
+    // mean to do. Agreeing freezes the required skills from the
+    // category's mapping *as it stands now*, so a manifest republished
+    // next month cannot quietly change what was agreed. That is why it
+    // is a deliberate step and not something the app does on the user's
+    // behalf when the screen opens.
+    if (e.status == EngagementStatus.draft) {
+      return Panel(
+        title: 'Confirm this is right',
+        note:
+            'Both of you confirm before anything is written or held. It '
+            'fixes what the work covers; the goals and the money come '
+            'after.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (_error != null) ...<Widget>[
+              Note(_error!, tone: ChipTone.danger),
+              const SizedBox(height: Space.md),
+            ],
+            FilledButton(
+              onPressed: _busy ? null : _agree,
+              child: const PackText('Yes, this is right'),
+            ),
+          ],
+        ),
+      );
+    }
 
     // The two gates, in the order they have to be passed.
     if (!e.agendaReady) {
@@ -253,6 +285,23 @@ class _NextStepState extends ConsumerState<_NextStep> {
     );
   }
 
+  Future<void> _agree() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(repositoryProvider).agree(widget.engagement.id);
+      ref
+        ..invalidate(engagementProvider(widget.engagement.id))
+        ..invalidate(engagementsProvider);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _pay() async {
     setState(() {
       _busy = true;
@@ -309,6 +358,13 @@ class _Links extends ConsumerWidget {
 
   final Engagement engagement;
 
+  /// Both types that involve a live meeting. `document_review` is NOT
+  /// privileged anywhere in this app, and neither is any other — which
+  /// is why this asks about the type rather than assuming one.
+  static bool _isLive(Engagement e) =>
+      e.type == EngagementType.liveSession ||
+      e.type == EngagementType.reviewWithLive;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isProvider = ref.watch(authProvider).user?.isProvider ?? false;
@@ -328,10 +384,27 @@ class _Links extends ConsumerWidget {
             leading: const Icon(Icons.description_outlined, size: 20),
             onTap: () => context.push('/work/${engagement.id}/assessment'),
           ),
+          // Live work needs a time. Offered only once both gates are
+          // passed, because a session booked before the goals are locked
+          // would be a meeting with nothing agreed to discuss.
+          if (!isProvider && engagement.canStart && _isLive(engagement))
+            NavRow(
+              title: 'Book a time',
+              subtitle: 'Pick from the times they are free',
+              leading: const Icon(Icons.event_available_outlined, size: 20),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => BookSessionScreen(
+                    engagementId: engagement.id,
+                    providerId: engagement.provider?.id ?? '',
+                  ),
+                ),
+              ),
+            ),
           // The provider's own way in. A seeker never sees it — and the API
           // refuses it for them regardless, because the redirect decides
           // what to draw and never what is allowed (CLAUDE.md #28).
-          if (isProvider)
+          if (isProvider) ...<Widget>[
             NavRow(
               title: 'Assess this work',
               subtitle: 'Score it against the category and mark it up',
@@ -339,8 +412,145 @@ class _Links extends ConsumerWidget {
               onTap: () =>
                   context.push('/provider/work/${engagement.id}/evaluate'),
             ),
+            // Only once work is under way: before that, the price is
+            // what was agreed and changing it is a new agreement.
+            if (engagement.canStart && !engagement.status.isFinished)
+              NavRow(
+                title: 'Charge less than agreed',
+                subtitle: 'The price can come down, never up',
+                leading: const Icon(Icons.trending_down, size: 20),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DiscountSheet(
+                      engagementId: engagement.id,
+                      currentPaise: engagement.amount.value,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
+  }
+}
+
+/// Calling the whole thing off.
+///
+/// Only legal while the engagement is still `draft` or `agreed` — once
+/// work is under way, the way out is a dispute, not a cancellation, and
+/// offering a button that the API would refuse is worse than offering
+/// none. So this renders nothing at all outside those two states.
+///
+/// If money is already held it comes back in full: cancelling before any
+/// work has begun is not a judgement about anybody, so nobody loses.
+class _CallItOff extends ConsumerStatefulWidget {
+  const _CallItOff({required this.engagement});
+
+  final Engagement engagement;
+
+  @override
+  ConsumerState<_CallItOff> createState() => _CallItOffState();
+}
+
+class _CallItOffState extends ConsumerState<_CallItOff> {
+  final TextEditingController _reason = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final EngagementStatus s = widget.engagement.status;
+    if (s != EngagementStatus.draft && s != EngagementStatus.agreed) {
+      return const SizedBox.shrink();
+    }
+
+    return Panel(
+      title: 'Call this off',
+      note: widget.engagement.escrowReady
+          ? 'The money held comes back to you in full. Nothing has been '
+                'done yet, so nothing is owed.'
+          : 'Nothing has been agreed or held yet, so this simply ends.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (_error != null) ...<Widget>[
+            Note(_error!, tone: ChipTone.danger),
+            const SizedBox(height: Space.md),
+          ],
+          OutlinedButton(
+            onPressed: _busy ? null : _confirm,
+            child: const PackText('Call it off'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirm() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const PackText('Call this off?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const PackText(
+              'This ends the engagement. Any money held is refunded.',
+            ),
+            const SizedBox(height: Space.md),
+            // Optional, and said so: a person walking away should not
+            // have to justify themselves to a text field before the
+            // button will work.
+            TextField(
+              controller: _reason,
+              decoration: const InputDecoration(
+                labelText: 'Why? (optional)',
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const PackText('Keep it'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const PackText('Call it off'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final String reason = _reason.text.trim();
+      await ref
+          .read(repositoryProvider)
+          .cancelEngagement(
+            widget.engagement.id,
+            reason: reason.isEmpty ? null : reason,
+          );
+      ref
+        ..invalidate(engagementProvider(widget.engagement.id))
+        ..invalidate(engagementsProvider)
+        ..invalidate(moneyProvider);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }

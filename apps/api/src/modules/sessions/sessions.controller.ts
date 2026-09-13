@@ -11,6 +11,7 @@ import { SessionExtensionService } from './session-extension.service';
 import { SessionRoomService } from './session-room.service';
 import { SessionService } from './session.service';
 import { TranscriptService } from './transcript.service';
+import { JoinCredentials } from './room/room-provider.interface';
 import { SessionRow } from './types';
 import { SessionViewService } from './session-view.service';
 
@@ -372,7 +373,7 @@ export class SessionsController {
     const session = await this.sessions.get(id);
     await this.access.assertParty(session.engagementId, actor);
 
-    const [consents, agenda, transcript] = await Promise.all([
+    const [consents, agenda, transcript, views] = await Promise.all([
       this.pool.query(
         `SELECT p.user_id, c.consent_given, c.decided_at
            FROM session_participants p
@@ -382,15 +383,41 @@ export class SessionsController {
       ),
       this.agendas.getActiveForEngagement(session.engagementId),
       this.transcripts.getForSession(id),
+      this.views.viewsFor([id], actor.userId),
     ]);
 
-    return { session, consents: consents.rows, agenda, transcript };
+    /*
+     * Flat as well as nested. The session's own fields and the viewer's
+     * view (consent by side, counterpart) sit at the top level, the same
+     * shape one row of `GET /sessions` has, so a client reads a session
+     * one way whichever route it came from. The nested keys stay for the
+     * clients that already read them.
+     */
+    return {
+      ...session,
+      ...(views.get(id) ?? {}),
+      session,
+      consents: consents.rows,
+      agenda,
+      transcript,
+    };
   }
 
+  /**
+   * The session, plus `join`: credentials for THIS actor to enter its room.
+   *
+   * Additive on purpose - the session fields are unchanged, so a client
+   * that read them before still does. Calling again refreshes a token that
+   * is about to expire; the room itself is named once and never changes.
+   */
   @Post('sessions/:id/room')
-  async room(@Param('id') id: string, @CurrentActor() actor: Actor): Promise<SessionRow> {
+  async room(
+    @Param('id') id: string,
+    @CurrentActor() actor: Actor,
+  ): Promise<SessionRow & { join: JoinCredentials }> {
     await this.assertParticipant(id, actor);
-    return this.sessions.createRoom(id);
+    const { session, join } = await this.sessions.joinCredentials(id, actor.userId);
+    return { ...session, join };
   }
 
   /**

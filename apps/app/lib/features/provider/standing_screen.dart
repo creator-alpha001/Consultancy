@@ -10,6 +10,7 @@ import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import 'setup_screens.dart';
 
 /// A provider's verification standing.
 ///
@@ -102,6 +103,7 @@ class ProviderStandingScreen extends ConsumerWidget {
               data: (List<CredentialSubmission> c) => _Credentials(list: c),
               orElse: () => const SizedBox.shrink(),
             ),
+            _SubmitAnother(credentials: credentials),
           ],
         ),
       ),
@@ -165,6 +167,62 @@ class _Credentials extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// A way in to submitting a credential.
+///
+/// Which DOMAIN it is for matters — credential types are declared per
+/// domain through its family, so submitting without one would be
+/// submitting to nothing. The provider's existing submissions name the
+/// domains they already work in; a provider with none is sent to pick a
+/// field first.
+class _SubmitAnother extends ConsumerWidget {
+  const _SubmitAnother({required this.credentials});
+
+  final AsyncValue<List<CredentialSubmission>> credentials;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<Map<String, dynamic>>> domains = ref.watch(
+      myDomainsProvider,
+    );
+    final List<String> codes = <String>{
+      ...?credentials.valueOrNull?.map((CredentialSubmission c) => c.domainCode),
+      ...?domains.valueOrNull?.map(
+        (Map<String, dynamic> d) => (d['domainCode'] ?? '').toString(),
+      ),
+    }.where((String c) => c.isNotEmpty).toList();
+
+    if (codes.isEmpty) {
+      return const Panel(
+        child: Note(
+          'Verification happens per field. Join one and you can submit a '
+          'credential for it here.',
+          tone: ChipTone.caution,
+        ),
+      );
+    }
+
+    return Panel(
+      title: 'Submit another',
+      note: 'Each field checks its own credentials.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          for (final String code in codes)
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SubmitCredentialSheet(domainCode: code),
+                ),
+              ),
+              child: PackText('For $code'),
             ),
         ],
       ),

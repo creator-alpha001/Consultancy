@@ -8,6 +8,7 @@ import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/kit.dart';
 import '../../widgets/text.dart';
+import 'bundles.dart';
 
 /// Where a seeker's money is.
 ///
@@ -34,6 +35,7 @@ class MoneyScreen extends ConsumerWidget {
           onRefresh: () async => ref.invalidate(moneyProvider),
           children: <Widget>[
             _Summary(summary: m.summary),
+            const Bundles(),
             if (m.lines.isEmpty)
               const Panel(
                 child: Note(

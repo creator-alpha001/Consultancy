@@ -132,7 +132,7 @@ npm install
 cp .env.example .env          # DATABASE_URL + PORT
 
 export DATABASE_URL="postgres://sankalp:sankalp@localhost:5432/sankalp_dev"
-npm run migrate               # 38 migrations
+npm run migrate               # every numbered migration
 npm run seed                  # the family + 19 domains, all unlisted
 npx ts-node seed/demo-fixtures.ts   # see below — needed for the UI
 
@@ -142,6 +142,15 @@ npm run start:dev             # :3000
 
 `npm run migrate` and `npm run seed` do **not** read `.env` themselves —
 export `DATABASE_URL` first, or `export $(grep -v '^#' .env | xargs)`.
+
+### Video rooms and recording
+
+By default the API uses a sandbox room and recorder: sessions can be
+joined and consented to, but no media flows and nothing is recorded. To
+use real Agora rooms and audio recording, set `ROOM_PROVIDER=agora` and
+the keys listed in `apps/api/.env.example` — the API refuses to start if
+any is missing. The full setup, and what to check on the first real
+call, is in [`VIDEO-SESSIONS.md`](VIDEO-SESSIONS.md).
 
 ### Why `demo-fixtures.ts` is needed
 

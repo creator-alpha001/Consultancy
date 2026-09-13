@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/api_error.dart';
 import '../../api/models/provider.dart';
+import '../../data.dart';
 import '../../providers.dart';
 import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
@@ -288,25 +290,105 @@ class _Services extends StatelessWidget {
 
 }
 
-class _Packages extends StatelessWidget {
+class _Packages extends ConsumerStatefulWidget {
   const _Packages({required this.profile});
 
   final ProviderProfile profile;
 
   @override
+  ConsumerState<_Packages> createState() => _PackagesState();
+}
+
+class _PackagesState extends ConsumerState<_Packages> {
+  String? _busyId;
+  String? _error;
+
+  @override
   Widget build(BuildContext context) => Panel(
     title: 'Bought together',
+    // Buying a bundle moves the whole amount at once, which is a bigger
+    // commitment than a single piece of work — so the screen says so
+    // before the button rather than after.
+    note:
+        'The full amount is held when you buy. You then start each piece of '
+        'work from it, one at a time.',
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        for (final ServicePackage p in profile.packages)
+        if (_error != null) ...<Widget>[
+          Note(_error!, tone: ChipTone.danger),
+          const SizedBox(height: Space.md),
+        ],
+        for (final ServicePackage p in widget.profile.packages)
           NavRow(
             title: p.title,
             subtitle:
                 '${p.sessionCount} sessions'
                 '${p.perSession != null ? ' · ${p.perSession!.formatCompact()} each' : ''}',
-            trailing: Money(p.amount),
+            trailing: _busyId == p.id
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Money(p.amount),
+            onTap: _busyId != null ? null : () => _confirm(p),
           ),
       ],
     ),
   );
+
+  Future<void> _confirm(ServicePackage p) async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: PackText('Buy ${p.title}?'),
+        content: PackText(
+          '${p.amount.formatCompact()} is held now, covering '
+          '${p.sessionCount} pieces of work. You agree the goals for each '
+          'one separately, as you start it.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const PackText('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const PackText('Buy it'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() {
+      _busyId = p.id;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(repositoryProvider)
+          .purchasePackage(
+            p.id,
+            // Minted from the package: a double tap must not hold the
+            // money twice on a path that moves the whole bundle.
+            idempotencyKey: 'buy-package-${p.id}',
+          );
+      ref
+        ..invalidate(myPackagePurchasesProvider)
+        ..invalidate(moneyProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: PackText('Bought. Start the first piece from Your work.'),
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
 }

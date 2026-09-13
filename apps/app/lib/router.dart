@@ -10,6 +10,9 @@ import 'features/auth/register_screen.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/board/board_post_screen.dart';
 import 'features/board/board_screen.dart';
+import 'features/board/new_request_screen.dart';
+import 'features/board/questions_screen.dart';
+import 'features/discover/field_screen.dart';
 import 'features/discover/find_screen.dart';
 import 'features/discover/provider_screen.dart';
 import 'features/engagement/agenda_screen.dart';
@@ -111,11 +114,31 @@ GoRouter buildRouter(WidgetRef ref) {
         builder: (_, GoRouterState s) =>
             RoomScreen(sessionId: s.pathParameters['id']!),
       ),
-      GoRoute(path: '/board/new', builder: (_, _) => const AskScreen()),
+      GoRoute(path: '/board/ask', builder: (_, _) => const AskScreen()),
+      // Declared BEFORE '/board/:id', which would otherwise swallow
+      // '/board/questions' as a post id.
+      GoRoute(
+        path: '/board/questions',
+        builder: (_, _) => const QuestionsScreen(),
+      ),
+      GoRoute(
+        path: '/board/questions/:id',
+        builder: (_, GoRouterState s) =>
+            QuestionScreen(questionId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/board/new',
+        builder: (_, _) => const NewRequestScreen(),
+      ),
       GoRoute(
         path: '/board/:id',
         builder: (_, GoRouterState s) =>
             BoardPostScreen(postId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/fields/:code',
+        builder: (_, GoRouterState s) =>
+            FieldScreen(domainCode: s.pathParameters['code']!),
       ),
       GoRoute(path: '/legal', builder: (_, _) => const LegalScreen()),
       GoRoute(

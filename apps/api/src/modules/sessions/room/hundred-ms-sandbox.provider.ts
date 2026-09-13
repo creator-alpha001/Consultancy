@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { CreateRoomInput, CreateRoomResult, RoomProvider } from './room-provider.interface';
+import {
+  CreateRoomInput,
+  CreateRoomResult,
+  IssueJoinInput,
+  JoinCredentials,
+  RoomProvider,
+} from './room-provider.interface';
 
 /**
- * Sandbox stand-in for a managed SFU (100ms, in this name — LiveKit or
- * Agora are equally valid real choices behind the same interface). No
- * network call, no real room, deterministic — this environment has no
- * live SFU credentials. What it does NOT simulate: adaptive bitrate,
- * network-quality signalling, reconnection — those are real client+SFU
- * behaviour with nothing meaningful to fake at this layer. See
- * TRACKER.md.
+ * Sandbox stand-in for a managed SFU, used when no vendor is configured
+ * (see `roomProviderFactory`). No network call, no real room,
+ * deterministic. It issues no token, and a client seeing this provider
+ * code joins its fake room client — so nothing downstream pretends media
+ * is flowing. The code value is kept as-is because it is stored on
+ * existing session rows.
  */
 @Injectable()
 export class HundredMsSandboxRoomProvider implements RoomProvider {
@@ -16,6 +21,17 @@ export class HundredMsSandboxRoomProvider implements RoomProvider {
 
   async createRoom(input: CreateRoomInput): Promise<CreateRoomResult> {
     return { roomProvider: this.code, roomReference: `sandbox_room_${input.sessionId}` };
+  }
+
+  issueJoin(input: IssueJoinInput): JoinCredentials {
+    return {
+      provider: this.code,
+      roomReference: input.roomReference,
+      appId: null,
+      token: null,
+      uid: null,
+      expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000).toISOString(),
+    };
   }
 
   async closeRoom(): Promise<void> {

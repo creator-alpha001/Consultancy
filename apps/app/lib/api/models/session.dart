@@ -57,7 +57,7 @@ class MeetingSession {
   final String engagementId;
   final SessionStatus status;
 
-  /// `video` or `audio`. Audio-only is a STATE, not a failure
+  /// `video` or `audio_only`. Audio-only is a STATE, not a failure
   /// (CLAUDE.md #22) — it has its own entry point a user can choose
   /// deliberately, and is not only a fallback banner.
   final String mode;
@@ -87,7 +87,7 @@ class MeetingSession {
   final int creditedSeconds;
   final DateTime? warningRaisedAt;
 
-  bool get isAudioOnly => mode == 'audio';
+  bool get isAudioOnly => mode == 'audio_only' || mode == 'audio';
 
   /// Recording may only run when BOTH parties have said yes. No blanket
   /// consent in the Terms, no remembered preference, no "don't ask

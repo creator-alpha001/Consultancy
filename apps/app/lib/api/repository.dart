@@ -385,7 +385,7 @@ class Repository {
   Future<void> consent(String sessionId, {required bool granted}) =>
       _api.post<void>(
         '/sessions/$sessionId/consent',
-        body: <String, dynamic>{'granted': granted},
+        body: <String, dynamic>{'consentGiven': granted},
       );
 
   Future<void> setRecording(String sessionId, {required bool active}) =>
@@ -441,18 +441,29 @@ class Repository {
     ];
   }
 
+  /// Sharing an uploaded file into a session. The API grants every other
+  /// participant access in the same transaction — sharing IS the grant.
+  Future<void> shareSessionFile(String sessionId, String attachmentId) =>
+      _api.post<void>(
+        '/sessions/$sessionId/files',
+        body: <String, dynamic>{'attachmentId': attachmentId},
+      );
+
   Future<SessionTimer> timer(String sessionId) async =>
       SessionTimer.fromJson(
         await _api.get<Map<String, dynamic>>('/sessions/$sessionId/timer'),
       );
 
-  /// Reports a connection drop, so the credit can be merged across
-  /// parties — a shared outage counts once, and a platform-side failure
-  /// never penalises the provider (#23).
-  Future<void> reportConnection(String sessionId, {required int seconds}) =>
+  /// Reports the link going or coming back. The server times the gap
+  /// itself and merges both parties' reports, so a shared outage counts
+  /// once and a platform-side failure never penalises the provider (#23).
+  /// Repeating a report is harmless: the route is idempotent.
+  Future<void> reportConnection(String sessionId, {required bool connected}) =>
       _api.post<void>(
         '/sessions/$sessionId/connection',
-        body: <String, dynamic>{'lostSeconds': seconds},
+        body: <String, dynamic>{
+          'state': connected ? 'reconnected' : 'disconnected',
+        },
       );
 
   // ── board ──────────────────────────────────────────────────────────
@@ -927,4 +938,153 @@ class Repository {
   /// identity. Never a public link (CLAUDE.md #29).
   Future<Map<String, dynamic>> attachmentLink(String attachmentId) =>
       _api.get<Map<String, dynamic>>('/attachments/$attachmentId/link');
+
+  /// The download path a minted link points at. Built here rather than
+  /// taken from the response so that no screen ever holds a URL it did
+  /// not derive from an id it was already allowed to see.
+  String attachmentDownloadPath(String attachmentId) =>
+      '/attachments/$attachmentId/download';
+
+  /// One domain, resolved. Its categories, languages, price bands and
+  /// season note — everything a field's own page shows.
+  Future<Map<String, dynamic>> domain(String code) =>
+      _api.get<Map<String, dynamic>>('/domains/$code');
+
+  /// Fresh recovery codes, invalidating the old set. Shown once.
+  Future<List<String>> regenerateRecoveryCodes() async {
+    final Map<String, dynamic> res = await _api
+        .post<Map<String, dynamic>>('/auth/mfa/recovery-codes');
+    return <String>[
+      for (final Object? c in (res['codes'] as List<Object?>? ?? const <Object?>[]))
+        if (c is String) c,
+    ];
+  }
+
+  // ── sessions: running over ─────────────────────────────────────────
+
+  /// Asks for more time. A paid extension is its own escrow with its own
+  /// agreement — never a silent addition to the original (CLAUDE.md #12
+  /// applies to it too).
+  Future<Map<String, dynamic>> requestExtension(
+    String sessionId, {
+    required int minutes,
+  }) => _api.post<Map<String, dynamic>>(
+    '/sessions/$sessionId/extensions',
+    body: <String, dynamic>{'minutes': minutes},
+  );
+
+  Future<List<Map<String, dynamic>>> extensions(String sessionId) =>
+      _objects('/sessions/$sessionId/extensions');
+
+  Future<void> acceptExtension(
+    String extensionId, {
+    required String idempotencyKey,
+  }) => _api.post<void>(
+    '/extensions/$extensionId/accept',
+    idempotencyKey: idempotencyKey,
+  );
+
+  Future<void> declineExtension(String extensionId) =>
+      _api.post<void>('/extensions/$extensionId/decline');
+
+  // ── packages ───────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> purchasePackage(
+    String packageId, {
+    required String idempotencyKey,
+  }) => _api.post<Map<String, dynamic>>(
+    '/packages/$packageId/purchase',
+    idempotencyKey: idempotencyKey,
+  );
+
+  /// Starts one engagement out of a bought bundle. The money moved when
+  /// the bundle was bought, so this draws down rather than charging.
+  ///
+  /// The category is chosen HERE rather than at purchase: a bundle of
+  /// five reviews can be spent on five different papers, and fixing the
+  /// category up front would make a bundle less useful than buying
+  /// singly. All three are REQUIRED — the API refuses the call without
+  /// them.
+  Future<Engagement> engagementFromPackage(
+    String purchaseId, {
+    required String domainCode,
+    required String categoryId,
+    required String language,
+    required String idempotencyKey,
+  }) async => Engagement.fromJson(
+    await _api.post<Map<String, dynamic>>(
+      '/engagements/from-package/$purchaseId',
+      idempotencyKey: idempotencyKey,
+      body: <String, dynamic>{
+        'domainCode': domainCode,
+        'categoryId': categoryId,
+        'language': language,
+      },
+    ),
+  );
+
+  /// Publishing a bundle: a number of sessions sold together at one
+  /// price. The server refuses fewer than two — one session is a rate,
+  /// and two ways to sell the same thing would be two prices for it.
+  Future<void> publishPackage({
+    required String engagementType,
+    required String title,
+    required int sessionCount,
+    required Paise amount,
+    String? skillId,
+    int? commitment,
+  }) => _api.post<void>(
+    '/me/packages',
+    body: <String, dynamic>{
+      'engagementType': engagementType,
+      'title': title,
+      'sessionCount': sessionCount,
+      'amountPaise': amount.value,
+      'skillId': ?skillId,
+      'commitment': ?commitment,
+    },
+  );
+
+  Future<void> withdrawPackage(String packageId) =>
+      _api.post<void>('/me/packages/$packageId/withdraw');
+
+  // ── availability exceptions ────────────────────────────────────────
+
+  /// A day off, or an extra window. Exceptions beat the weekly rules,
+  /// which is why they exist: a rule that had to be edited for one
+  /// Tuesday would be edited back and forgotten.
+  Future<void> addAvailabilityException({
+    required String date,
+    required bool available,
+    int? startMinute,
+    int? endMinute,
+  }) => _api.post<void>(
+    '/me/availability/exceptions',
+    body: <String, dynamic>{
+      'date': date,
+      'available': available,
+      'startMinute': ?startMinute,
+      'endMinute': ?endMinute,
+    },
+  );
+
+  Future<void> removeAvailabilityException(String exceptionId) =>
+      _api.post<void>('/me/availability/exceptions/$exceptionId/remove');
+
+  /// A provider charging LESS than agreed, after the work has started.
+  ///
+  /// One-directional on purpose: the price may come down once work is
+  /// under way and may never go up, because a price that can rise
+  /// mid-engagement is a negotiation the seeker has already lost.
+  Future<void> discount(
+    String engagementId, {
+    required Paise amount,
+    required String reason,
+  }) => _api.post<void>(
+    '/engagements/$engagementId/discount',
+    body: <String, dynamic>{
+      'amountPaise': amount.value,
+      'reason': reason,
+    },
+  );
 }

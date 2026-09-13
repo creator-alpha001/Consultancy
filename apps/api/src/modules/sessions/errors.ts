@@ -5,7 +5,34 @@ export const SessionErrorCode = {
   SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
   SESSION_WRONG_STATUS: 'SESSION_WRONG_STATUS',
   RECORDING_CONSENT_INCOMPLETE: 'RECORDING_CONSENT_INCOMPLETE',
+  RECORDING_UNAVAILABLE: 'RECORDING_UNAVAILABLE',
+  ROOM_NOT_JOINABLE: 'ROOM_NOT_JOINABLE',
 } as const;
+
+/**
+ * The recording vendor could not start or stop a recorder.
+ *
+ * On start, the session goes ahead unrecorded and nothing claims
+ * otherwise. On stop, the flag stays ON so both parties keep seeing that
+ * a recorder may still be running, and either can retry — clearing it
+ * while the vendor might still be recording would misstate the evidence
+ * after someone withdrew consent.
+ */
+export function recordingUnavailable(sessionId: string, action: 'start' | 'stop'): AppError {
+  return new AppError(
+    SessionErrorCode.RECORDING_UNAVAILABLE,
+    `the recording service could not ${action} for session ${sessionId}`,
+    { status: HttpStatus.SERVICE_UNAVAILABLE, detail: { sessionId, action } },
+  );
+}
+
+export function roomNotJoinable(sessionId: string, status: string): AppError {
+  return new AppError(
+    SessionErrorCode.ROOM_NOT_JOINABLE,
+    `session ${sessionId} is ${status}; its room cannot be joined`,
+    { status: HttpStatus.CONFLICT, detail: { sessionId, status } },
+  );
+}
 
 export function sessionNotFound(sessionId: string): AppError {
   return new AppError(SessionErrorCode.SESSION_NOT_FOUND, `no session ${sessionId}`, {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,9 +26,21 @@ class BoardScreen extends ConsumerWidget {
     final AsyncValue<List<BoardPost>> posts = ref.watch(boardPostsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const PackText('Open requests')),
+      appBar: AppBar(
+        title: const PackText('Open requests'),
+        actions: <Widget>[
+          // The free half of the board. Reachable from here rather than
+          // buried, because the person who cannot pay is exactly the
+          // person least likely to go looking.
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Free questions',
+            onPressed: () => context.push('/board/questions'),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/board/new'),
+        onPressed: () => _choose(context),
         icon: const Icon(Icons.add),
         label: const PackText('Ask for help'),
       ),
@@ -47,6 +61,41 @@ class BoardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Two different things a person might mean by "ask for help", and they
+/// are not variations of each other: one is free and answered by anyone
+/// verified; the other holds money and produces a piece of work. Putting
+/// them behind one button and guessing would get it wrong half the time.
+Future<void> _choose(BuildContext context) async {
+  final String? pick = await showModalBottomSheet<String>(
+    context: context,
+    builder: (BuildContext context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const PackText('Ask a question'),
+            subtitle: const PackText(
+              'Free. Anyone verified in the field can answer.',
+            ),
+            onTap: () => Navigator.of(context).pop('ask'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.work_outline),
+            title: const PackText('Post a piece of work'),
+            subtitle: const PackText(
+              'People offer to do it. You choose one and agree the goals.',
+            ),
+            onTap: () => Navigator.of(context).pop('new'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (pick == null || !context.mounted) return;
+  unawaited(context.push(pick == 'ask' ? '/board/ask' : '/board/new'));
 }
 
 class _PostCard extends StatelessWidget {
