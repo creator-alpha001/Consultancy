@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/api", "run", "start:dev"],
+      "port": 3000,
+      "env": {
+        "DATABASE_URL": "postgres://sankalp:sankalp@localhost:5432/sankalp_dev",
+        "PORT": "3000",
+        "WEB_ORIGIN": "http://localhost:3001",
+        "OUTBOX_RELAY_INTERVAL_MS": "15000",
+        "MONEY_PA_WEBHOOK_SECRET_RAZORPAY": "dev-secret"
+      }
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/frontend", "run", "dev"],
+      "port": 3002,
+      "env": {
+        "API_BASE_URL": "http://localhost:3000"
+      }
+    }
+  ]
+}
