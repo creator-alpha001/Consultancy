@@ -27,7 +27,11 @@ import '../../widgets/text.dart';
 /// than only a timestamp. A registration with no family recorded is the
 /// weaker state the API's own comment says it wants to move away from.
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({this.initialRole = Role.seeker, super.key});
+
+  /// Carried from the sign-in screen's choice, so someone who picked
+  /// "Give guidance" is not asked again.
+  final Role initialRole;
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -39,7 +43,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
 
-  Role _role = Role.seeker;
+  late Role _role = widget.initialRole;
   String? _familyCode;
   bool _confirmsAdult = false;
   bool _busy = false;

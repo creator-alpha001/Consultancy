@@ -159,10 +159,12 @@ class TrackRecord {
   });
 
   factory TrackRecord.fromJson(Map<String, dynamic> json) => TrackRecord(
-    completed: json.intOr('completed', 0),
+    // The API's names are completedEngagements / refundedEngagements;
+    // reading 'completed' showed "Completed 0" beside a card saying 18.
+    completed: json.intOr('completedEngagements', json.intOr('completed', 0)),
     distinctSeekers: json.intOr('distinctSeekers', 0),
     repeatSeekers: json.intOr('repeatSeekers', 0),
-    refunded: json.intOr('refunded', 0),
+    refunded: json.intOr('refundedEngagements', json.intOr('refunded', 0)),
   );
 
   final int completed;

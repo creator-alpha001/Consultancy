@@ -91,7 +91,14 @@ GoRouter buildRouter(WidgetRef ref) {
     routes: <RouteBase>[
       GoRoute(path: '/', builder: (_, _) => const _Splash()),
       GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
-      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(
+        path: '/register',
+        builder: (_, GoRouterState s) => RegisterScreen(
+          initialRole: s.uri.queryParameters['as'] == Role.provider.wire
+              ? Role.provider
+              : Role.seeker,
+        ),
+      ),
       GoRoute(
         path: '/forgot-password',
         builder: (_, _) => const ForgotPasswordScreen(),

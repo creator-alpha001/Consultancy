@@ -12,6 +12,8 @@ interface StatsDbRow {
   review_count: string;
   avg_rating: string | null;
   last_completed_at: Date | null;
+  skill_code?: string;
+  skill_labels?: Record<string, string>;
 }
 
 function mapStats(row: StatsDbRow): ProviderSkillStats {
@@ -24,6 +26,7 @@ function mapStats(row: StatsDbRow): ProviderSkillStats {
     reviewCount: Number(row.review_count),
     avgRating: row.avg_rating === null ? null : Number(row.avg_rating),
     lastCompletedAt: row.last_completed_at,
+    ...(row.skill_code ? { skillCode: row.skill_code, labels: row.skill_labels ?? {} } : {}),
   };
 }
 
@@ -51,7 +54,13 @@ export class RankingService {
   /** One provider's own history, per skill. The only stats surface a provider sees about themselves. */
   async getProviderStats(providerId: string): Promise<ProviderSkillStats[]> {
     const res = await this.pool.query<StatsDbRow>(
-      `SELECT * FROM provider_skill_stats WHERE provider_id = $1 ORDER BY skill_id`,
+      // With the skill's name: a provider's own list of skills is
+      // unreadable as ids, and the app showed it as rows of blank labels.
+      `SELECT s.*, k.code AS skill_code, k.labels AS skill_labels
+         FROM provider_skill_stats s
+         JOIN skills k ON k.id = s.skill_id
+        WHERE s.provider_id = $1
+        ORDER BY s.skill_id`,
       [providerId],
     );
     return res.rows.map(mapStats);

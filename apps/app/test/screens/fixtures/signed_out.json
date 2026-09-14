@@ -1,0 +1,199 @@
+{
+ "routes": [
+  "/sign-in",
+  "/register",
+  "/register?as=provider",
+  "/forgot-password"
+ ],
+ "responses": {
+  "GET /catalogue": {
+   "status": 200,
+   "body": [
+    {
+     "code": "accountancy",
+     "labels": {
+      "family": {
+       "en": "Accountancy & Compliance",
+       "hi": "लेखा एवं अनुपालन"
+      },
+      "seeker": {
+       "en": "Client",
+       "hi": "ग्राहक"
+      },
+      "category": {
+       "en": "Practice area",
+       "hi": "कार्यक्षेत्र"
+      },
+      "provider": {
+       "en": "Advisor",
+       "hi": "सलाहकार"
+      },
+      "engagement": {
+       "en": "Consultation",
+       "hi": "परामर्श"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-accent": "#14532d",
+       "--color-correction": "#b45309"
+      },
+      "signature": "ledger_column"
+     },
+     "domains": [
+      {
+       "domainCode": "india_gst",
+       "familyCode": "accountancy",
+       "labels": {
+        "domain": {
+         "en": "GST & indirect tax",
+         "hi": "जीएसटी एवं अप्रत्यक्ष कर"
+        }
+       },
+       "languages": [
+        "en",
+        "hi"
+       ],
+       "defaultLanguage": "en",
+       "priceBands": {
+        "written_qa": [
+         20000,
+         80000
+        ],
+        "document_review": [
+         50000,
+         300000
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "code": "civil_services_exams",
+     "labels": {
+      "family": {
+       "en": "Civil Services Exams",
+       "hi": "सिविल सेवा परीक्षाएँ"
+      },
+      "seeker": {
+       "en": "Aspirant",
+       "hi": "अभ्यर्थी"
+      },
+      "category": {
+       "en": "Paper",
+       "hi": "प्रश्नपत्र"
+      },
+      "provider": {
+       "en": "Mentor",
+       "hi": "मेंटर"
+      },
+      "engagement": {
+       "en": "Task",
+       "hi": "कार्य"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-ink": "#1a1a2e",
+       "--color-paper": "#fdfcf7",
+       "--font-answer": "Noto Serif Devanagari, Georgia, serif",
+       "--color-rule-line": "#dbe4ee",
+       "--color-ink-correction": "#c1121f"
+      },
+      "signature": "ruled_answer_sheet"
+     },
+     "domains": [
+      {
+       "domainCode": "upsc_cse",
+       "familyCode": "civil_services_exams",
+       "labels": {
+        "domain": {
+         "en": "UPSC Civil Services",
+         "hi": "संघ लोक सेवा आयोग"
+        }
+       },
+       "languages": [
+        "hi",
+        "en"
+       ],
+       "defaultLanguage": "hi",
+       "priceBands": {
+        "live_session": [
+         20000,
+         60000
+        ],
+        "document_review": [
+         8000,
+         25000
+        ],
+        "review_with_live": [
+         22000,
+         70000
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "code": "higher_education",
+     "labels": {
+      "family": {
+       "en": "Higher Education Guidance",
+       "hi": "उच्च शिक्षा मार्गदर्शन"
+      },
+      "seeker": {
+       "en": "Applicant",
+       "hi": "आवेदक"
+      },
+      "category": {
+       "en": "Stage",
+       "hi": "चरण"
+      },
+      "provider": {
+       "en": "Counsellor",
+       "hi": "परामर्शदाता"
+      },
+      "engagement": {
+       "en": "Session",
+       "hi": "सत्र"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-accent": "#1e3a8a",
+       "--color-correction": "#be123c"
+      },
+      "signature": "margin_draft"
+     },
+     "domains": [
+      {
+       "domainCode": "study_us",
+       "familyCode": "higher_education",
+       "labels": {
+        "domain": {
+         "en": "United States",
+         "hi": "संयुक्त राज्य अमेरिका"
+        }
+       },
+       "languages": [
+        "en",
+        "hi"
+       ],
+       "defaultLanguage": "en",
+       "priceBands": {
+        "live_session": [
+         100000,
+         400000
+        ],
+        "document_review": [
+         80000,
+         500000
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

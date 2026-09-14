@@ -144,6 +144,10 @@ describe('reputation: reviews, per-skill stats, ordering', () => {
       expect(keys).not.toContain('badge');
       // And every field present is about this provider alone.
       expect(s.providerId).toBe(providerId);
+      // Named, so the provider's own list is readable — the app drew rows
+      // of blank labels when only the skill id came back.
+      expect(typeof s.skillCode).toBe('string');
+      expect(typeof s.labels?.en).toBe('string');
     }
   });
 

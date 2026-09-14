@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../api/models/provider.dart';
 import '../../api/models/supply.dart';
 import '../../data.dart';
+import '../../pack/pack.dart';
 import '../../providers.dart';
 import '../../theme/generated_tokens.dart';
 import '../../widgets/async.dart';
@@ -100,7 +101,11 @@ class ProviderStandingScreen extends ConsumerWidget {
                 ),
               ),
             credentials.maybeWhen(
-              data: (List<CredentialSubmission> c) => _Credentials(list: c),
+              data: (List<CredentialSubmission> c) => _Credentials(
+                list: c,
+                domainName: _domainNames(ref, lang),
+                lang: lang,
+              ),
               orElse: () => const SizedBox.shrink(),
             ),
             _SubmitAnother(credentials: credentials),
@@ -111,10 +116,40 @@ class ProviderStandingScreen extends ConsumerWidget {
   }
 }
 
+/// A field's name from its code, from the provider's own fields and the
+/// public catalogue — never the code itself on screen.
+String Function(String) _domainNames(WidgetRef ref, String lang) {
+  final Map<String, String> names = <String, String>{};
+  for (final Map<String, dynamic> d
+      in ref.watch(myDomainsProvider).valueOrNull ??
+          const <Map<String, dynamic>>[]) {
+    final Object? labels = d['labels'];
+    final String code = (d['domainCode'] ?? '').toString();
+    if (labels is Map && code.isNotEmpty) {
+      final Object? name = labels[lang] ?? labels['en'];
+      if (name is String) names[code] = name;
+    }
+  }
+  for (final CatalogueFamily f
+      in ref.watch(catalogueProvider).valueOrNull?.families ??
+          const <CatalogueFamily>[]) {
+    for (final DomainListing d in f.domains) {
+      names.putIfAbsent(d.code, () => d.label(lang));
+    }
+  }
+  return (String code) => names[code] ?? code;
+}
+
 class _Credentials extends StatelessWidget {
-  const _Credentials({required this.list});
+  const _Credentials({
+    required this.list,
+    required this.domainName,
+    required this.lang,
+  });
 
   final List<CredentialSubmission> list;
+  final String Function(String) domainName;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -137,10 +172,15 @@ class _Credentials extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        PackText(c.typeLabel?.call('en') ?? c.domainCode),
-                        if (c.reviewedAt != null)
-                          PackText(
-                            'Reviewed ${DateFormat('d MMM yyyy').format(c.reviewedAt!)}',
+                        PackText(
+                          c.typeLabel?.call(lang) ?? domainName(c.domainCode),
+                        ),
+                        PackText(
+                          <String>[
+                            if (c.typeLabel != null) domainName(c.domainCode),
+                            if (c.reviewedAt != null)
+                              'Reviewed ${DateFormat('d MMM yyyy').format(c.reviewedAt!)}',
+                          ].join(' · '),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: BaseColors.inkFaint,
                             ),
@@ -209,20 +249,27 @@ class _SubmitAnother extends ConsumerWidget {
       );
     }
 
+    final String Function(String) name = _domainNames(
+      ref,
+      ref.watch(langProvider),
+    );
     return Panel(
       title: 'Submit another',
-      note: 'Each field checks its own credentials.',
+      note: 'Each field checks its own credentials. Choose the field it is for.',
+      // A list of rows rather than a stack of buttons: a provider in
+      // nineteen fields had nineteen full-width buttons.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           for (final String code in codes)
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).push(
+            NavRow(
+              title: name(code),
+              leading: const Icon(Icons.upload_file_outlined, size: 20),
+              onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => SubmitCredentialSheet(domainCode: code),
                 ),
               ),
-              child: PackText('For $code'),
             ),
         ],
       ),

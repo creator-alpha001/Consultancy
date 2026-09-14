@@ -66,4 +66,7 @@ export interface ProviderSkillStats {
   /** null until someone has actually reviewed them in this skill — never defaulted to a flattering number. */
   avgRating: number | null;
   lastCompletedAt: Date | null;
+  /** The skill's code and labels, when the caller asked for its own stats and has to show them by name. */
+  skillCode?: string;
+  labels?: Record<string, string>;
 }

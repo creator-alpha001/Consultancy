@@ -47,6 +47,12 @@ abstract final class AppTheme {
       onPrimaryContainer: brandSoftInk,
       secondary: BaseColors.info,
       onSecondary: BaseColors.inkInverse,
+      // What Material draws every "selected" state with — the tab
+      // indicator, a chosen chip, a chosen segment. Left to Material it
+      // was a dark slate that belonged to nothing else on screen; the
+      // brand's soft tint makes selection read as the same product.
+      secondaryContainer: brandSoft,
+      onSecondaryContainer: brandSoftInk,
       // Verification green means *verified*, never generically "good", so
       // it is not offered as a general tertiary colour.
       tertiary: BaseColors.verified,
@@ -140,6 +146,31 @@ abstract final class AppTheme {
           borderSide: const BorderSide(color: BaseColors.danger),
         ),
         labelStyle: TypeScale.small.copyWith(color: BaseColors.inkMuted),
+        // Material cuts helper and error text to one line. At 360 dp that
+        // turned "Shown to the people you work with. Never your email."
+        // into "Shown to the people you work with. Nev...".
+        helperMaxLines: 3,
+        errorMaxLines: 3,
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: brand,
+        foregroundColor: BaseColors.brandInk,
+        elevation: 2,
+        focusElevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.lg),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: BaseColors.surface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: brandSoft,
+        labelTextStyle: WidgetStatePropertyAll<TextStyle>(
+          TypeScale.caption.copyWith(color: BaseColors.ink),
+        ),
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
       ),
       cardTheme: CardThemeData(
         color: BaseColors.surface,

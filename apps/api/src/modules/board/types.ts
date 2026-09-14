@@ -45,6 +45,8 @@ export interface ProposalRow {
   proposedAmountPaise: bigint;
   status: ProposalStatus;
   resultingEngagementId: string | null;
+  /** The provider's public name, when listed for a post — a seeker choosing between offers needs to know whose each is. */
+  providerName?: string;
 }
 
 export interface AskQuestionInput {

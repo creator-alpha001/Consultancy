@@ -144,7 +144,9 @@ enum CredentialStatus {
   unknown;
 
   static CredentialStatus parse(String? raw) => switch (raw) {
-    'pending' || 'submitted' || 'in_review' => CredentialStatus.pending,
+    // 'under_review' is what migration 0015 actually names it.
+    'pending' || 'submitted' || 'in_review' || 'under_review' =>
+      CredentialStatus.pending,
     'verified' || 'approved' => CredentialStatus.verified,
     'rejected' => CredentialStatus.rejected,
     _ => CredentialStatus.unknown,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sankalp_app/api/models/user.dart';
-import 'package:sankalp_app/pack/label.dart';
 import 'package:sankalp_app/pack/pack.dart';
 import 'package:sankalp_app/shell/shell.dart';
 import 'package:sankalp_app/theme/app_theme.dart';
@@ -33,21 +32,23 @@ void main() {
     });
   });
 
-  group('the tabs speak the pack, not the code', () {
-    test("a family's word for a provider reaches the tab", () {
-      const Vocab exams = Vocab(
-        seeker: Label(<String, String>{'en': 'Aspirant', 'hi': 'अभ्यर्थी'}),
-        provider: Label(<String, String>{'en': 'Mentor', 'hi': 'मेंटर'}),
-        engagement: Label(<String, String>{'en': 'Task', 'hi': 'कार्य'}),
-        agenda: Label(<String, String>{'en': 'Goals'}),
-        agendaItem: Label(<String, String>{'en': 'Goal'}),
-        assessment: Label(<String, String>{'en': 'Evaluation'}),
-        category: Label(<String, String>{'en': 'Paper'}),
-      );
-      final List<ShellTab> tabs = Shells.seeker(exams);
-      expect(tabs[1].label('en'), 'Mentor');
-      expect(tabs[1].label('hi'), 'मेंटर');
-      expect(tabs[2].label('hi'), 'कार्य');
+  group("the tabs use structural words, not any field's nouns", () {
+    // The shell sits above every field a person is in at once, so no one
+    // family's word fits it, and the platform's own nouns ("Provider",
+    // "Engagement") read as jargon on a phone's tab bar.
+    test('a seeker sees plain words, the same whatever their fields', () {
+      final List<String> labels = Shells.seeker(Vocab.platform)
+          .map((ShellTab t) => t.label('en'))
+          .toList();
+      expect(labels, <String>['Home', 'Find', 'Work', 'Sessions', 'You']);
+      expect(Shells.seeker(Vocab.platform)[2].label('hi'), 'काम');
+    });
+
+    test('a provider sees their own plain words', () {
+      final List<String> labels = Shells.provider(Vocab.platform)
+          .map((ShellTab t) => t.label('en'))
+          .toList();
+      expect(labels, <String>['Dashboard', 'Requests', 'Work', 'Earnings', 'You']);
     });
 
     test('the platform vocabulary is neutral, naming no field', () {

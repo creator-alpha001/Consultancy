@@ -1,0 +1,6578 @@
+{
+ "routes": [
+  "/home",
+  "/find",
+  "/board",
+  "/board/questions",
+  "/board/new",
+  "/board/ask",
+  "/board/d24d941c-e236-49c4-b587-90c6a92dc091",
+  "/money",
+  "/progress",
+  "/work",
+  "/work/9ad8345b-c6e3-4774-bc03-918f9bed7bae",
+  "/work/ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+  "/work/99495bd2-1d01-4f34-b346-adb35943ace6",
+  "/work/9ad8345b-c6e3-4774-bc03-918f9bed7bae/agenda",
+  "/work/99495bd2-1d01-4f34-b346-adb35943ace6/agenda",
+  "/work/99495bd2-1d01-4f34-b346-adb35943ace6/assessment",
+  "/work/99495bd2-1d01-4f34-b346-adb35943ace6/review",
+  "/work/99495bd2-1d01-4f34-b346-adb35943ace6/dispute",
+  "/sessions",
+  "/you",
+  "/you/profile",
+  "/you/password",
+  "/you/fields",
+  "/providers/64fb9778-6749-45fa-a29b-e4d8277f65b9",
+  "/fields/upsc_cse",
+  "/legal",
+  "/report?subject=engagement&id=99495bd2-1d01-4f34-b346-adb35943ace6"
+ ],
+ "responses": {
+  "GET /auth/me": {
+   "status": 200,
+   "body": {
+    "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "email": "priya.nair@demo.local",
+    "role": "seeker",
+    "status": "active",
+    "emailVerifiedAt": null,
+    "adultConfirmedAt": "2026-08-30T16:53:36.955Z",
+    "lastLoginAt": "2026-09-14T11:52:04.646Z",
+    "displayName": null,
+    "preferredLang": "en",
+    "signupFamilyCode": null
+   }
+  },
+  "GET /catalogue": {
+   "status": 200,
+   "body": [
+    {
+     "code": "accountancy",
+     "labels": {
+      "family": {
+       "en": "Accountancy & Compliance",
+       "hi": "लेखा एवं अनुपालन"
+      },
+      "seeker": {
+       "en": "Client",
+       "hi": "ग्राहक"
+      },
+      "category": {
+       "en": "Practice area",
+       "hi": "कार्यक्षेत्र"
+      },
+      "provider": {
+       "en": "Advisor",
+       "hi": "सलाहकार"
+      },
+      "engagement": {
+       "en": "Consultation",
+       "hi": "परामर्श"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-accent": "#14532d",
+       "--color-correction": "#b45309"
+      },
+      "signature": "ledger_column"
+     },
+     "domains": [
+      {
+       "domainCode": "india_gst",
+       "familyCode": "accountancy",
+       "labels": {
+        "domain": {
+         "en": "GST & indirect tax",
+         "hi": "जीएसटी एवं अप्रत्यक्ष कर"
+        }
+       },
+       "languages": [
+        "en",
+        "hi"
+       ],
+       "defaultLanguage": "en",
+       "priceBands": {
+        "written_qa": [
+         20000,
+         80000
+        ],
+        "document_review": [
+         50000,
+         300000
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "code": "civil_services_exams",
+     "labels": {
+      "family": {
+       "en": "Civil Services Exams",
+       "hi": "सिविल सेवा परीक्षाएँ"
+      },
+      "seeker": {
+       "en": "Aspirant",
+       "hi": "अभ्यर्थी"
+      },
+      "category": {
+       "en": "Paper",
+       "hi": "प्रश्नपत्र"
+      },
+      "provider": {
+       "en": "Mentor",
+       "hi": "मेंटर"
+      },
+      "engagement": {
+       "en": "Task",
+       "hi": "कार्य"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-ink": "#1a1a2e",
+       "--color-paper": "#fdfcf7",
+       "--font-answer": "Noto Serif Devanagari, Georgia, serif",
+       "--color-rule-line": "#dbe4ee",
+       "--color-ink-correction": "#c1121f"
+      },
+      "signature": "ruled_answer_sheet"
+     },
+     "domains": [
+      {
+       "domainCode": "upsc_cse",
+       "familyCode": "civil_services_exams",
+       "labels": {
+        "domain": {
+         "en": "UPSC Civil Services",
+         "hi": "संघ लोक सेवा आयोग"
+        }
+       },
+       "languages": [
+        "hi",
+        "en"
+       ],
+       "defaultLanguage": "hi",
+       "priceBands": {
+        "live_session": [
+         20000,
+         60000
+        ],
+        "document_review": [
+         8000,
+         25000
+        ],
+        "review_with_live": [
+         22000,
+         70000
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "code": "higher_education",
+     "labels": {
+      "family": {
+       "en": "Higher Education Guidance",
+       "hi": "उच्च शिक्षा मार्गदर्शन"
+      },
+      "seeker": {
+       "en": "Applicant",
+       "hi": "आवेदक"
+      },
+      "category": {
+       "en": "Stage",
+       "hi": "चरण"
+      },
+      "provider": {
+       "en": "Counsellor",
+       "hi": "परामर्शदाता"
+      },
+      "engagement": {
+       "en": "Session",
+       "hi": "सत्र"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-accent": "#1e3a8a",
+       "--color-correction": "#be123c"
+      },
+      "signature": "margin_draft"
+     },
+     "domains": [
+      {
+       "domainCode": "study_us",
+       "familyCode": "higher_education",
+       "labels": {
+        "domain": {
+         "en": "United States",
+         "hi": "संयुक्त राज्य अमेरिका"
+        }
+       },
+       "languages": [
+        "en",
+        "hi"
+       ],
+       "defaultLanguage": "en",
+       "priceBands": {
+        "live_session": [
+         100000,
+         400000
+        ],
+        "document_review": [
+         80000,
+         500000
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "GET /me/domains": {
+   "status": 200,
+   "body": [
+    {
+     "domainCode": "upsc_cse",
+     "labels": {
+      "en": "UPSC Civil Services",
+      "hi": "संघ लोक सेवा आयोग"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": "en",
+     "isPrimary": true
+    },
+    {
+     "domainCode": "uppsc",
+     "labels": {
+      "en": "UP PCS",
+      "hi": "यूपी पीसीएस"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": "hi",
+     "isPrimary": false
+    }
+   ]
+  },
+  "GET /providers": {
+   "status": 200,
+   "body": [
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "displayName": "A. Rathore",
+     "headline": null,
+     "languages": [
+      "bn",
+      "en",
+      "hi"
+     ],
+     "skills": [
+      {
+       "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+       "skillCode": "answer_writing.gs.history",
+       "labels": {
+        "en": "History answer writing",
+        "hi": "इतिहास उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 7,
+       "reviewCount": 7,
+       "avgRating": 4
+      },
+      {
+       "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+       "skillCode": "answer_writing.gs.geography",
+       "labels": {
+        "en": "Geography answer writing",
+        "hi": "भूगोल उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 7,
+       "reviewCount": 7,
+       "avgRating": 4
+      },
+      {
+       "skillId": "867edb48-ba21-4465-add3-1adb3afab56a",
+       "skillCode": "prelims.objective_strategy",
+       "labels": {
+        "en": "Prelims objective strategy"
+       },
+       "tier": "t3",
+       "completedEngagements": 4,
+       "reviewCount": 1,
+       "avgRating": 4
+      },
+      {
+       "skillId": "3dfd9126-9d67-4e29-b7ac-b75c409f6f51",
+       "skillCode": "csat.aptitude",
+       "labels": {
+        "en": "Aptitude / CSAT"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "a8fcac13-d422-4c26-95e1-3b6e177bcc4b",
+       "skillCode": "language.hindi.formal",
+       "labels": {
+        "en": "Formal Hindi",
+        "hi": "सामान्य हिन्दी"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "c1396175-f766-4dc7-b39a-0dac540ea51c",
+       "skillCode": "answer_writing.gs.science_tech",
+       "labels": {
+        "en": "Science & technology answer writing"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "54fd4223-4844-46e2-a61d-4a892b63df23",
+       "skillCode": "answer_writing.gs.economy",
+       "labels": {
+        "en": "Economy answer writing",
+        "hi": "अर्थव्यवस्था उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "30d65857-44e8-4cc6-8411-7042755b7bc1",
+       "skillCode": "answer_writing.gs.environment",
+       "labels": {
+        "en": "Environment answer writing"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "99b8527b-06c1-470f-a274-0a1fbba6e3e3",
+       "skillCode": "answer_writing.essay",
+       "labels": {
+        "en": "Essay writing",
+        "hi": "निबंध लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "3c1f85c6-ce27-4ce9-b19a-8a3f13a16c73",
+       "skillCode": "answer_writing.ethics",
+       "labels": {
+        "en": "Ethics and case studies",
+        "hi": "नीतिशास्त्र"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "9e0e8472-1f48-4988-9707-f164eb262f0b",
+       "skillCode": "interview.personality",
+       "labels": {
+        "en": "Personality test / interview",
+        "hi": "साक्षात्कार"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "449ab5bf-1b64-4639-a76c-8716113950ac",
+       "skillCode": "optional_subject.guidance",
+       "labels": {
+        "en": "Optional subject guidance"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "35e426c6-42dc-4bad-ac13-fe51846a6938",
+       "skillCode": "language.english.formal",
+       "labels": {
+        "en": "Formal English"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "639948b8-4da4-4e28-b2fe-6e2c1590ad31",
+       "skillCode": "answer_writing.gs.polity",
+       "labels": {
+        "en": "Polity answer writing",
+        "hi": "राजव्यवस्था उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      }
+     ],
+     "paidWorkBlocked": false,
+     "services": [
+      {
+       "id": "bea53173-6fd3-41de-be4d-f8a39fb01293",
+       "engagementType": "document_review",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "95000",
+       "durationMinutes": null,
+       "turnaroundHours": 72
+      },
+      {
+       "id": "d0e81806-2500-4511-b957-0549fee38af4",
+       "engagementType": "live_session",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "95000",
+       "durationMinutes": 45,
+       "turnaroundHours": null
+      },
+      {
+       "id": "2145e2cc-5c7e-443e-be3c-6fc3af22dd72",
+       "engagementType": "review_with_live",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "165000",
+       "durationMinutes": 45,
+       "turnaroundHours": 72
+      }
+     ],
+     "familyCode": "civil_services_exams",
+     "domainCodes": [
+      "appsc_group1",
+      "bpsc",
+      "cgpsc",
+      "gpsc",
+      "hppsc",
+      "hpsc",
+      "jpsc",
+      "kpsc_kas",
+      "mppsc",
+      "mpsc",
+      "opsc_oas",
+      "ppsc",
+      "rpsc_ras",
+      "tgpsc_group1",
+      "tnpsc_group1",
+      "ukpsc",
+      "uppsc",
+      "upsc_cse",
+      "wbcs"
+     ],
+     "categoryIds": [
+      "35f8cc7f-f856-4853-acf5-cdbe565b8e0f",
+      "3d744f61-b0a9-4f23-a73c-fe36b53dfb6c",
+      "752a6cf3-2726-4b2f-a214-0cfaeb3fdb97",
+      "948de197-1d0b-4f97-81c0-4061c265d5bc",
+      "d22814b9-8766-4276-a828-292454588a40",
+      "d91b1450-cef6-405f-9fc7-254d60958d0f",
+      "25855616-13fd-4e2f-863b-5bf4141c7bd4",
+      "a34b950c-c461-4454-ba6e-b5303725e70a",
+      "ada4e37e-2fd0-48c5-aca5-151246c1ce3f",
+      "b8dd08ad-667a-4c18-87a9-e5942fdce8cb",
+      "c5cc838b-c942-4374-afd0-6af44bd6324b",
+      "f183e00e-007b-48a4-b0a2-69e3898ae11d",
+      "feb90a35-ce42-4bed-b985-63f7362ce51e",
+      "13c41293-d5a8-448a-b756-59a52d848a5f",
+      "1be1a08d-d20f-4fb9-829f-fc0b1c6e8395",
+      "4a63c057-fad5-48a5-bdad-aae344d3db51",
+      "78808bb7-e36d-472c-ab9b-894ab1243adc",
+      "85078762-909f-41eb-aa0b-a3567689bb9f",
+      "a4350a86-3be9-4c09-926f-cffef0466e19",
+      "fba43da3-63d7-47ab-a9d3-9addd833c0ec",
+      "00ca5739-505c-4fa6-a2ac-c3143db46cc8",
+      "15d812ec-84de-4481-9190-dd22ac6441a0",
+      "511a3275-f1e5-4b74-a691-6869db41f523",
+      "94b72fbb-9b1c-4da1-af56-335d6d23979e",
+      "ad9e9e40-67aa-4155-8e4b-d5fd9d99a50b",
+      "dc40d723-589c-4057-b969-fddc42582832",
+      "23d51ba9-7172-4cf0-9244-653d40bb435c",
+      "2d4783e6-d135-499a-a577-1bf9e4887194",
+      "6bf8c5f0-e97a-4321-85d7-946231b439f5",
+      "a133c015-8be5-424b-925f-c0af5e0bb039",
+      "d15e1d2e-2861-48de-b2f9-5432f08bb2fa",
+      "de23eee2-ed89-433f-8e36-ff6710ffe86f",
+      "deed04b5-9cb4-4ae4-a5e3-7606d97dd5b4",
+      "14a6f864-12c6-498c-a064-009d60cd840b",
+      "20107852-7fd5-4573-9dab-7afd0e4a4e10",
+      "7857419b-aaf9-49a3-a62f-213fcbd148d6",
+      "9d2d968e-a8df-4dc8-86f4-7c874f10cd99",
+      "b11096cf-f6df-4579-99d3-928f0005734a",
+      "b502559d-0eca-4262-ac48-8e2366980fd4",
+      "db4fd67b-483a-4605-9bf6-e736d39e7a0b",
+      "2a27c8b6-003d-4664-83e0-cd6cbcad14bb",
+      "33356901-e795-4621-ba28-8a5462332854",
+      "4f705f8a-9751-45c7-b83e-b13dd93a480f",
+      "695ee054-48f3-4639-a8b3-1546f4a6b9ef",
+      "8c4c496a-0adc-4126-9a26-a34510ca7833",
+      "97d09d7f-be29-49e9-af21-754edee84336",
+      "9f0c3a35-d9e1-430e-abca-87f0e76e0ef0",
+      "186e082a-3edd-4906-a630-34986e466c20",
+      "2926e241-792c-4042-ab4c-10ade67ee81f",
+      "5cb1cd77-aff4-42d1-8aa3-beefab361732",
+      "96a8d8f4-6fb1-4338-b8a5-76eeab189a2f",
+      "9b052d7c-caa6-467e-9d6d-852f6cd30980",
+      "f0d878d2-dcb7-4edd-8ccf-5fd37141ad87",
+      "f1def7b8-a071-4f6d-be7c-a4b9386c7bdb",
+      "000401ee-d11b-4395-86e9-9d708ac6aec9",
+      "305dc68d-3e89-444d-bb76-e019aa24bbff",
+      "4edf8c5d-e2c1-4055-958d-945af6021b06",
+      "5d2011df-f319-4162-b088-732c3a6e76c6",
+      "6504bba1-1f15-4023-b51c-b91e02c93693",
+      "8d2cdb06-0ab9-411f-9d17-18fdf5c30f51",
+      "d81758ae-6ba5-44e8-812c-bd07114a8811",
+      "0de9841c-9174-4e68-ae20-a1e070544c12",
+      "5b7d3572-d30a-4cfb-91dc-a769deef1777",
+      "9b710e03-b701-4fc0-9d0e-4f56531e680d",
+      "b1f59fb0-46d2-4905-9f3a-7188d895c59b",
+      "b586ba33-f694-45af-863f-822e26cdf634",
+      "ba84a9e1-8540-4aa9-9157-85a734671f6c",
+      "e9b2e403-bf0b-407b-8f6b-79751f84395d",
+      "0131107b-cbd5-4e79-bb87-2e551dabd6f4",
+      "7aa19e05-3fe1-41cb-9895-a2b665ed46ef",
+      "86e2bf91-39de-4674-ad6a-2f7b8257dcac",
+      "a9e906ad-e9f8-4adf-902e-81553723ff4d",
+      "d3bd6d7a-c9e5-4943-b6ef-1026b13cc008",
+      "d457ba88-d921-4e30-a5c1-21ad59bc6339",
+      "eab770fd-aa97-4f8d-9fd4-b2f0da904b0f",
+      "78d1f122-bd62-4e3e-aa7d-328a31e476ef",
+      "92f3ee13-1731-4e7a-a2c8-8ad5a5d09c3b",
+      "a29c389a-fe61-47ac-b53d-9093c1fe099c",
+      "b66a405c-c3ee-4404-8949-526da8a4dda6",
+      "be2fe93d-28b5-4352-bcaf-76f503e9c830",
+      "ffa0191a-ae5c-4212-99e2-e2bbd21b2904",
+      "0cf3571a-81df-4912-82a3-89dbd69629a4",
+      "3654896f-6364-440f-a2d6-8e7126b6e30f",
+      "36747f95-e51d-4ad2-865d-ac832babc134",
+      "74073a26-d6bc-45bc-b278-55428cb32504",
+      "90ddbe92-141c-431d-bc81-f2ab8f753beb",
+      "d1575139-4f8f-4274-9e33-5e736eb564a7",
+      "f6812eb0-6825-43c1-97ef-0a13baafd0de",
+      "1c50992c-4695-4189-9d7a-05c633a37649",
+      "1d3de684-6420-4325-a0f4-ba4f5b77db5f",
+      "43e6b191-397e-4f78-8ab1-14f38da2f1b3",
+      "6cc745c2-b3f7-466e-af87-406a88bd6e57",
+      "cfee3e5d-5045-4fc7-966f-7c4520352e7d",
+      "d74f77a7-eebc-445c-957f-16a7ddec61fb",
+      "3010e717-0d9a-412d-9e8c-b2c83202936b",
+      "38e6b249-74d9-4ce5-81b3-0480adddcda7",
+      "4ee14e0e-b8ae-4dfe-92c4-598383de6c53",
+      "64d05c38-9b6e-4cc8-be45-f5516d67578e",
+      "8a888865-9a3b-44db-ac54-4049ef167012",
+      "ec62bdd9-bf05-4d49-ac5b-559f2e21bc3a",
+      "1c17d1c2-0f43-4f53-bcdb-690de2ccbe13",
+      "4bf9fe77-663c-45ee-b70d-b09ca7c3c733",
+      "540b6451-2644-41c2-95ec-83c00371fbe3",
+      "6be12d8d-ea0c-4bda-babf-1db8be95543a",
+      "a901b368-bcfd-4a06-9965-f85b405b6c28",
+      "dd64e387-3cd5-48d5-a098-8e6508c17d2f",
+      "df6491fd-0a1f-4c90-a046-230e75fa9e52",
+      "3d3909be-5d03-4908-a530-bb6754ed2a47",
+      "70c2fb10-90dd-48bd-8d18-3f22d0d1882f",
+      "8ca7341a-fb59-4616-92fb-c00bec7439df",
+      "a98fa122-17e8-43fa-9b82-1007f4aa638f",
+      "ba27b972-786a-4164-8f69-8d112c5e33b2",
+      "ec30a9ff-9f42-4d0f-9c8d-585f0f942548",
+      "f19f0a13-55b6-4f34-a9f5-2a712a9c5b53",
+      "0f1040cb-80a8-479c-8aad-2c071863836b",
+      "1a064be1-8d85-416d-a72e-4cf80cd6854d",
+      "3b4a4d6e-9db2-4702-bd5a-a5a3a52b3040",
+      "4655f2ae-23fa-4320-b68b-44aa6f35f34c",
+      "61d1bdce-f9ff-4a34-b9f4-da12ba42b921",
+      "66573cc6-d14a-4f01-8825-eba8bf323dd3",
+      "79528c49-9333-4948-892f-af714e3e498a",
+      "a3e77662-25f8-4a93-9d5b-44b4d6a31429",
+      "d09e1ff8-a0a3-4793-aff2-efb6984f964b",
+      "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+      "1a67c2d4-9ccf-4695-a317-24811deccadc",
+      "5e444c0a-de0d-4fad-b86e-6c5d1bb6c494",
+      "7c7c0bc8-594a-4196-8cb3-c3fdbba24849",
+      "935bcd25-4e68-441f-b232-41eca0cc9403",
+      "c1719f16-2206-4e07-bed1-a7c97505db24",
+      "c20b8e40-41dd-42fb-8e83-38f754ef1e10",
+      "e3821eb2-1666-4836-9d50-3c3e4904cfcd"
+     ]
+    },
+    {
+     "providerId": "7d6e3fae-4332-4389-bd68-f253ced4cdb9",
+     "displayName": "V. Kulkarni",
+     "headline": null,
+     "languages": [
+      "en"
+     ],
+     "skills": [
+      {
+       "skillId": "a8fcac13-d422-4c26-95e1-3b6e177bcc4b",
+       "skillCode": "language.hindi.formal",
+       "labels": {
+        "en": "Formal Hindi",
+        "hi": "सामान्य हिन्दी"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "35e426c6-42dc-4bad-ac13-fe51846a6938",
+       "skillCode": "language.english.formal",
+       "labels": {
+        "en": "Formal English"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "449ab5bf-1b64-4639-a76c-8716113950ac",
+       "skillCode": "optional_subject.guidance",
+       "labels": {
+        "en": "Optional subject guidance"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "3dfd9126-9d67-4e29-b7ac-b75c409f6f51",
+       "skillCode": "csat.aptitude",
+       "labels": {
+        "en": "Aptitude / CSAT"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+       "skillCode": "answer_writing.gs.geography",
+       "labels": {
+        "en": "Geography answer writing",
+        "hi": "भूगोल उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "54fd4223-4844-46e2-a61d-4a892b63df23",
+       "skillCode": "answer_writing.gs.economy",
+       "labels": {
+        "en": "Economy answer writing",
+        "hi": "अर्थव्यवस्था उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "30d65857-44e8-4cc6-8411-7042755b7bc1",
+       "skillCode": "answer_writing.gs.environment",
+       "labels": {
+        "en": "Environment answer writing"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "99b8527b-06c1-470f-a274-0a1fbba6e3e3",
+       "skillCode": "answer_writing.essay",
+       "labels": {
+        "en": "Essay writing",
+        "hi": "निबंध लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "3c1f85c6-ce27-4ce9-b19a-8a3f13a16c73",
+       "skillCode": "answer_writing.ethics",
+       "labels": {
+        "en": "Ethics and case studies",
+        "hi": "नीतिशास्त्र"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "9e0e8472-1f48-4988-9707-f164eb262f0b",
+       "skillCode": "interview.personality",
+       "labels": {
+        "en": "Personality test / interview",
+        "hi": "साक्षात्कार"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "c1396175-f766-4dc7-b39a-0dac540ea51c",
+       "skillCode": "answer_writing.gs.science_tech",
+       "labels": {
+        "en": "Science & technology answer writing"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "867edb48-ba21-4465-add3-1adb3afab56a",
+       "skillCode": "prelims.objective_strategy",
+       "labels": {
+        "en": "Prelims objective strategy"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "639948b8-4da4-4e28-b2fe-6e2c1590ad31",
+       "skillCode": "answer_writing.gs.polity",
+       "labels": {
+        "en": "Polity answer writing",
+        "hi": "राजव्यवस्था उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+       "skillCode": "answer_writing.gs.history",
+       "labels": {
+        "en": "History answer writing",
+        "hi": "इतिहास उत्तर लेखन"
+       },
+       "tier": "t3",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      }
+     ],
+     "paidWorkBlocked": false,
+     "services": [
+      {
+       "id": "2ef097ac-5c6f-42de-9a50-9f362bbb5b73",
+       "engagementType": "document_review",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "110000",
+       "durationMinutes": null,
+       "turnaroundHours": 48
+      },
+      {
+       "id": "16497201-bca2-4a83-b509-4ffe3fca9d63",
+       "engagementType": "live_session",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "120000",
+       "durationMinutes": 60,
+       "turnaroundHours": null
+      },
+      {
+       "id": "991157e4-4965-4861-85c9-1f628851d471",
+       "engagementType": "review_with_live",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "205000",
+       "durationMinutes": 60,
+       "turnaroundHours": 48
+      }
+     ],
+     "familyCode": "civil_services_exams",
+     "domainCodes": [
+      "appsc_group1",
+      "bpsc",
+      "cgpsc",
+      "gpsc",
+      "hppsc",
+      "hpsc",
+      "jpsc",
+      "kpsc_kas",
+      "mppsc",
+      "mpsc",
+      "opsc_oas",
+      "ppsc",
+      "rpsc_ras",
+      "tgpsc_group1",
+      "tnpsc_group1",
+      "ukpsc",
+      "uppsc",
+      "upsc_cse",
+      "wbcs"
+     ],
+     "categoryIds": [
+      "35f8cc7f-f856-4853-acf5-cdbe565b8e0f",
+      "3d744f61-b0a9-4f23-a73c-fe36b53dfb6c",
+      "752a6cf3-2726-4b2f-a214-0cfaeb3fdb97",
+      "948de197-1d0b-4f97-81c0-4061c265d5bc",
+      "d22814b9-8766-4276-a828-292454588a40",
+      "d91b1450-cef6-405f-9fc7-254d60958d0f",
+      "25855616-13fd-4e2f-863b-5bf4141c7bd4",
+      "a34b950c-c461-4454-ba6e-b5303725e70a",
+      "ada4e37e-2fd0-48c5-aca5-151246c1ce3f",
+      "b8dd08ad-667a-4c18-87a9-e5942fdce8cb",
+      "c5cc838b-c942-4374-afd0-6af44bd6324b",
+      "f183e00e-007b-48a4-b0a2-69e3898ae11d",
+      "feb90a35-ce42-4bed-b985-63f7362ce51e",
+      "13c41293-d5a8-448a-b756-59a52d848a5f",
+      "1be1a08d-d20f-4fb9-829f-fc0b1c6e8395",
+      "4a63c057-fad5-48a5-bdad-aae344d3db51",
+      "78808bb7-e36d-472c-ab9b-894ab1243adc",
+      "85078762-909f-41eb-aa0b-a3567689bb9f",
+      "a4350a86-3be9-4c09-926f-cffef0466e19",
+      "fba43da3-63d7-47ab-a9d3-9addd833c0ec",
+      "00ca5739-505c-4fa6-a2ac-c3143db46cc8",
+      "15d812ec-84de-4481-9190-dd22ac6441a0",
+      "511a3275-f1e5-4b74-a691-6869db41f523",
+      "94b72fbb-9b1c-4da1-af56-335d6d23979e",
+      "ad9e9e40-67aa-4155-8e4b-d5fd9d99a50b",
+      "dc40d723-589c-4057-b969-fddc42582832",
+      "23d51ba9-7172-4cf0-9244-653d40bb435c",
+      "2d4783e6-d135-499a-a577-1bf9e4887194",
+      "6bf8c5f0-e97a-4321-85d7-946231b439f5",
+      "a133c015-8be5-424b-925f-c0af5e0bb039",
+      "d15e1d2e-2861-48de-b2f9-5432f08bb2fa",
+      "de23eee2-ed89-433f-8e36-ff6710ffe86f",
+      "deed04b5-9cb4-4ae4-a5e3-7606d97dd5b4",
+      "14a6f864-12c6-498c-a064-009d60cd840b",
+      "20107852-7fd5-4573-9dab-7afd0e4a4e10",
+      "7857419b-aaf9-49a3-a62f-213fcbd148d6",
+      "9d2d968e-a8df-4dc8-86f4-7c874f10cd99",
+      "b11096cf-f6df-4579-99d3-928f0005734a",
+      "b502559d-0eca-4262-ac48-8e2366980fd4",
+      "db4fd67b-483a-4605-9bf6-e736d39e7a0b",
+      "2a27c8b6-003d-4664-83e0-cd6cbcad14bb",
+      "33356901-e795-4621-ba28-8a5462332854",
+      "4f705f8a-9751-45c7-b83e-b13dd93a480f",
+      "695ee054-48f3-4639-a8b3-1546f4a6b9ef",
+      "8c4c496a-0adc-4126-9a26-a34510ca7833",
+      "97d09d7f-be29-49e9-af21-754edee84336",
+      "9f0c3a35-d9e1-430e-abca-87f0e76e0ef0",
+      "186e082a-3edd-4906-a630-34986e466c20",
+      "2926e241-792c-4042-ab4c-10ade67ee81f",
+      "5cb1cd77-aff4-42d1-8aa3-beefab361732",
+      "96a8d8f4-6fb1-4338-b8a5-76eeab189a2f",
+      "9b052d7c-caa6-467e-9d6d-852f6cd30980",
+      "f0d878d2-dcb7-4edd-8ccf-5fd37141ad87",
+      "f1def7b8-a071-4f6d-be7c-a4b9386c7bdb",
+      "000401ee-d11b-4395-86e9-9d708ac6aec9",
+      "305dc68d-3e89-444d-bb76-e019aa24bbff",
+      "4edf8c5d-e2c1-4055-958d-945af6021b06",
+      "5d2011df-f319-4162-b088-732c3a6e76c6",
+      "6504bba1-1f15-4023-b51c-b91e02c93693",
+      "8d2cdb06-0ab9-411f-9d17-18fdf5c30f51",
+      "d81758ae-6ba5-44e8-812c-bd07114a8811",
+      "0de9841c-9174-4e68-ae20-a1e070544c12",
+      "5b7d3572-d30a-4cfb-91dc-a769deef1777",
+      "9b710e03-b701-4fc0-9d0e-4f56531e680d",
+      "b1f59fb0-46d2-4905-9f3a-7188d895c59b",
+      "b586ba33-f694-45af-863f-822e26cdf634",
+      "ba84a9e1-8540-4aa9-9157-85a734671f6c",
+      "e9b2e403-bf0b-407b-8f6b-79751f84395d",
+      "0131107b-cbd5-4e79-bb87-2e551dabd6f4",
+      "7aa19e05-3fe1-41cb-9895-a2b665ed46ef",
+      "86e2bf91-39de-4674-ad6a-2f7b8257dcac",
+      "a9e906ad-e9f8-4adf-902e-81553723ff4d",
+      "d3bd6d7a-c9e5-4943-b6ef-1026b13cc008",
+      "d457ba88-d921-4e30-a5c1-21ad59bc6339",
+      "eab770fd-aa97-4f8d-9fd4-b2f0da904b0f",
+      "78d1f122-bd62-4e3e-aa7d-328a31e476ef",
+      "92f3ee13-1731-4e7a-a2c8-8ad5a5d09c3b",
+      "a29c389a-fe61-47ac-b53d-9093c1fe099c",
+      "b66a405c-c3ee-4404-8949-526da8a4dda6",
+      "be2fe93d-28b5-4352-bcaf-76f503e9c830",
+      "ffa0191a-ae5c-4212-99e2-e2bbd21b2904",
+      "0cf3571a-81df-4912-82a3-89dbd69629a4",
+      "3654896f-6364-440f-a2d6-8e7126b6e30f",
+      "36747f95-e51d-4ad2-865d-ac832babc134",
+      "74073a26-d6bc-45bc-b278-55428cb32504",
+      "90ddbe92-141c-431d-bc81-f2ab8f753beb",
+      "d1575139-4f8f-4274-9e33-5e736eb564a7",
+      "f6812eb0-6825-43c1-97ef-0a13baafd0de",
+      "1c50992c-4695-4189-9d7a-05c633a37649",
+      "1d3de684-6420-4325-a0f4-ba4f5b77db5f",
+      "43e6b191-397e-4f78-8ab1-14f38da2f1b3",
+      "6cc745c2-b3f7-466e-af87-406a88bd6e57",
+      "cfee3e5d-5045-4fc7-966f-7c4520352e7d",
+      "d74f77a7-eebc-445c-957f-16a7ddec61fb",
+      "3010e717-0d9a-412d-9e8c-b2c83202936b",
+      "38e6b249-74d9-4ce5-81b3-0480adddcda7",
+      "4ee14e0e-b8ae-4dfe-92c4-598383de6c53",
+      "64d05c38-9b6e-4cc8-be45-f5516d67578e",
+      "8a888865-9a3b-44db-ac54-4049ef167012",
+      "ec62bdd9-bf05-4d49-ac5b-559f2e21bc3a",
+      "1c17d1c2-0f43-4f53-bcdb-690de2ccbe13",
+      "4bf9fe77-663c-45ee-b70d-b09ca7c3c733",
+      "540b6451-2644-41c2-95ec-83c00371fbe3",
+      "6be12d8d-ea0c-4bda-babf-1db8be95543a",
+      "a901b368-bcfd-4a06-9965-f85b405b6c28",
+      "dd64e387-3cd5-48d5-a098-8e6508c17d2f",
+      "df6491fd-0a1f-4c90-a046-230e75fa9e52",
+      "3d3909be-5d03-4908-a530-bb6754ed2a47",
+      "70c2fb10-90dd-48bd-8d18-3f22d0d1882f",
+      "8ca7341a-fb59-4616-92fb-c00bec7439df",
+      "a98fa122-17e8-43fa-9b82-1007f4aa638f",
+      "ba27b972-786a-4164-8f69-8d112c5e33b2",
+      "ec30a9ff-9f42-4d0f-9c8d-585f0f942548",
+      "f19f0a13-55b6-4f34-a9f5-2a712a9c5b53",
+      "0f1040cb-80a8-479c-8aad-2c071863836b",
+      "1a064be1-8d85-416d-a72e-4cf80cd6854d",
+      "3b4a4d6e-9db2-4702-bd5a-a5a3a52b3040",
+      "4655f2ae-23fa-4320-b68b-44aa6f35f34c",
+      "61d1bdce-f9ff-4a34-b9f4-da12ba42b921",
+      "66573cc6-d14a-4f01-8825-eba8bf323dd3",
+      "79528c49-9333-4948-892f-af714e3e498a",
+      "a3e77662-25f8-4a93-9d5b-44b4d6a31429",
+      "d09e1ff8-a0a3-4793-aff2-efb6984f964b",
+      "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+      "1a67c2d4-9ccf-4695-a317-24811deccadc",
+      "5e444c0a-de0d-4fad-b86e-6c5d1bb6c494",
+      "7c7c0bc8-594a-4196-8cb3-c3fdbba24849",
+      "935bcd25-4e68-441f-b232-41eca0cc9403",
+      "c1719f16-2206-4e07-bed1-a7c97505db24",
+      "c20b8e40-41dd-42fb-8e83-38f754ef1e10",
+      "e3821eb2-1666-4836-9d50-3c3e4904cfcd"
+     ]
+    },
+    {
+     "providerId": "730a022b-9be0-4d36-b2ff-894b35a2287f",
+     "displayName": "M. Banerjee",
+     "headline": null,
+     "languages": [
+      "hi",
+      "en"
+     ],
+     "skills": [
+      {
+       "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+       "skillCode": "answer_writing.gs.history",
+       "labels": {
+        "en": "History answer writing",
+        "hi": "इतिहास उत्तर लेखन"
+       },
+       "tier": "t2",
+       "completedEngagements": 2,
+       "reviewCount": 2,
+       "avgRating": 4.5
+      },
+      {
+       "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+       "skillCode": "answer_writing.gs.geography",
+       "labels": {
+        "en": "Geography answer writing",
+        "hi": "भूगोल उत्तर लेखन"
+       },
+       "tier": "t2",
+       "completedEngagements": 2,
+       "reviewCount": 2,
+       "avgRating": 4.5
+      },
+      {
+       "skillId": "30d65857-44e8-4cc6-8411-7042755b7bc1",
+       "skillCode": "answer_writing.gs.environment",
+       "labels": {
+        "en": "Environment answer writing"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "639948b8-4da4-4e28-b2fe-6e2c1590ad31",
+       "skillCode": "answer_writing.gs.polity",
+       "labels": {
+        "en": "Polity answer writing",
+        "hi": "राजव्यवस्था उत्तर लेखन"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "c1396175-f766-4dc7-b39a-0dac540ea51c",
+       "skillCode": "answer_writing.gs.science_tech",
+       "labels": {
+        "en": "Science & technology answer writing"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "449ab5bf-1b64-4639-a76c-8716113950ac",
+       "skillCode": "optional_subject.guidance",
+       "labels": {
+        "en": "Optional subject guidance"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "a8fcac13-d422-4c26-95e1-3b6e177bcc4b",
+       "skillCode": "language.hindi.formal",
+       "labels": {
+        "en": "Formal Hindi",
+        "hi": "सामान्य हिन्दी"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "99b8527b-06c1-470f-a274-0a1fbba6e3e3",
+       "skillCode": "answer_writing.essay",
+       "labels": {
+        "en": "Essay writing",
+        "hi": "निबंध लेखन"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "3dfd9126-9d67-4e29-b7ac-b75c409f6f51",
+       "skillCode": "csat.aptitude",
+       "labels": {
+        "en": "Aptitude / CSAT"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "9e0e8472-1f48-4988-9707-f164eb262f0b",
+       "skillCode": "interview.personality",
+       "labels": {
+        "en": "Personality test / interview",
+        "hi": "साक्षात्कार"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "54fd4223-4844-46e2-a61d-4a892b63df23",
+       "skillCode": "answer_writing.gs.economy",
+       "labels": {
+        "en": "Economy answer writing",
+        "hi": "अर्थव्यवस्था उत्तर लेखन"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "35e426c6-42dc-4bad-ac13-fe51846a6938",
+       "skillCode": "language.english.formal",
+       "labels": {
+        "en": "Formal English"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "867edb48-ba21-4465-add3-1adb3afab56a",
+       "skillCode": "prelims.objective_strategy",
+       "labels": {
+        "en": "Prelims objective strategy"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      },
+      {
+       "skillId": "3c1f85c6-ce27-4ce9-b19a-8a3f13a16c73",
+       "skillCode": "answer_writing.ethics",
+       "labels": {
+        "en": "Ethics and case studies",
+        "hi": "नीतिशास्त्र"
+       },
+       "tier": "t2",
+       "completedEngagements": 0,
+       "reviewCount": 0,
+       "avgRating": null
+      }
+     ],
+     "paidWorkBlocked": false,
+     "services": [
+      {
+       "id": "f33277d6-e4f8-4d82-8949-b015c6eeb7ac",
+       "engagementType": "document_review",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "60000",
+       "durationMinutes": null,
+       "turnaroundHours": 96
+      },
+      {
+       "id": "8ad2b1a8-e8be-465a-b067-da251d3a7767",
+       "engagementType": "live_session",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "70000",
+       "durationMinutes": 30,
+       "turnaroundHours": null
+      },
+      {
+       "id": "9b38493d-4fcb-4e7f-b340-473ccb76a68c",
+       "engagementType": "review_with_live",
+       "skillId": null,
+       "skillCode": null,
+       "skillLabels": null,
+       "currency": "INR",
+       "amountPaise": "115000",
+       "durationMinutes": 30,
+       "turnaroundHours": 96
+      }
+     ],
+     "familyCode": "civil_services_exams",
+     "domainCodes": [
+      "appsc_group1",
+      "bpsc",
+      "cgpsc",
+      "gpsc",
+      "hppsc",
+      "hpsc",
+      "jpsc",
+      "kpsc_kas",
+      "mppsc",
+      "mpsc",
+      "opsc_oas",
+      "ppsc",
+      "rpsc_ras",
+      "tgpsc_group1",
+      "tnpsc_group1",
+      "ukpsc",
+      "uppsc",
+      "upsc_cse",
+      "wbcs"
+     ],
+     "categoryIds": [
+      "35f8cc7f-f856-4853-acf5-cdbe565b8e0f",
+      "3d744f61-b0a9-4f23-a73c-fe36b53dfb6c",
+      "752a6cf3-2726-4b2f-a214-0cfaeb3fdb97",
+      "948de197-1d0b-4f97-81c0-4061c265d5bc",
+      "d22814b9-8766-4276-a828-292454588a40",
+      "d91b1450-cef6-405f-9fc7-254d60958d0f",
+      "25855616-13fd-4e2f-863b-5bf4141c7bd4",
+      "a34b950c-c461-4454-ba6e-b5303725e70a",
+      "ada4e37e-2fd0-48c5-aca5-151246c1ce3f",
+      "b8dd08ad-667a-4c18-87a9-e5942fdce8cb",
+      "c5cc838b-c942-4374-afd0-6af44bd6324b",
+      "f183e00e-007b-48a4-b0a2-69e3898ae11d",
+      "feb90a35-ce42-4bed-b985-63f7362ce51e",
+      "13c41293-d5a8-448a-b756-59a52d848a5f",
+      "1be1a08d-d20f-4fb9-829f-fc0b1c6e8395",
+      "4a63c057-fad5-48a5-bdad-aae344d3db51",
+      "78808bb7-e36d-472c-ab9b-894ab1243adc",
+      "85078762-909f-41eb-aa0b-a3567689bb9f",
+      "a4350a86-3be9-4c09-926f-cffef0466e19",
+      "fba43da3-63d7-47ab-a9d3-9addd833c0ec",
+      "00ca5739-505c-4fa6-a2ac-c3143db46cc8",
+      "15d812ec-84de-4481-9190-dd22ac6441a0",
+      "511a3275-f1e5-4b74-a691-6869db41f523",
+      "94b72fbb-9b1c-4da1-af56-335d6d23979e",
+      "ad9e9e40-67aa-4155-8e4b-d5fd9d99a50b",
+      "dc40d723-589c-4057-b969-fddc42582832",
+      "23d51ba9-7172-4cf0-9244-653d40bb435c",
+      "2d4783e6-d135-499a-a577-1bf9e4887194",
+      "6bf8c5f0-e97a-4321-85d7-946231b439f5",
+      "a133c015-8be5-424b-925f-c0af5e0bb039",
+      "d15e1d2e-2861-48de-b2f9-5432f08bb2fa",
+      "de23eee2-ed89-433f-8e36-ff6710ffe86f",
+      "deed04b5-9cb4-4ae4-a5e3-7606d97dd5b4",
+      "14a6f864-12c6-498c-a064-009d60cd840b",
+      "20107852-7fd5-4573-9dab-7afd0e4a4e10",
+      "7857419b-aaf9-49a3-a62f-213fcbd148d6",
+      "9d2d968e-a8df-4dc8-86f4-7c874f10cd99",
+      "b11096cf-f6df-4579-99d3-928f0005734a",
+      "b502559d-0eca-4262-ac48-8e2366980fd4",
+      "db4fd67b-483a-4605-9bf6-e736d39e7a0b",
+      "2a27c8b6-003d-4664-83e0-cd6cbcad14bb",
+      "33356901-e795-4621-ba28-8a5462332854",
+      "4f705f8a-9751-45c7-b83e-b13dd93a480f",
+      "695ee054-48f3-4639-a8b3-1546f4a6b9ef",
+      "8c4c496a-0adc-4126-9a26-a34510ca7833",
+      "97d09d7f-be29-49e9-af21-754edee84336",
+      "9f0c3a35-d9e1-430e-abca-87f0e76e0ef0",
+      "186e082a-3edd-4906-a630-34986e466c20",
+      "2926e241-792c-4042-ab4c-10ade67ee81f",
+      "5cb1cd77-aff4-42d1-8aa3-beefab361732",
+      "96a8d8f4-6fb1-4338-b8a5-76eeab189a2f",
+      "9b052d7c-caa6-467e-9d6d-852f6cd30980",
+      "f0d878d2-dcb7-4edd-8ccf-5fd37141ad87",
+      "f1def7b8-a071-4f6d-be7c-a4b9386c7bdb",
+      "000401ee-d11b-4395-86e9-9d708ac6aec9",
+      "305dc68d-3e89-444d-bb76-e019aa24bbff",
+      "4edf8c5d-e2c1-4055-958d-945af6021b06",
+      "5d2011df-f319-4162-b088-732c3a6e76c6",
+      "6504bba1-1f15-4023-b51c-b91e02c93693",
+      "8d2cdb06-0ab9-411f-9d17-18fdf5c30f51",
+      "d81758ae-6ba5-44e8-812c-bd07114a8811",
+      "0de9841c-9174-4e68-ae20-a1e070544c12",
+      "5b7d3572-d30a-4cfb-91dc-a769deef1777",
+      "9b710e03-b701-4fc0-9d0e-4f56531e680d",
+      "b1f59fb0-46d2-4905-9f3a-7188d895c59b",
+      "b586ba33-f694-45af-863f-822e26cdf634",
+      "ba84a9e1-8540-4aa9-9157-85a734671f6c",
+      "e9b2e403-bf0b-407b-8f6b-79751f84395d",
+      "0131107b-cbd5-4e79-bb87-2e551dabd6f4",
+      "7aa19e05-3fe1-41cb-9895-a2b665ed46ef",
+      "86e2bf91-39de-4674-ad6a-2f7b8257dcac",
+      "a9e906ad-e9f8-4adf-902e-81553723ff4d",
+      "d3bd6d7a-c9e5-4943-b6ef-1026b13cc008",
+      "d457ba88-d921-4e30-a5c1-21ad59bc6339",
+      "eab770fd-aa97-4f8d-9fd4-b2f0da904b0f",
+      "78d1f122-bd62-4e3e-aa7d-328a31e476ef",
+      "92f3ee13-1731-4e7a-a2c8-8ad5a5d09c3b",
+      "a29c389a-fe61-47ac-b53d-9093c1fe099c",
+      "b66a405c-c3ee-4404-8949-526da8a4dda6",
+      "be2fe93d-28b5-4352-bcaf-76f503e9c830",
+      "ffa0191a-ae5c-4212-99e2-e2bbd21b2904",
+      "0cf3571a-81df-4912-82a3-89dbd69629a4",
+      "3654896f-6364-440f-a2d6-8e7126b6e30f",
+      "36747f95-e51d-4ad2-865d-ac832babc134",
+      "74073a26-d6bc-45bc-b278-55428cb32504",
+      "90ddbe92-141c-431d-bc81-f2ab8f753beb",
+      "d1575139-4f8f-4274-9e33-5e736eb564a7",
+      "f6812eb0-6825-43c1-97ef-0a13baafd0de",
+      "1c50992c-4695-4189-9d7a-05c633a37649",
+      "1d3de684-6420-4325-a0f4-ba4f5b77db5f",
+      "43e6b191-397e-4f78-8ab1-14f38da2f1b3",
+      "6cc745c2-b3f7-466e-af87-406a88bd6e57",
+      "cfee3e5d-5045-4fc7-966f-7c4520352e7d",
+      "d74f77a7-eebc-445c-957f-16a7ddec61fb",
+      "3010e717-0d9a-412d-9e8c-b2c83202936b",
+      "38e6b249-74d9-4ce5-81b3-0480adddcda7",
+      "4ee14e0e-b8ae-4dfe-92c4-598383de6c53",
+      "64d05c38-9b6e-4cc8-be45-f5516d67578e",
+      "8a888865-9a3b-44db-ac54-4049ef167012",
+      "ec62bdd9-bf05-4d49-ac5b-559f2e21bc3a",
+      "1c17d1c2-0f43-4f53-bcdb-690de2ccbe13",
+      "4bf9fe77-663c-45ee-b70d-b09ca7c3c733",
+      "540b6451-2644-41c2-95ec-83c00371fbe3",
+      "6be12d8d-ea0c-4bda-babf-1db8be95543a",
+      "a901b368-bcfd-4a06-9965-f85b405b6c28",
+      "dd64e387-3cd5-48d5-a098-8e6508c17d2f",
+      "df6491fd-0a1f-4c90-a046-230e75fa9e52",
+      "3d3909be-5d03-4908-a530-bb6754ed2a47",
+      "70c2fb10-90dd-48bd-8d18-3f22d0d1882f",
+      "8ca7341a-fb59-4616-92fb-c00bec7439df",
+      "a98fa122-17e8-43fa-9b82-1007f4aa638f",
+      "ba27b972-786a-4164-8f69-8d112c5e33b2",
+      "ec30a9ff-9f42-4d0f-9c8d-585f0f942548",
+      "f19f0a13-55b6-4f34-a9f5-2a712a9c5b53",
+      "0f1040cb-80a8-479c-8aad-2c071863836b",
+      "1a064be1-8d85-416d-a72e-4cf80cd6854d",
+      "3b4a4d6e-9db2-4702-bd5a-a5a3a52b3040",
+      "4655f2ae-23fa-4320-b68b-44aa6f35f34c",
+      "61d1bdce-f9ff-4a34-b9f4-da12ba42b921",
+      "66573cc6-d14a-4f01-8825-eba8bf323dd3",
+      "79528c49-9333-4948-892f-af714e3e498a",
+      "a3e77662-25f8-4a93-9d5b-44b4d6a31429",
+      "d09e1ff8-a0a3-4793-aff2-efb6984f964b",
+      "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+      "1a67c2d4-9ccf-4695-a317-24811deccadc",
+      "5e444c0a-de0d-4fad-b86e-6c5d1bb6c494",
+      "7c7c0bc8-594a-4196-8cb3-c3fdbba24849",
+      "935bcd25-4e68-441f-b232-41eca0cc9403",
+      "c1719f16-2206-4e07-bed1-a7c97505db24",
+      "c20b8e40-41dd-42fb-8e83-38f754ef1e10",
+      "e3821eb2-1666-4836-9d50-3c3e4904cfcd"
+     ]
+    }
+   ]
+  },
+  "GET /board/posts": {
+   "status": 200,
+   "body": [
+    {
+     "id": "d24d941c-e236-49c4-b587-90c6a92dc091",
+     "seekerId": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-D24D94",
+     "postedAt": "2026-08-31T17:38:35.682Z",
+     "seeker": {
+      "id": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+      "displayName": "B. 1788197897189"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 1
+    },
+    {
+     "id": "faa6dcbb-7d72-486c-bb13-ad1feb52448d",
+     "seekerId": "2176b800-6743-466b-b6b5-ae7fe9a581ba",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-FAA6DC",
+     "postedAt": "2026-08-31T17:34:12.910Z",
+     "seeker": {
+      "id": "2176b800-6743-466b-b6b5-ae7fe9a581ba",
+      "displayName": "B. 1788197633694"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "fb07fb85-4b27-4c44-90ca-e163aca75c07",
+     "seekerId": "d4303b8c-7163-438c-bb40-4bf7da5eca2b",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-FB07FB",
+     "postedAt": "2026-08-31T16:36:12.532Z",
+     "seeker": {
+      "id": "d4303b8c-7163-438c-bb40-4bf7da5eca2b",
+      "displayName": "W. 1788194089116"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "561ee7d3-39d6-4697-8b5a-44b59731a26d",
+     "seekerId": "f3ac96e9-4446-4cf0-b47d-8b69acd61dd3",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-561EE7",
+     "postedAt": "2026-08-31T16:33:10.571Z",
+     "seeker": {
+      "id": "f3ac96e9-4446-4cf0-b47d-8b69acd61dd3",
+      "displayName": "B. 1788193967438"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "da52b950-b510-4798-85ab-80597e8b0ac6",
+     "seekerId": "98dfc805-8055-4a8d-9ac1-5367057792c1",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-DA52B9",
+     "postedAt": "2026-08-31T16:31:34.039Z",
+     "seeker": {
+      "id": "98dfc805-8055-4a8d-9ac1-5367057792c1",
+      "displayName": "B. 1788193871234"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "c2220d51-b905-48e1-a49e-0ba032d2bb48",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "language": "en",
+     "currency": "INR",
+     "budgetMinPaise": "60000",
+     "budgetMaxPaise": "120000",
+     "description": "Four answers from last week's test. I want to know whether the problem is what I know or how I am writing it down.",
+     "status": "open",
+     "reference": "REQ-C2220D",
+     "postedAt": "2026-08-31T14:36:36.180Z",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 1
+    }
+   ]
+  },
+  "GET /board/questions": {
+   "status": 200,
+   "body": []
+  },
+  "GET /board/posts/d24d941c-e236-49c4-b587-90c6a92dc091": {
+   "status": 200,
+   "body": {
+    "id": "d24d941c-e236-49c4-b587-90c6a92dc091",
+    "seekerId": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+    "domainCode": "upsc_cse",
+    "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+    "engagementType": "document_review",
+    "language": "hi",
+    "currency": "INR",
+    "budgetMinPaise": "8000",
+    "budgetMaxPaise": "25000",
+    "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+    "status": "open",
+    "reference": "REQ-D24D94",
+    "postedAt": "2026-08-31T17:38:35.682Z",
+    "seeker": {
+     "id": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+     "displayName": "B. 1788197897189"
+    },
+    "familyCode": "civil_services_exams",
+    "proposalCount": 1
+   }
+  },
+  "GET /board/posts/d24d941c-e236-49c4-b587-90c6a92dc091/proposals": {
+   "status": 200,
+   "body": [
+    {
+     "id": "03e14194-4ad8-4a71-a03b-475500d0792f",
+     "boardPostId": "d24d941c-e236-49c4-b587-90c6a92dc091",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "message": "I will mark directive words line by line\n\nBack within 3 hours.",
+     "proposedAmountPaise": "20000",
+     "status": "submitted",
+     "resultingEngagementId": null,
+     "providerName": "A. Rathore",
+     "submittedAt": "2026-09-14T07:53:36.611Z"
+    }
+   ]
+  },
+  "GET /me/money": {
+   "status": 200,
+   "body": {
+    "summary": {
+     "currency": "INR",
+     "walletPaise": "250000",
+     "inEscrowPaise": "638000",
+     "spentPaise": "750000",
+     "refundedPaise": "25000"
+    },
+    "lines": [
+     {
+      "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+      "engagementType": "document_review",
+      "amountPaise": "70000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "70000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T17:37:22.687Z"
+     },
+     {
+      "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+      "engagementType": "document_review",
+      "amountPaise": "70000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "70000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T17:29:34.703Z"
+     },
+     {
+      "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+      "engagementType": "document_review",
+      "amountPaise": "70000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "70000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T16:27:41.607Z"
+     },
+     {
+      "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+      "engagementType": "document_review",
+      "amountPaise": "70000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "70000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T16:26:04.276Z"
+     },
+     {
+      "engagementId": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+      "engagementType": "live_session",
+      "amountPaise": "60000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "60000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T14:36:36.108Z"
+     },
+     {
+      "engagementId": "ea05a295-6869-4ea8-9ad3-0707f1b8ca85",
+      "engagementType": "document_review",
+      "amountPaise": "80000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "80000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T08:41:06.907Z"
+     },
+     {
+      "engagementId": "9ad8345b-c6e3-4774-bc03-918f9bed7bae",
+      "engagementType": "document_review",
+      "amountPaise": "80000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "80000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T08:41:06.790Z"
+     },
+     {
+      "engagementId": "cc7a18ca-40dd-45d8-b960-cf3d88960b22",
+      "engagementType": "document_review",
+      "amountPaise": "80000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "80000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T08:41:06.623Z"
+     },
+     {
+      "engagementId": "6bed3f6c-bbe9-4ed6-aa50-2de86cb5a3ad",
+      "engagementType": "document_review",
+      "amountPaise": "80000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "80000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T08:40:49.906Z"
+     },
+     {
+      "engagementId": "73795dd7-2fd5-479f-8704-8e9a754b990f",
+      "engagementType": "document_review",
+      "amountPaise": "80000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "80000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T08:40:49.721Z"
+     },
+     {
+      "engagementId": "4a2203f6-2da1-4b26-b24b-95094087e49d",
+      "engagementType": "document_review",
+      "amountPaise": "25000",
+      "currency": "INR",
+      "direction": "back",
+      "amountLabel": "25000",
+      "currencyCode": "INR",
+      "escrowStatus": "provider_discount",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T06:37:44.549Z"
+     },
+     {
+      "engagementId": "4a2203f6-2da1-4b26-b24b-95094087e49d",
+      "engagementType": "document_review",
+      "amountPaise": "100000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "100000",
+      "currencyCode": "INR",
+      "escrowStatus": "settled_split",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T06:35:58.801Z"
+     },
+     {
+      "engagementId": "17b6ec1d-bea5-4696-92f7-e1e8f998f13f",
+      "engagementType": "document_review",
+      "amountPaise": "100000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "100000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T06:33:13.481Z"
+     },
+     {
+      "engagementId": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+      "engagementType": "document_review",
+      "amountPaise": "120000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "120000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-31T05:26:19.854Z"
+     },
+     {
+      "engagementId": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+      "engagementType": "document_review",
+      "amountPaise": "150000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "150000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-30T20:13:23.606Z"
+     },
+     {
+      "engagementId": "3292091e-d3f3-45e3-9d45-6a1d14c5bc55",
+      "engagementType": "document_review",
+      "amountPaise": "8000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "8000",
+      "currencyCode": "INR",
+      "escrowStatus": "held",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-30T19:46:01.599Z"
+     },
+     {
+      "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+      "engagementType": "document_review",
+      "amountPaise": "150000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "150000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-30T16:53:37.644Z"
+     },
+     {
+      "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+      "engagementType": "document_review",
+      "amountPaise": "120000",
+      "currency": "INR",
+      "direction": "out",
+      "amountLabel": "120000",
+      "currencyCode": "INR",
+      "escrowStatus": "released",
+      "fundedFrom": "payment",
+      "createdAt": "2026-08-30T16:53:37.161Z"
+     }
+    ],
+    "packages": [
+     {
+      "id": "05e12b83-cbf0-43d8-95c7-ad43e0ea87ca",
+      "packageId": "d7f7dd15-4ed3-40db-ac83-d1ce725e86d8",
+      "title": "Three answer reviews",
+      "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "sessionsTotal": 3,
+      "sessionsUsed": 0,
+      "sessionsLeft": 3,
+      "amountPaise": "250000",
+      "perSessionPaise": "83333",
+      "currency": "INR",
+      "engagementType": "document_review",
+      "skillId": null,
+      "createdAt": "2026-08-31T09:11:26.010Z"
+     },
+     {
+      "id": "593b3475-7c64-4350-8a60-f1fad60f1710",
+      "packageId": "4643a170-fdf5-4bd1-bea0-c352baa741e9",
+      "title": "Five answer reviews",
+      "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "sessionsTotal": 5,
+      "sessionsUsed": 5,
+      "sessionsLeft": 0,
+      "amountPaise": "400000",
+      "perSessionPaise": "80000",
+      "currency": "INR",
+      "engagementType": "document_review",
+      "skillId": null,
+      "createdAt": "2026-08-31T08:40:37.290Z"
+     }
+    ]
+   }
+  },
+  "GET /me/progress": {
+   "status": 200,
+   "body": {
+    "trends": [
+     {
+      "dimensionCode": "content",
+      "labels": {
+       "en": "Content",
+       "hi": "विषयवस्तु"
+      },
+      "points": [
+       {
+        "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+        "score": 76,
+        "at": "2026-08-30T16:53:37.285Z"
+       },
+       {
+        "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+        "score": 62,
+        "at": "2026-08-30T16:53:37.693Z"
+       },
+       {
+        "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+        "score": 68,
+        "at": "2026-08-31T16:26:04.543Z"
+       },
+       {
+        "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+        "score": 68,
+        "at": "2026-08-31T16:27:41.811Z"
+       },
+       {
+        "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+        "score": 68,
+        "at": "2026-08-31T17:29:34.831Z"
+       },
+       {
+        "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+        "score": 68,
+        "at": "2026-08-31T17:37:22.813Z"
+       }
+      ],
+      "first": 76,
+      "latest": 68,
+      "change": -8
+     },
+     {
+      "dimensionCode": "structure",
+      "labels": {
+       "en": "Structure",
+       "hi": "संरचना"
+      },
+      "points": [
+       {
+        "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+        "score": 82,
+        "at": "2026-08-30T16:53:37.285Z"
+       },
+       {
+        "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+        "score": 68,
+        "at": "2026-08-30T16:53:37.693Z"
+       },
+       {
+        "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+        "score": 68,
+        "at": "2026-08-31T16:26:04.543Z"
+       },
+       {
+        "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+        "score": 68,
+        "at": "2026-08-31T16:27:41.811Z"
+       },
+       {
+        "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+        "score": 68,
+        "at": "2026-08-31T17:29:34.831Z"
+       },
+       {
+        "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+        "score": 68,
+        "at": "2026-08-31T17:37:22.813Z"
+       }
+      ],
+      "first": 82,
+      "latest": 68,
+      "change": -14
+     },
+     {
+      "dimensionCode": "directive",
+      "labels": {
+       "en": "Directive adherence"
+      },
+      "points": [
+       {
+        "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+        "score": 82,
+        "at": "2026-08-30T16:53:37.285Z"
+       },
+       {
+        "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+        "score": 68,
+        "at": "2026-08-30T16:53:37.693Z"
+       },
+       {
+        "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+        "score": 68,
+        "at": "2026-08-31T16:26:04.543Z"
+       },
+       {
+        "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+        "score": 68,
+        "at": "2026-08-31T16:27:41.811Z"
+       },
+       {
+        "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+        "score": 68,
+        "at": "2026-08-31T17:29:34.831Z"
+       },
+       {
+        "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+        "score": 68,
+        "at": "2026-08-31T17:37:22.813Z"
+       }
+      ],
+      "first": 82,
+      "latest": 68,
+      "change": -14
+     },
+     {
+      "dimensionCode": "word_limit",
+      "labels": {
+       "en": "Word limit"
+      },
+      "points": [
+       {
+        "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+        "score": 85,
+        "at": "2026-08-30T16:53:37.285Z"
+       },
+       {
+        "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+        "score": 71,
+        "at": "2026-08-30T16:53:37.693Z"
+       },
+       {
+        "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+        "score": 68,
+        "at": "2026-08-31T16:26:04.543Z"
+       },
+       {
+        "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+        "score": 68,
+        "at": "2026-08-31T16:27:41.811Z"
+       },
+       {
+        "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+        "score": 68,
+        "at": "2026-08-31T17:29:34.831Z"
+       },
+       {
+        "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+        "score": 68,
+        "at": "2026-08-31T17:37:22.813Z"
+       }
+      ],
+      "first": 85,
+      "latest": 68,
+      "change": -17
+     },
+     {
+      "dimensionCode": "data_diagrams",
+      "labels": {
+       "en": "Data and diagrams"
+      },
+      "points": [
+       {
+        "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+        "score": 59,
+        "at": "2026-08-30T16:53:37.285Z"
+       },
+       {
+        "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+        "score": 80,
+        "at": "2026-08-30T16:53:37.693Z"
+       },
+       {
+        "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+        "score": 68,
+        "at": "2026-08-31T16:26:04.543Z"
+       },
+       {
+        "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+        "score": 68,
+        "at": "2026-08-31T16:27:41.811Z"
+       },
+       {
+        "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+        "score": 68,
+        "at": "2026-08-31T17:29:34.831Z"
+       },
+       {
+        "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+        "score": 68,
+        "at": "2026-08-31T17:37:22.813Z"
+       }
+      ],
+      "first": 59,
+      "latest": 68,
+      "change": 9
+     },
+     {
+      "dimensionCode": "presentation",
+      "labels": {
+       "en": "Presentation"
+      },
+      "points": [
+       {
+        "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+        "score": 56,
+        "at": "2026-08-30T16:53:37.285Z"
+       },
+       {
+        "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+        "score": 77,
+        "at": "2026-08-30T16:53:37.693Z"
+       },
+       {
+        "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+        "score": 68,
+        "at": "2026-08-31T16:26:04.543Z"
+       },
+       {
+        "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+        "score": 68,
+        "at": "2026-08-31T16:27:41.811Z"
+       },
+       {
+        "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+        "score": 68,
+        "at": "2026-08-31T17:29:34.831Z"
+       },
+       {
+        "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+        "score": 68,
+        "at": "2026-08-31T17:37:22.813Z"
+       }
+      ],
+      "first": 56,
+      "latest": 68,
+      "change": 12
+     }
+    ],
+    "evaluationsReturned": 6,
+    "actionItems": [
+     {
+      "annotationId": "befa5a8e-97c1-4481-9194-f6644f72be87",
+      "engagementId": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+      "ordinal": 1,
+      "bodyText": "This states the fact but never examines it — the question says \"critically examine\".",
+      "bodyLang": "en",
+      "returnedAt": "2026-08-31T05:26:52.596Z",
+      "doneAt": null
+     },
+     {
+      "annotationId": "2ff6c5fb-e7ea-4fed-8762-87eb1939c69e",
+      "engagementId": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+      "ordinal": 2,
+      "bodyText": "Good example. Date it: an undated example reads as something you half-remember.",
+      "bodyLang": "en",
+      "returnedAt": "2026-08-31T05:26:52.596Z",
+      "doneAt": null
+     },
+     {
+      "annotationId": "3b690d08-0ab4-4d91-a6f0-bb20cfd944c9",
+      "engagementId": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+      "ordinal": 3,
+      "bodyText": "Conclusion repeats the intro. Use it to say what follows from the argument.",
+      "bodyLang": "en",
+      "returnedAt": "2026-08-31T05:26:52.596Z",
+      "doneAt": null
+     }
+    ]
+   }
+  },
+  "GET /engagements": {
+   "status": 200,
+   "body": [
+    {
+     "id": "99495bd2-1d01-4f34-b346-adb35943ace6",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T17:37:22.584Z",
+     "reference": "ENG-99495B",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "4cfb069f-440f-4aac-9a85-4d5c3b8d16d9",
+      "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T17:37:22.678Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "c20328b5-6ac6-40c2-bc08-91905d42b5a5",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T17:37:22.831Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T17:29:34.590Z",
+     "reference": "ENG-BBD13F",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "a4bcf6d3-8260-4c25-b8ea-737c86a1b9d6",
+      "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T17:29:34.694Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "50f1e335-7ca7-43e9-9506-21402359e17c",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T17:29:34.849Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T16:27:41.352Z",
+     "reference": "ENG-3875B7",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "0dfaf808-5804-4936-be8a-82a62756fb6a",
+      "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T16:27:41.590Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "74b87aef-915c-4b7a-ae15-5ebf1b8a6787",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T16:27:41.842Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T16:26:04.033Z",
+     "reference": "ENG-4F75F7",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "77b1433b-5137-4fa7-bfdf-465dbc2ee078",
+      "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T16:26:04.256Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "90d477e0-3164-42c0-bfc9-2ec754264702",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T16:26:04.581Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "live_session",
+     "status": "working",
+     "amountPaise": "60000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T14:36:35.905Z",
+     "reference": "ENG-AE6178",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "31eb1d10-367d-4bc2-918b-7b5d621ef8e7",
+      "engagementId": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "A plan for the next four weeks of answer practice",
+      "successCriteria": "I leave with a written weekly schedule I have agreed to",
+      "lockedAt": "2026-08-31T14:36:36.092Z",
+      "contentHash": "697615bb1b2c01ed70899f42d2e67ad753723f93a5b5fd98310f490b521631b1",
+      "items": [
+       {
+        "id": "6394dbd7-a41c-4bce-af66-1c9797e21514",
+        "ordinal": 0,
+        "text": {
+         "original": "Look at last month's answers together",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "a46070a9-88df-4d76-8eaa-7c816fcc20d6",
+        "ordinal": 1,
+        "text": {
+         "original": "Agree what to practise weekly",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "60000",
+      "platformFeePaise": "9000",
+      "providerNetPaise": "51000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": "2026-09-01T14:36:36.153Z",
+     "unreadMessages": 0
+    },
+    {
+     "id": "ea05a295-6869-4ea8-9ad3-0707f1b8ca85",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:41:06.902Z",
+     "reference": "ENG-EA05A2",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "41bebb90-061d-4604-9bd9-fe157fcfbaf2",
+      "engagementId": "ea05a295-6869-4ea8-9ad3-0707f1b8ca85",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer",
+      "successCriteria": "I can name my weakest areas",
+      "lockedAt": "2026-09-14T07:22:16.832Z",
+      "contentHash": "c566c360cac9f9de5cb8b6a89f73389b0b3fea3cfb1917cca4df517d9c6d158f",
+      "items": [
+       {
+        "id": "afa4a0c3-2c5f-45a7-a0de-dac6956f517c",
+        "ordinal": 0,
+        "text": {
+         "original": "Review my polity answer structure to",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": "2026-09-14T07:56:13.763Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "9ad8345b-c6e3-4774-bc03-918f9bed7bae",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:41:06.785Z",
+     "reference": "ENG-9AD834",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "cc7a18ca-40dd-45d8-b960-cf3d88960b22",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:41:06.598Z",
+     "reference": "ENG-CC7A18",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "6bed3f6c-bbe9-4ed6-aa50-2de86cb5a3ad",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:40:49.901Z",
+     "reference": "ENG-6BED3F",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "73795dd7-2fd5-479f-8704-8e9a754b990f",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:40:49.702Z",
+     "reference": "ENG-73795D",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "4a2203f6-2da1-4b26-b24b-95094087e49d",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "100000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T06:35:57.850Z",
+     "reference": "ENG-4A2203",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "c09cc40d-cf28-484b-b8d6-611021bcc3e0",
+      "engagementId": "4a2203f6-2da1-4b26-b24b-95094087e49d",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Marked answer",
+      "successCriteria": "Two fixes",
+      "lockedAt": "2026-08-31T06:35:58.417Z",
+      "contentHash": "0ab3bfc70cae5596925fbd490a5c7859a5d88ddce8ec2b7cb3f904efdcfa6964",
+      "items": [
+       {
+        "id": "0e86be68-be35-419d-a64b-feff04dd6fbb",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my answer",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "settled_split",
+      "heldPaise": "100000",
+      "platformFeePaise": "15000",
+      "providerNetPaise": "85000",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T06:37:44.549Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "17b6ec1d-bea5-4696-92f7-e1e8f998f13f",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "100000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T06:32:27.721Z",
+     "reference": "ENG-17B6EC",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "98dd6964-858f-42c8-bcfd-7fd656d60900",
+      "engagementId": "17b6ec1d-bea5-4696-92f7-e1e8f998f13f",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Marked answer",
+      "successCriteria": "Two fixes",
+      "lockedAt": "2026-08-31T06:33:13.108Z",
+      "contentHash": "0ab3bfc70cae5596925fbd490a5c7859a5d88ddce8ec2b7cb3f904efdcfa6964",
+      "items": [
+       {
+        "id": "5aa7ac8f-c83f-4986-9abf-6599d098a134",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my answer",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "100000",
+      "platformFeePaise": "15000",
+      "providerNetPaise": "85000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "120000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T05:26:18.910Z",
+     "reference": "ENG-0F0DC2",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "163df5c3-8261-49c6-b3fb-26b74b404fc4",
+      "engagementId": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Marked answer",
+      "successCriteria": "Two fixes named",
+      "lockedAt": "2026-08-31T05:26:19.464Z",
+      "contentHash": "b066fc0e198e6d5002a139efb35aa411fcde7e5c4435e2b1b3768a99b644bed1",
+      "items": [
+       {
+        "id": "7f86d08f-7be4-41b0-850b-c4397edbb139",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my GS1 answer",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "120000",
+      "platformFeePaise": "18000",
+      "providerNetPaise": "102000",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T05:45:27.947Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "delivered",
+     "amountPaise": "150000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-30T19:49:14.631Z",
+     "reference": "ENG-D61735",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "d1e58a1d-fece-4e46-924c-c675e5468d04",
+      "engagementId": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": {
+       "original": "Not the essay paper",
+       "originalLanguage": "en"
+      },
+      "expectedDeliverable": "Marked answer with written remarks",
+      "successCriteria": "I can name two concrete fixes to my structure",
+      "lockedAt": "2026-08-30T19:49:15.349Z",
+      "contentHash": "c49192a1a569c69d3172a039be8148def42f512c408c57c24cd964078a6b77e6",
+      "items": [
+       {
+        "id": "73ecfb17-78b5-498d-8166-83d805a6c021",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my GS1 modern history answer against the rubric",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "81a407f8-c723-4080-81bb-b08d3fce3d34",
+        "ordinal": 1,
+        "text": {
+         "original": "Show me what a top-scoring introduction looks like",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "150000",
+      "platformFeePaise": "22500",
+      "providerNetPaise": "127500",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "3292091e-d3f3-45e3-9d45-6a1d14c5bc55",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "working",
+     "amountPaise": "8000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-30T17:59:53.772Z",
+     "reference": "ENG-329209",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "2b9f5dc5-ef4e-4522-9dae-ec38ab2745b5",
+      "engagementId": "3292091e-d3f3-45e3-9d45-6a1d14c5bc55",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": {
+       "original": "No essay paper",
+       "originalLanguage": "en"
+      },
+      "expectedDeliverable": "Marked answer with remarks",
+      "successCriteria": "I know two concrete fixes",
+      "lockedAt": "2026-08-30T19:45:53.361Z",
+      "contentHash": "4477bf6f7dce714d2fe68d40c4d612961d60cdbebb023eda9336e7e506610c22",
+      "items": [
+       {
+        "id": "cb33c6c1-7440-4f8e-ba12-dbb94dff124e",
+        "ordinal": 0,
+        "text": {
+         "original": "Review my GS1 history answer for structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "5111f558-4ffa-474a-b894-ab059bfea80d",
+        "ordinal": 1,
+        "text": {
+         "original": "Show what a top-scoring introduction looks like",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "8000",
+      "platformFeePaise": "1200",
+      "providerNetPaise": "6800",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "730a022b-9be0-4d36-b2ff-894b35a2287f",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "150000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-30T16:53:37.620Z",
+     "reference": "ENG-F38C25",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "730a022b-9be0-4d36-b2ff-894b35a2287f",
+      "displayName": "M. Banerjee"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "3259ff7f-06d4-4f26-a88f-fb377ab73333",
+      "engagementId": "f38c250a-811a-4ffb-b377-00d77ddf0a99",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-30T16:53:37.637Z",
+      "contentHash": "68c503bfc5e1e9def3bd9c4423e8a42046b19d6b5740247b06cd1c6ee2ca7e17",
+      "items": [
+       {
+        "id": "32d4dbf6-8c5f-4e4a-a6f7-6a2cf28722a2",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "c2743485-d74b-4488-ac9b-dd2604acf1c1",
+        "ordinal": 1,
+        "text": {
+         "original": "Check the factual claims",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "150000",
+      "platformFeePaise": "22500",
+      "providerNetPaise": "127500",
+      "currency": "INR",
+      "releasedOn": "2026-08-30T16:53:37.700Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "cc20505f-0be9-4980-a758-8bb14b78b937",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "120000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-30T16:53:36.964Z",
+     "reference": "ENG-CC2050",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "1d9a396f-4fbb-4279-a3a6-686deba1203a",
+      "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-30T16:53:37.146Z",
+      "contentHash": "68c503bfc5e1e9def3bd9c4423e8a42046b19d6b5740247b06cd1c6ee2ca7e17",
+      "items": [
+       {
+        "id": "969cc965-4e39-4adf-b83d-a0184c016e82",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "84c6b91f-4c3c-4912-8f92-c25da1555a13",
+        "ordinal": 1,
+        "text": {
+         "original": "Check the factual claims",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "120000",
+      "platformFeePaise": "18000",
+      "providerNetPaise": "102000",
+      "currency": "INR",
+      "releasedOn": "2026-08-30T16:53:37.306Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    }
+   ]
+  },
+  "GET /engagements/9ad8345b-c6e3-4774-bc03-918f9bed7bae": {
+   "status": 200,
+   "body": {
+    "id": "9ad8345b-c6e3-4774-bc03-918f9bed7bae",
+    "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "domainCode": "upsc_cse",
+    "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+    "engagementType": "document_review",
+    "currency": "INR",
+    "amountPaise": "80000",
+    "language": "en",
+    "status": "draft",
+    "reference": "ENG-9AD834",
+    "seeker": {
+     "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "displayName": "P. Nair"
+    },
+    "provider": {
+     "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "displayName": "A. Rathore"
+    },
+    "familyCode": "civil_services_exams",
+    "agenda": null,
+    "escrow": {
+     "stage": "awarded",
+     "status": "held",
+     "heldPaise": "80000",
+     "platformFeePaise": "12000",
+     "providerNetPaise": "68000",
+     "currency": "INR",
+     "releasedOn": null
+    },
+    "scheduledAt": null,
+    "unreadMessages": 0
+   }
+  },
+  "GET /engagements/ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7": {
+   "status": 200,
+   "body": {
+    "id": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+    "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "domainCode": "upsc_cse",
+    "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+    "engagementType": "live_session",
+    "currency": "INR",
+    "amountPaise": "60000",
+    "language": "en",
+    "status": "working",
+    "reference": "ENG-AE6178",
+    "seeker": {
+     "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "displayName": "P. Nair"
+    },
+    "provider": {
+     "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "displayName": "A. Rathore"
+    },
+    "familyCode": "civil_services_exams",
+    "agenda": {
+     "id": "31eb1d10-367d-4bc2-918b-7b5d621ef8e7",
+     "engagementId": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+     "version": 1,
+     "state": "locked",
+     "language": "en",
+     "outOfScope": null,
+     "expectedDeliverable": "A plan for the next four weeks of answer practice",
+     "successCriteria": "I leave with a written weekly schedule I have agreed to",
+     "lockedAt": "2026-08-31T14:36:36.092Z",
+     "contentHash": "697615bb1b2c01ed70899f42d2e67ad753723f93a5b5fd98310f490b521631b1",
+     "items": [
+      {
+       "id": "6394dbd7-a41c-4bce-af66-1c9797e21514",
+       "ordinal": 0,
+       "text": {
+        "original": "Look at last month's answers together",
+        "originalLanguage": "en",
+        "translations": {}
+       },
+       "addressed": false,
+       "addressedAt": null
+      },
+      {
+       "id": "a46070a9-88df-4d76-8eaa-7c816fcc20d6",
+       "ordinal": 1,
+       "text": {
+        "original": "Agree what to practise weekly",
+        "originalLanguage": "en",
+        "translations": {}
+       },
+       "addressed": false,
+       "addressedAt": null
+      }
+     ]
+    },
+    "escrow": {
+     "stage": "awarded",
+     "status": "held",
+     "heldPaise": "60000",
+     "platformFeePaise": "9000",
+     "providerNetPaise": "51000",
+     "currency": "INR",
+     "releasedOn": null
+    },
+    "scheduledAt": "2026-09-01T14:36:36.153Z",
+    "unreadMessages": 0
+   }
+  },
+  "GET /engagements/99495bd2-1d01-4f34-b346-adb35943ace6": {
+   "status": 200,
+   "body": {
+    "id": "99495bd2-1d01-4f34-b346-adb35943ace6",
+    "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "domainCode": "upsc_cse",
+    "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+    "engagementType": "document_review",
+    "currency": "INR",
+    "amountPaise": "70000",
+    "language": "en",
+    "status": "completed",
+    "reference": "ENG-99495B",
+    "seeker": {
+     "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "displayName": "P. Nair"
+    },
+    "provider": {
+     "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "displayName": "A. Rathore"
+    },
+    "familyCode": "civil_services_exams",
+    "agenda": {
+     "id": "4cfb069f-440f-4aac-9a85-4d5c3b8d16d9",
+     "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+     "version": 1,
+     "state": "locked",
+     "language": "en",
+     "outOfScope": null,
+     "expectedDeliverable": "Annotated answer with a scored rubric",
+     "successCriteria": "The seeker can name their three weakest areas",
+     "lockedAt": "2026-08-31T17:37:22.678Z",
+     "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+     "items": [
+      {
+       "id": "c20328b5-6ac6-40c2-bc08-91905d42b5a5",
+       "ordinal": 0,
+       "text": {
+        "original": "Review the structure",
+        "originalLanguage": "en",
+        "translations": {}
+       },
+       "addressed": false,
+       "addressedAt": null
+      }
+     ]
+    },
+    "escrow": {
+     "stage": "released",
+     "status": "released",
+     "heldPaise": "70000",
+     "platformFeePaise": "10500",
+     "providerNetPaise": "59500",
+     "currency": "INR",
+     "releasedOn": "2026-08-31T17:37:22.831Z"
+    },
+    "scheduledAt": null,
+    "unreadMessages": 0
+   }
+  },
+  "GET /engagements/99495bd2-1d01-4f34-b346-adb35943ace6/disputes": {
+   "status": 204,
+   "body": null
+  },
+  "GET /sessions": {
+   "status": 200,
+   "body": [
+    {
+     "id": "8132ab16-662e-4446-b067-d8087ecc04d0",
+     "engagement_id": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+     "scheduled_start": "2026-09-01T14:36:36.153Z",
+     "scheduled_end": "2026-09-01T15:21:36.153Z",
+     "timezone": "Asia/Kolkata",
+     "room_provider": null,
+     "room_reference": null,
+     "mode": "video",
+     "recording_active": false,
+     "status": "scheduled",
+     "started_at": null,
+     "ended_at": null,
+     "created_at": "2026-08-31T14:36:36.160Z",
+     "updated_at": "2026-08-31T14:36:36.160Z",
+     "warning_raised_at": null,
+     "credited_seconds": 0,
+     "recording_retention_until": null,
+     "recording_legal_hold": false,
+     "seeker_id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "provider_id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domain_code": "upsc_cse",
+     "category_id": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "counterpart": "A. Rathore",
+     "durationMinutes": 45,
+     "consent": {
+      "seeker": null,
+      "provider": null
+     },
+     "recordingAvailable": false,
+     "transcriptAvailable": false
+    }
+   ]
+  },
+  "GET /me/profile": {
+   "status": 200,
+   "body": {
+    "displayName": null,
+    "preferredLang": "en",
+    "email": "priya.nair@demo.local",
+    "emailVerified": false,
+    "role": "seeker",
+    "signupFamilyCode": null,
+    "provider": null
+   }
+  },
+  "GET /providers/64fb9778-6749-45fa-a29b-e4d8277f65b9": {
+   "status": 200,
+   "body": {
+    "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "displayName": "A. Rathore",
+    "headline": null,
+    "languages": [
+     "bn",
+     "en",
+     "hi"
+    ],
+    "skills": [
+     {
+      "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+      "skillCode": "answer_writing.gs.history",
+      "labels": {
+       "en": "History answer writing",
+       "hi": "इतिहास उत्तर लेखन"
+      },
+      "tier": "t3",
+      "completedEngagements": 7,
+      "reviewCount": 7,
+      "avgRating": 4
+     },
+     {
+      "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+      "skillCode": "answer_writing.gs.geography",
+      "labels": {
+       "en": "Geography answer writing",
+       "hi": "भूगोल उत्तर लेखन"
+      },
+      "tier": "t3",
+      "completedEngagements": 7,
+      "reviewCount": 7,
+      "avgRating": 4
+     },
+     {
+      "skillId": "867edb48-ba21-4465-add3-1adb3afab56a",
+      "skillCode": "prelims.objective_strategy",
+      "labels": {
+       "en": "Prelims objective strategy"
+      },
+      "tier": "t3",
+      "completedEngagements": 4,
+      "reviewCount": 1,
+      "avgRating": 4
+     },
+     {
+      "skillId": "35e426c6-42dc-4bad-ac13-fe51846a6938",
+      "skillCode": "language.english.formal",
+      "labels": {
+       "en": "Formal English"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "639948b8-4da4-4e28-b2fe-6e2c1590ad31",
+      "skillCode": "answer_writing.gs.polity",
+      "labels": {
+       "en": "Polity answer writing",
+       "hi": "राजव्यवस्था उत्तर लेखन"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "c1396175-f766-4dc7-b39a-0dac540ea51c",
+      "skillCode": "answer_writing.gs.science_tech",
+      "labels": {
+       "en": "Science & technology answer writing"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "30d65857-44e8-4cc6-8411-7042755b7bc1",
+      "skillCode": "answer_writing.gs.environment",
+      "labels": {
+       "en": "Environment answer writing"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "99b8527b-06c1-470f-a274-0a1fbba6e3e3",
+      "skillCode": "answer_writing.essay",
+      "labels": {
+       "en": "Essay writing",
+       "hi": "निबंध लेखन"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "3c1f85c6-ce27-4ce9-b19a-8a3f13a16c73",
+      "skillCode": "answer_writing.ethics",
+      "labels": {
+       "en": "Ethics and case studies",
+       "hi": "नीतिशास्त्र"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "9e0e8472-1f48-4988-9707-f164eb262f0b",
+      "skillCode": "interview.personality",
+      "labels": {
+       "en": "Personality test / interview",
+       "hi": "साक्षात्कार"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "449ab5bf-1b64-4639-a76c-8716113950ac",
+      "skillCode": "optional_subject.guidance",
+      "labels": {
+       "en": "Optional subject guidance"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "54fd4223-4844-46e2-a61d-4a892b63df23",
+      "skillCode": "answer_writing.gs.economy",
+      "labels": {
+       "en": "Economy answer writing",
+       "hi": "अर्थव्यवस्था उत्तर लेखन"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "3dfd9126-9d67-4e29-b7ac-b75c409f6f51",
+      "skillCode": "csat.aptitude",
+      "labels": {
+       "en": "Aptitude / CSAT"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     },
+     {
+      "skillId": "a8fcac13-d422-4c26-95e1-3b6e177bcc4b",
+      "skillCode": "language.hindi.formal",
+      "labels": {
+       "en": "Formal Hindi",
+       "hi": "सामान्य हिन्दी"
+      },
+      "tier": "t3",
+      "completedEngagements": 0,
+      "reviewCount": 0,
+      "avgRating": null
+     }
+    ],
+    "paidWorkBlocked": false,
+    "services": [
+     {
+      "id": "bea53173-6fd3-41de-be4d-f8a39fb01293",
+      "engagementType": "document_review",
+      "skillId": null,
+      "skillCode": null,
+      "skillLabels": null,
+      "currency": "INR",
+      "amountPaise": "95000",
+      "durationMinutes": null,
+      "turnaroundHours": 72
+     },
+     {
+      "id": "d0e81806-2500-4511-b957-0549fee38af4",
+      "engagementType": "live_session",
+      "skillId": null,
+      "skillCode": null,
+      "skillLabels": null,
+      "currency": "INR",
+      "amountPaise": "95000",
+      "durationMinutes": 45,
+      "turnaroundHours": null
+     },
+     {
+      "id": "2145e2cc-5c7e-443e-be3c-6fc3af22dd72",
+      "engagementType": "review_with_live",
+      "skillId": null,
+      "skillCode": null,
+      "skillLabels": null,
+      "currency": "INR",
+      "amountPaise": "165000",
+      "durationMinutes": 45,
+      "turnaroundHours": 72
+     }
+    ],
+    "familyCode": "civil_services_exams",
+    "domainCodes": [
+     "appsc_group1",
+     "bpsc",
+     "cgpsc",
+     "gpsc",
+     "hppsc",
+     "hpsc",
+     "jpsc",
+     "kpsc_kas",
+     "mppsc",
+     "mpsc",
+     "opsc_oas",
+     "ppsc",
+     "rpsc_ras",
+     "tgpsc_group1",
+     "tnpsc_group1",
+     "ukpsc",
+     "uppsc",
+     "upsc_cse",
+     "wbcs"
+    ],
+    "categoryIds": [
+     "35f8cc7f-f856-4853-acf5-cdbe565b8e0f",
+     "3d744f61-b0a9-4f23-a73c-fe36b53dfb6c",
+     "752a6cf3-2726-4b2f-a214-0cfaeb3fdb97",
+     "948de197-1d0b-4f97-81c0-4061c265d5bc",
+     "d22814b9-8766-4276-a828-292454588a40",
+     "d91b1450-cef6-405f-9fc7-254d60958d0f",
+     "25855616-13fd-4e2f-863b-5bf4141c7bd4",
+     "a34b950c-c461-4454-ba6e-b5303725e70a",
+     "ada4e37e-2fd0-48c5-aca5-151246c1ce3f",
+     "b8dd08ad-667a-4c18-87a9-e5942fdce8cb",
+     "c5cc838b-c942-4374-afd0-6af44bd6324b",
+     "f183e00e-007b-48a4-b0a2-69e3898ae11d",
+     "feb90a35-ce42-4bed-b985-63f7362ce51e",
+     "13c41293-d5a8-448a-b756-59a52d848a5f",
+     "1be1a08d-d20f-4fb9-829f-fc0b1c6e8395",
+     "4a63c057-fad5-48a5-bdad-aae344d3db51",
+     "78808bb7-e36d-472c-ab9b-894ab1243adc",
+     "85078762-909f-41eb-aa0b-a3567689bb9f",
+     "a4350a86-3be9-4c09-926f-cffef0466e19",
+     "fba43da3-63d7-47ab-a9d3-9addd833c0ec",
+     "00ca5739-505c-4fa6-a2ac-c3143db46cc8",
+     "15d812ec-84de-4481-9190-dd22ac6441a0",
+     "511a3275-f1e5-4b74-a691-6869db41f523",
+     "94b72fbb-9b1c-4da1-af56-335d6d23979e",
+     "ad9e9e40-67aa-4155-8e4b-d5fd9d99a50b",
+     "dc40d723-589c-4057-b969-fddc42582832",
+     "23d51ba9-7172-4cf0-9244-653d40bb435c",
+     "2d4783e6-d135-499a-a577-1bf9e4887194",
+     "6bf8c5f0-e97a-4321-85d7-946231b439f5",
+     "a133c015-8be5-424b-925f-c0af5e0bb039",
+     "d15e1d2e-2861-48de-b2f9-5432f08bb2fa",
+     "de23eee2-ed89-433f-8e36-ff6710ffe86f",
+     "deed04b5-9cb4-4ae4-a5e3-7606d97dd5b4",
+     "14a6f864-12c6-498c-a064-009d60cd840b",
+     "20107852-7fd5-4573-9dab-7afd0e4a4e10",
+     "7857419b-aaf9-49a3-a62f-213fcbd148d6",
+     "9d2d968e-a8df-4dc8-86f4-7c874f10cd99",
+     "b11096cf-f6df-4579-99d3-928f0005734a",
+     "b502559d-0eca-4262-ac48-8e2366980fd4",
+     "db4fd67b-483a-4605-9bf6-e736d39e7a0b",
+     "2a27c8b6-003d-4664-83e0-cd6cbcad14bb",
+     "33356901-e795-4621-ba28-8a5462332854",
+     "4f705f8a-9751-45c7-b83e-b13dd93a480f",
+     "695ee054-48f3-4639-a8b3-1546f4a6b9ef",
+     "8c4c496a-0adc-4126-9a26-a34510ca7833",
+     "97d09d7f-be29-49e9-af21-754edee84336",
+     "9f0c3a35-d9e1-430e-abca-87f0e76e0ef0",
+     "186e082a-3edd-4906-a630-34986e466c20",
+     "2926e241-792c-4042-ab4c-10ade67ee81f",
+     "5cb1cd77-aff4-42d1-8aa3-beefab361732",
+     "96a8d8f4-6fb1-4338-b8a5-76eeab189a2f",
+     "9b052d7c-caa6-467e-9d6d-852f6cd30980",
+     "f0d878d2-dcb7-4edd-8ccf-5fd37141ad87",
+     "f1def7b8-a071-4f6d-be7c-a4b9386c7bdb",
+     "000401ee-d11b-4395-86e9-9d708ac6aec9",
+     "305dc68d-3e89-444d-bb76-e019aa24bbff",
+     "4edf8c5d-e2c1-4055-958d-945af6021b06",
+     "5d2011df-f319-4162-b088-732c3a6e76c6",
+     "6504bba1-1f15-4023-b51c-b91e02c93693",
+     "8d2cdb06-0ab9-411f-9d17-18fdf5c30f51",
+     "d81758ae-6ba5-44e8-812c-bd07114a8811",
+     "0de9841c-9174-4e68-ae20-a1e070544c12",
+     "5b7d3572-d30a-4cfb-91dc-a769deef1777",
+     "9b710e03-b701-4fc0-9d0e-4f56531e680d",
+     "b1f59fb0-46d2-4905-9f3a-7188d895c59b",
+     "b586ba33-f694-45af-863f-822e26cdf634",
+     "ba84a9e1-8540-4aa9-9157-85a734671f6c",
+     "e9b2e403-bf0b-407b-8f6b-79751f84395d",
+     "0131107b-cbd5-4e79-bb87-2e551dabd6f4",
+     "7aa19e05-3fe1-41cb-9895-a2b665ed46ef",
+     "86e2bf91-39de-4674-ad6a-2f7b8257dcac",
+     "a9e906ad-e9f8-4adf-902e-81553723ff4d",
+     "d3bd6d7a-c9e5-4943-b6ef-1026b13cc008",
+     "d457ba88-d921-4e30-a5c1-21ad59bc6339",
+     "eab770fd-aa97-4f8d-9fd4-b2f0da904b0f",
+     "78d1f122-bd62-4e3e-aa7d-328a31e476ef",
+     "92f3ee13-1731-4e7a-a2c8-8ad5a5d09c3b",
+     "a29c389a-fe61-47ac-b53d-9093c1fe099c",
+     "b66a405c-c3ee-4404-8949-526da8a4dda6",
+     "be2fe93d-28b5-4352-bcaf-76f503e9c830",
+     "ffa0191a-ae5c-4212-99e2-e2bbd21b2904",
+     "0cf3571a-81df-4912-82a3-89dbd69629a4",
+     "3654896f-6364-440f-a2d6-8e7126b6e30f",
+     "36747f95-e51d-4ad2-865d-ac832babc134",
+     "74073a26-d6bc-45bc-b278-55428cb32504",
+     "90ddbe92-141c-431d-bc81-f2ab8f753beb",
+     "d1575139-4f8f-4274-9e33-5e736eb564a7",
+     "f6812eb0-6825-43c1-97ef-0a13baafd0de",
+     "1c50992c-4695-4189-9d7a-05c633a37649",
+     "1d3de684-6420-4325-a0f4-ba4f5b77db5f",
+     "43e6b191-397e-4f78-8ab1-14f38da2f1b3",
+     "6cc745c2-b3f7-466e-af87-406a88bd6e57",
+     "cfee3e5d-5045-4fc7-966f-7c4520352e7d",
+     "d74f77a7-eebc-445c-957f-16a7ddec61fb",
+     "3010e717-0d9a-412d-9e8c-b2c83202936b",
+     "38e6b249-74d9-4ce5-81b3-0480adddcda7",
+     "4ee14e0e-b8ae-4dfe-92c4-598383de6c53",
+     "64d05c38-9b6e-4cc8-be45-f5516d67578e",
+     "8a888865-9a3b-44db-ac54-4049ef167012",
+     "ec62bdd9-bf05-4d49-ac5b-559f2e21bc3a",
+     "1c17d1c2-0f43-4f53-bcdb-690de2ccbe13",
+     "4bf9fe77-663c-45ee-b70d-b09ca7c3c733",
+     "540b6451-2644-41c2-95ec-83c00371fbe3",
+     "6be12d8d-ea0c-4bda-babf-1db8be95543a",
+     "a901b368-bcfd-4a06-9965-f85b405b6c28",
+     "dd64e387-3cd5-48d5-a098-8e6508c17d2f",
+     "df6491fd-0a1f-4c90-a046-230e75fa9e52",
+     "3d3909be-5d03-4908-a530-bb6754ed2a47",
+     "70c2fb10-90dd-48bd-8d18-3f22d0d1882f",
+     "8ca7341a-fb59-4616-92fb-c00bec7439df",
+     "a98fa122-17e8-43fa-9b82-1007f4aa638f",
+     "ba27b972-786a-4164-8f69-8d112c5e33b2",
+     "ec30a9ff-9f42-4d0f-9c8d-585f0f942548",
+     "f19f0a13-55b6-4f34-a9f5-2a712a9c5b53",
+     "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "1a064be1-8d85-416d-a72e-4cf80cd6854d",
+     "3b4a4d6e-9db2-4702-bd5a-a5a3a52b3040",
+     "4655f2ae-23fa-4320-b68b-44aa6f35f34c",
+     "61d1bdce-f9ff-4a34-b9f4-da12ba42b921",
+     "66573cc6-d14a-4f01-8825-eba8bf323dd3",
+     "79528c49-9333-4948-892f-af714e3e498a",
+     "a3e77662-25f8-4a93-9d5b-44b4d6a31429",
+     "d09e1ff8-a0a3-4793-aff2-efb6984f964b",
+     "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "1a67c2d4-9ccf-4695-a317-24811deccadc",
+     "5e444c0a-de0d-4fad-b86e-6c5d1bb6c494",
+     "7c7c0bc8-594a-4196-8cb3-c3fdbba24849",
+     "935bcd25-4e68-441f-b232-41eca0cc9403",
+     "c1719f16-2206-4e07-bed1-a7c97505db24",
+     "c20b8e40-41dd-42fb-8e83-38f754ef1e10",
+     "e3821eb2-1666-4836-9d50-3c3e4904cfcd"
+    ],
+    "credentials": [
+     {
+      "credentialCode": "interview_appeared",
+      "labels": {
+       "en": "Interview appeared",
+       "hi": "साक्षात्कार में सम्मिलित"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-28T04:40:33.559Z",
+      "details": {
+       "year": 2020
+      }
+     },
+     {
+      "credentialCode": "exam_rank",
+      "labels": {
+       "en": "Exam rank",
+       "hi": "परीक्षा रैंक"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-28T04:40:33.553Z",
+      "details": {
+       "year": 2019,
+       "rank": 342
+      }
+     },
+     {
+      "credentialCode": "interview_appeared",
+      "labels": {
+       "en": "Interview appeared",
+       "hi": "साक्षात्कार में सम्मिलित"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-27T17:15:00.719Z",
+      "details": {
+       "year": 2020
+      }
+     },
+     {
+      "credentialCode": "exam_rank",
+      "labels": {
+       "en": "Exam rank",
+       "hi": "परीक्षा रैंक"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-27T17:15:00.714Z",
+      "details": {
+       "year": 2019,
+       "rank": 342
+      }
+     },
+     {
+      "credentialCode": "interview_appeared",
+      "labels": {
+       "en": "Interview appeared",
+       "hi": "साक्षात्कार में सम्मिलित"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-22T17:14:40.336Z",
+      "details": {
+       "year": 2020
+      }
+     },
+     {
+      "credentialCode": "exam_rank",
+      "labels": {
+       "en": "Exam rank",
+       "hi": "परीक्षा रैंक"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-22T17:14:40.332Z",
+      "details": {
+       "year": 2019,
+       "rank": 342
+      }
+     },
+     {
+      "credentialCode": "interview_appeared",
+      "labels": {
+       "en": "Interview appeared",
+       "hi": "साक्षात्कार में सम्मिलित"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-22T16:30:45.306Z",
+      "details": {
+       "year": 2020
+      }
+     },
+     {
+      "credentialCode": "exam_rank",
+      "labels": {
+       "en": "Exam rank",
+       "hi": "परीक्षा रैंक"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-22T16:30:45.299Z",
+      "details": {
+       "year": 2019,
+       "rank": 342
+      }
+     },
+     {
+      "credentialCode": "interview_appeared",
+      "labels": {
+       "en": "Interview appeared",
+       "hi": "साक्षात्कार में सम्मिलित"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-21T19:23:07.826Z",
+      "details": {
+       "year": 2020
+      }
+     },
+     {
+      "credentialCode": "exam_rank",
+      "labels": {
+       "en": "Exam rank",
+       "hi": "परीक्षा रैंक"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-21T19:23:07.819Z",
+      "details": {
+       "year": 2019,
+       "rank": 342
+      }
+     },
+     {
+      "credentialCode": "interview_appeared",
+      "labels": {
+       "en": "Interview appeared",
+       "hi": "साक्षात्कार में सम्मिलित"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-21T16:53:24.345Z",
+      "details": {
+       "year": 2020
+      }
+     },
+     {
+      "credentialCode": "exam_rank",
+      "labels": {
+       "en": "Exam rank",
+       "hi": "परीक्षा रैंक"
+      },
+      "domainCode": "upsc_cse",
+      "verifiedAt": "2026-07-21T16:53:24.337Z",
+      "details": {
+       "year": 2019,
+       "rank": 342
+      }
+     }
+    ],
+    "trackRecord": {
+     "completedEngagements": 11,
+     "refundedEngagements": 0,
+     "distinctSeekers": 3,
+     "repeatSeekers": 1,
+     "firstCompletedAt": "2026-08-30T16:53:37.301Z",
+     "lastCompletedAt": "2026-09-14T07:56:13.889Z"
+    },
+    "reviewSummary": {
+     "reviewCount": 8,
+     "avgRating": 4,
+     "distribution": {
+      "1": 0,
+      "2": 0,
+      "3": 1,
+      "4": 6,
+      "5": 1
+     },
+     "repliedCount": 5,
+     "lastReviewAt": "2026-09-14T07:57:57.245Z",
+     "dimensions": [
+      {
+       "dimensionCode": "candour",
+       "scoreCount": 3,
+       "avgScore": 4.67
+      },
+      {
+       "dimensionCode": "clarity",
+       "scoreCount": 8,
+       "avgScore": 4.13
+      },
+      {
+       "dimensionCode": "depth",
+       "scoreCount": 7,
+       "avgScore": 4.14
+      },
+      {
+       "dimensionCode": "punctuality",
+       "scoreCount": 3,
+       "avgScore": 3.33
+      }
+     ]
+    },
+    "reviews": [
+     {
+      "id": "76b9fc29-6e04-4ff4-bc9d-c73567085022",
+      "engagementId": "ea05a295-6869-4ea8-9ad3-0707f1b8ca85",
+      "reviewerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 4,
+      "bodyOriginal": "Precise and useful feedback on structure",
+      "bodyLang": "en",
+      "createdAt": "2026-09-14T07:57:57.245Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "867edb48-ba21-4465-add3-1adb3afab56a",
+        "code": "prelims.objective_strategy",
+        "labels": {
+         "en": "Prelims objective strategy"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "clarity",
+        "score": 5
+       }
+      ],
+      "reply": null
+     },
+     {
+      "id": "d2074c7f-ab45-4233-a21a-a8e111ec5fab",
+      "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+      "reviewerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 4,
+      "bodyOriginal": "Good detail on structure. I would have liked more on time management under exam conditions.",
+      "bodyLang": "en",
+      "createdAt": "2026-08-31T17:37:22.850Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "code": "answer_writing.gs.history",
+        "labels": {
+         "en": "History answer writing",
+         "hi": "इतिहास उत्तर लेखन"
+        }
+       },
+       {
+        "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+        "code": "answer_writing.gs.geography",
+        "labels": {
+         "en": "Geography answer writing",
+         "hi": "भूगोल उत्तर लेखन"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "clarity",
+        "score": 4
+       },
+       {
+        "dimensionCode": "depth",
+        "score": 4
+       }
+      ],
+      "reply": {
+       "bodyOriginal": "Fair on the pacing. I have cut how many I take in a week so the turnaround holds.",
+       "bodyLang": "en",
+       "createdAt": "2026-08-31T17:37:35.733Z"
+      }
+     },
+     {
+      "id": "72be8f18-6203-4636-813b-ce843be95f08",
+      "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+      "reviewerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 4,
+      "bodyOriginal": "Good detail on structure. I would have liked more on time management under exam conditions.",
+      "bodyLang": "en",
+      "createdAt": "2026-08-31T17:29:34.868Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "code": "answer_writing.gs.history",
+        "labels": {
+         "en": "History answer writing",
+         "hi": "इतिहास उत्तर लेखन"
+        }
+       },
+       {
+        "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+        "code": "answer_writing.gs.geography",
+        "labels": {
+         "en": "Geography answer writing",
+         "hi": "भूगोल उत्तर लेखन"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "clarity",
+        "score": 4
+       },
+       {
+        "dimensionCode": "depth",
+        "score": 4
+       }
+      ],
+      "reply": {
+       "bodyOriginal": "Fair on the pacing. I have cut how many I take in a week so the turnaround holds.",
+       "bodyLang": "en",
+       "createdAt": "2026-08-31T17:29:47.191Z"
+      }
+     },
+     {
+      "id": "da372e99-96b2-43b1-b5ec-47025d3cbfce",
+      "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+      "reviewerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 4,
+      "bodyOriginal": "Good detail on structure. I would have liked more on time management under exam conditions.",
+      "bodyLang": "en",
+      "createdAt": "2026-08-31T16:27:41.873Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "code": "answer_writing.gs.history",
+        "labels": {
+         "en": "History answer writing",
+         "hi": "इतिहास उत्तर लेखन"
+        }
+       },
+       {
+        "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+        "code": "answer_writing.gs.geography",
+        "labels": {
+         "en": "Geography answer writing",
+         "hi": "भूगोल उत्तर लेखन"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "clarity",
+        "score": 4
+       },
+       {
+        "dimensionCode": "depth",
+        "score": 4
+       }
+      ],
+      "reply": {
+       "bodyOriginal": "Fair on the pacing. I have cut how many I take in a week so the turnaround holds.",
+       "bodyLang": "en",
+       "createdAt": "2026-08-31T16:27:55.631Z"
+      }
+     },
+     {
+      "id": "92d96f0a-55e6-4488-af46-0ce257ed74a0",
+      "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+      "reviewerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 4,
+      "bodyOriginal": "Good detail on structure. I would have liked more on time management under exam conditions.",
+      "bodyLang": "en",
+      "createdAt": "2026-08-31T16:26:04.620Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "code": "answer_writing.gs.history",
+        "labels": {
+         "en": "History answer writing",
+         "hi": "इतिहास उत्तर लेखन"
+        }
+       },
+       {
+        "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+        "code": "answer_writing.gs.geography",
+        "labels": {
+         "en": "Geography answer writing",
+         "hi": "भूगोल उत्तर लेखन"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "clarity",
+        "score": 4
+       },
+       {
+        "dimensionCode": "depth",
+        "score": 4
+       }
+      ],
+      "reply": null
+     },
+     {
+      "id": "71650a46-fa34-4647-b979-1c102d70411a",
+      "engagementId": "aff47792-3169-48bc-9e56-b19e61885366",
+      "reviewerId": "0bcaacfe-af41-405a-93da-63ce40ab3d8e",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 3,
+      "bodyOriginal": "Useful on content, thinner on how to actually restructure an answer under time pressure. Came back a day later than agreed.",
+      "bodyLang": "en",
+      "createdAt": "2026-08-30T16:53:37.600Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "code": "answer_writing.gs.history",
+        "labels": {
+         "en": "History answer writing",
+         "hi": "इतिहास उत्तर लेखन"
+        }
+       },
+       {
+        "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+        "code": "answer_writing.gs.geography",
+        "labels": {
+         "en": "Geography answer writing",
+         "hi": "भूगोल उत्तर लेखन"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "candour",
+        "score": 4
+       },
+       {
+        "dimensionCode": "clarity",
+        "score": 3
+       },
+       {
+        "dimensionCode": "depth",
+        "score": 4
+       },
+       {
+        "dimensionCode": "punctuality",
+        "score": 2
+       }
+      ],
+      "reply": {
+       "bodyOriginal": "Fair on the delay — that was mine, and I have tightened how many I take in a week.",
+       "bodyLang": "en",
+       "createdAt": "2026-08-30T16:53:37.612Z"
+      }
+     },
+     {
+      "id": "66e03d1a-739b-494c-a2d4-76b197590299",
+      "engagementId": "77290f66-d6c6-4311-994f-c48ab2e8dcc7",
+      "reviewerId": "e4cd3099-e3b2-4cf5-a19c-f940c29bd7de",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 4,
+      "bodyOriginal": "उत्तर की समीक्षा विस्तृत थी। थोड़ा और उदाहरण चाहिए था, पर दिशा स्पष्ट मिली।",
+      "bodyLang": "hi",
+      "createdAt": "2026-08-30T16:53:37.484Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "code": "answer_writing.gs.history",
+        "labels": {
+         "en": "History answer writing",
+         "hi": "इतिहास उत्तर लेखन"
+        }
+       },
+       {
+        "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+        "code": "answer_writing.gs.geography",
+        "labels": {
+         "en": "Geography answer writing",
+         "hi": "भूगोल उत्तर लेखन"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "candour",
+        "score": 5
+       },
+       {
+        "dimensionCode": "clarity",
+        "score": 4
+       },
+       {
+        "dimensionCode": "depth",
+        "score": 4
+       },
+       {
+        "dimensionCode": "punctuality",
+        "score": 4
+       }
+      ],
+      "reply": null
+     },
+     {
+      "id": "2df5d12c-97d6-4bb4-a730-5dbe6ba592fa",
+      "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+      "reviewerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "direction": "seeker_on_provider",
+      "rating": 5,
+      "bodyOriginal": "Marked the structure hard, which is what I needed. Showed me I was writing conclusions that repeated the introduction rather than answering the question.",
+      "bodyLang": "en",
+      "createdAt": "2026-08-30T16:53:37.348Z",
+      "engagementType": "document_review",
+      "skills": [
+       {
+        "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "code": "answer_writing.gs.history",
+        "labels": {
+         "en": "History answer writing",
+         "hi": "इतिहास उत्तर लेखन"
+        }
+       },
+       {
+        "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+        "code": "answer_writing.gs.geography",
+        "labels": {
+         "en": "Geography answer writing",
+         "hi": "भूगोल उत्तर लेखन"
+        }
+       }
+      ],
+      "dimensionScores": [
+       {
+        "dimensionCode": "candour",
+        "score": 5
+       },
+       {
+        "dimensionCode": "clarity",
+        "score": 5
+       },
+       {
+        "dimensionCode": "depth",
+        "score": 5
+       },
+       {
+        "dimensionCode": "punctuality",
+        "score": 4
+       }
+      ],
+      "reply": {
+       "bodyOriginal": "Thank you — keep the intro to two sentences and you will find the body has room to breathe.",
+       "bodyLang": "en",
+       "createdAt": "2026-08-30T16:53:37.368Z"
+      }
+     }
+    ],
+    "rates": [
+     {
+      "id": "bea53173-6fd3-41de-be4d-f8a39fb01293",
+      "engagementType": "document_review",
+      "skillId": null,
+      "skillCode": null,
+      "skillLabels": null,
+      "currency": "INR",
+      "amountPaise": "95000",
+      "durationMinutes": null,
+      "turnaroundHours": 72
+     },
+     {
+      "id": "d0e81806-2500-4511-b957-0549fee38af4",
+      "engagementType": "live_session",
+      "skillId": null,
+      "skillCode": null,
+      "skillLabels": null,
+      "currency": "INR",
+      "amountPaise": "95000",
+      "durationMinutes": 45,
+      "turnaroundHours": null
+     },
+     {
+      "id": "2145e2cc-5c7e-443e-be3c-6fc3af22dd72",
+      "engagementType": "review_with_live",
+      "skillId": null,
+      "skillCode": null,
+      "skillLabels": null,
+      "currency": "INR",
+      "amountPaise": "165000",
+      "durationMinutes": 45,
+      "turnaroundHours": 72
+     }
+    ],
+    "bio": null,
+    "bioLang": null
+   }
+  },
+  "GET /domains/upsc_cse": {
+   "status": 200,
+   "body": {
+    "domainCode": "upsc_cse",
+    "familyCode": "civil_services_exams",
+    "family": {
+     "code": "civil_services_exams",
+     "version": "1.0.0",
+     "labels": {
+      "family": {
+       "en": "Civil Services Exams",
+       "hi": "सिविल सेवा परीक्षाएँ"
+      },
+      "seeker": {
+       "en": "Aspirant",
+       "hi": "अभ्यर्थी"
+      },
+      "category": {
+       "en": "Paper",
+       "hi": "प्रश्नपत्र"
+      },
+      "provider": {
+       "en": "Mentor",
+       "hi": "मेंटर"
+      },
+      "engagement": {
+       "en": "Task",
+       "hi": "कार्य"
+      }
+     },
+     "engagementTypes": [
+      "document_review",
+      "review_with_live",
+      "live_session",
+      "written_qa",
+      "async_task"
+     ],
+     "engagementTypeLabels": {},
+     "flagshipEngagement": "document_review",
+     "reviewDimensions": [
+      {
+       "code": "clarity",
+       "labels": {
+        "en": "Made it clear",
+        "hi": "स्पष्टता"
+       }
+      },
+      {
+       "code": "depth",
+       "labels": {
+        "en": "Went deep enough",
+        "hi": "गहराई"
+       }
+      },
+      {
+       "code": "candour",
+       "labels": {
+        "en": "Told me the hard truth",
+        "hi": "स्पष्टवादिता"
+       }
+      },
+      {
+       "code": "punctuality",
+       "labels": {
+        "en": "On time",
+        "hi": "समयनिष्ठा"
+       }
+      }
+     ],
+     "skills": [
+      {
+       "code": "answer_writing.gs.polity",
+       "labels": {
+        "en": "Polity answer writing",
+        "hi": "राजव्यवस्था उत्तर लेखन"
+       },
+       "template": "answer_writing.v1"
+      },
+      {
+       "code": "answer_writing.gs.history",
+       "labels": {
+        "en": "History answer writing",
+        "hi": "इतिहास उत्तर लेखन"
+       },
+       "template": "answer_writing.v1"
+      },
+      {
+       "code": "answer_writing.gs.geography",
+       "labels": {
+        "en": "Geography answer writing",
+        "hi": "भूगोल उत्तर लेखन"
+       },
+       "template": "answer_writing.v1"
+      },
+      {
+       "code": "answer_writing.gs.economy",
+       "labels": {
+        "en": "Economy answer writing",
+        "hi": "अर्थव्यवस्था उत्तर लेखन"
+       },
+       "template": "answer_writing.v1"
+      },
+      {
+       "code": "answer_writing.gs.science_tech",
+       "labels": {
+        "en": "Science & technology answer writing"
+       },
+       "template": "answer_writing.v1"
+      },
+      {
+       "code": "answer_writing.gs.environment",
+       "labels": {
+        "en": "Environment answer writing"
+       },
+       "template": "answer_writing.v1"
+      },
+      {
+       "code": "answer_writing.essay",
+       "labels": {
+        "en": "Essay writing",
+        "hi": "निबंध लेखन"
+       },
+       "template": "essay.v1"
+      },
+      {
+       "code": "answer_writing.ethics",
+       "labels": {
+        "en": "Ethics and case studies",
+        "hi": "नीतिशास्त्र"
+       },
+       "template": "ethics_case.v1"
+      },
+      {
+       "code": "interview.personality",
+       "labels": {
+        "en": "Personality test / interview",
+        "hi": "साक्षात्कार"
+       },
+       "template": "interview_mock.v1"
+      },
+      {
+       "code": "optional_subject.guidance",
+       "labels": {
+        "en": "Optional subject guidance"
+       },
+       "template": "answer_writing.v1"
+      },
+      {
+       "code": "prelims.objective_strategy",
+       "labels": {
+        "en": "Prelims objective strategy"
+       }
+      },
+      {
+       "code": "csat.aptitude",
+       "labels": {
+        "en": "Aptitude / CSAT"
+       }
+      },
+      {
+       "code": "state_gs.up",
+       "labels": {
+        "en": "Uttar Pradesh state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.bihar",
+       "labels": {
+        "en": "Bihar state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.mp",
+       "labels": {
+        "en": "Madhya Pradesh state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.rajasthan",
+       "labels": {
+        "en": "Rajasthan state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.jharkhand",
+       "labels": {
+        "en": "Jharkhand state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.chhattisgarh",
+       "labels": {
+        "en": "Chhattisgarh state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.uttarakhand",
+       "labels": {
+        "en": "Uttarakhand state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.haryana",
+       "labels": {
+        "en": "Haryana state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.himachal",
+       "labels": {
+        "en": "Himachal Pradesh state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.punjab",
+       "labels": {
+        "en": "Punjab state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.maharashtra",
+       "labels": {
+        "en": "Maharashtra state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.gujarat",
+       "labels": {
+        "en": "Gujarat state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.west_bengal",
+       "labels": {
+        "en": "West Bengal state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.odisha",
+       "labels": {
+        "en": "Odisha state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.tamil_nadu",
+       "labels": {
+        "en": "Tamil Nadu state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.karnataka",
+       "labels": {
+        "en": "Karnataka state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.andhra",
+       "labels": {
+        "en": "Andhra Pradesh state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "state_gs.telangana",
+       "labels": {
+        "en": "Telangana state GS"
+       },
+       "template": "answer_writing.v1",
+       "isDomainBound": true
+      },
+      {
+       "code": "language.hindi.formal",
+       "labels": {
+        "en": "Formal Hindi",
+        "hi": "सामान्य हिन्दी"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.english.formal",
+       "labels": {
+        "en": "Formal English"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.marathi.formal",
+       "labels": {
+        "en": "Formal Marathi"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.gujarati.formal",
+       "labels": {
+        "en": "Formal Gujarati"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.bengali.formal",
+       "labels": {
+        "en": "Formal Bengali"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.odia.formal",
+       "labels": {
+        "en": "Formal Odia"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.tamil.formal",
+       "labels": {
+        "en": "Formal Tamil"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.kannada.formal",
+       "labels": {
+        "en": "Formal Kannada"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.telugu.formal",
+       "labels": {
+        "en": "Formal Telugu"
+       },
+       "template": "language_paper.v1"
+      },
+      {
+       "code": "language.punjabi.formal",
+       "labels": {
+        "en": "Formal Punjabi"
+       },
+       "template": "language_paper.v1"
+      }
+     ],
+     "credentialTypes": [
+      {
+       "code": "exam_rank",
+       "active": true,
+       "labels": {
+        "en": "Exam rank",
+        "hi": "परीक्षा रैंक"
+       },
+       "verifier": "public_result_list",
+       "publicFields": [
+        "year",
+        "rank"
+       ],
+       "minTierGranted": "t3",
+       "grantsPaidWorkSanction": false,
+       "requiresPaidWorkSanction": false
+      },
+      {
+       "code": "mains_cleared",
+       "active": true,
+       "labels": {
+        "en": "Mains cleared",
+        "hi": "मुख्य परीक्षा उत्तीर्ण"
+       },
+       "verifier": "document_review",
+       "publicFields": [
+        "year"
+       ],
+       "minTierGranted": "t2",
+       "grantsPaidWorkSanction": false,
+       "requiresPaidWorkSanction": false
+      },
+      {
+       "code": "interview_appeared",
+       "active": true,
+       "labels": {
+        "en": "Interview appeared",
+        "hi": "साक्षात्कार में सम्मिलित"
+       },
+       "verifier": "document_review",
+       "publicFields": [
+        "year"
+       ],
+       "minTierGranted": "t2",
+       "grantsPaidWorkSanction": false,
+       "requiresPaidWorkSanction": false
+      },
+      {
+       "code": "subject_expertise",
+       "active": true,
+       "labels": {
+        "en": "Subject expertise",
+        "hi": "विषय विशेषज्ञता"
+       },
+       "verifier": "document_review",
+       "publicFields": [
+        "subject"
+       ],
+       "minTierGranted": "t2",
+       "grantsPaidWorkSanction": false,
+       "requiresPaidWorkSanction": false
+      },
+      {
+       "code": "serving_officer",
+       "active": true,
+       "labels": {
+        "en": "Serving government officer"
+       },
+       "verifier": "sanction_document",
+       "publicFields": [],
+       "grantsPaidWorkSanction": false,
+       "requiresPaidWorkSanction": true
+      },
+      {
+       "code": "departmental_sanction",
+       "active": true,
+       "labels": {
+        "en": "Departmental sanction for private work"
+       },
+       "verifier": "sanction_document",
+       "publicFields": [],
+       "grantsPaidWorkSanction": true,
+       "requiresPaidWorkSanction": false
+      }
+     ],
+     "policy": {
+      "disputeTiers": [
+       {
+        "code": "direct_resolution",
+        "tier": 1,
+        "responseHours": 48
+       },
+       {
+        "code": "platform_review",
+        "tier": 2,
+        "responseHours": 120
+       },
+       {
+        "code": "appeal_panel",
+        "tier": 3,
+        "final": true,
+        "responseHours": 240
+       }
+      ],
+      "minTierForPaidWork": "t2",
+      "freeQuestionsPerDay": 3,
+      "regulatedCategories": [],
+      "proposalQuotaPerWeek": 10
+     },
+     "reportReasons": [
+      {
+       "code": "harassment",
+       "labels": {
+        "en": "Harassment or abuse",
+        "hi": "उत्पीड़न या दुर्व्यवहार"
+       }
+      },
+      {
+       "code": "off_platform_solicitation",
+       "labels": {
+        "en": "Asked to move off the platform",
+        "hi": "मंच से बाहर ले जाने का प्रयास"
+       }
+      },
+      {
+       "code": "misrepresentation",
+       "labels": {
+        "en": "False claims about themselves",
+        "hi": "स्वयं के बारे में झूठे दावे"
+       }
+      },
+      {
+       "code": "sexual_content",
+       "labels": {
+        "en": "Sexual or explicit content",
+        "hi": "यौन या अश्लील सामग्री"
+       }
+      },
+      {
+       "code": "spam",
+       "labels": {
+        "en": "Spam or advertising",
+        "hi": "स्पैम या विज्ञापन"
+       }
+      },
+      {
+       "code": "welfare_concern",
+       "labels": {
+        "en": "I'm worried about this person",
+        "hi": "मुझे इस व्यक्ति की चिंता है"
+       },
+       "isWelfareConcern": true
+      },
+      {
+       "code": "other",
+       "labels": {
+        "en": "Something else",
+        "hi": "कुछ और"
+       }
+      }
+     ],
+     "agreementDocuments": [
+      {
+       "code": "terms_of_service",
+       "text": {
+        "en": "You agree to use Sankalp honestly: your account is yours alone, the qualifications you claim are real, and payment for work happens here rather than privately. You must be 18 or older. We hold money for an engagement until its agreed goals are met, and either side may raise a dispute.",
+        "hi": "आप सत्यनिष्ठा से संकल्प का उपयोग करने के लिए सहमत हैं: आपका खाता केवल आपका है, आपके द्वारा दावा की गई योग्यताएँ वास्तविक हैं, और कार्य का भुगतान यहीं होगा, निजी तौर पर नहीं। आपकी आयु 18 वर्ष या अधिक होनी चाहिए। सहमत लक्ष्य पूरे होने तक हम धनराशि सुरक्षित रखते हैं, और कोई भी पक्ष विवाद उठा सकता है।"
+       },
+       "version": "1"
+      },
+      {
+       "code": "adult_attestation",
+       "text": {
+        "en": "I confirm I am 18 years of age or older. This platform is not for anyone under 18.",
+        "hi": "मैं पुष्टि करता/करती हूँ कि मेरी आयु 18 वर्ष या उससे अधिक है। यह मंच 18 वर्ष से कम आयु वालों के लिए नहीं है।"
+       },
+       "version": "1"
+      },
+      {
+       "code": "session_extension",
+       "text": {
+        "en": "I am asking to extend this session and to pay for the extra time. I confirm the session so far has been delivered as agreed and I am satisfied with it. The extension is charged separately from the original booking. This does not affect any right I have to raise a dispute or seek a refund under applicable law.",
+        "hi": "मैं इस सत्र को बढ़ाने और अतिरिक्त समय का भुगतान करने का अनुरोध कर रहा/रही हूँ। मैं पुष्टि करता/करती हूँ कि अब तक का सत्र सहमति के अनुसार पूरा हुआ है और मैं इससे संतुष्ट हूँ। यह विस्तार मूल बुकिंग से अलग शुल्क के रूप में लिया जाएगा। इससे लागू कानून के अंतर्गत विवाद उठाने या धन-वापसी माँगने का मेरा कोई अधिकार प्रभावित नहीं होता।"
+       },
+       "version": "1"
+      }
+     ],
+     "supportResources": [
+      {
+       "label": "Tele-MANAS (national, 24x7)",
+       "value": "14416"
+      },
+      {
+       "label": "Tele-MANAS (alternate)",
+       "value": "1800-891-4416"
+      },
+      {
+       "label": "KIRAN mental health helpline",
+       "value": "1800-599-0019"
+      }
+     ],
+     "trainingModules": [
+      {
+       "code": "platform_rules",
+       "labels": {
+        "en": "How this platform works",
+        "hi": "यह मंच कैसे काम करता है"
+       },
+       "required": true,
+       "sections": [
+        {
+         "body": {
+          "en": "Before any work starts, you and the aspirant agree a written list of goals. Once it is locked it cannot be changed — a change needs a new version that both of you accept. In a dispute, that list is what gets read, in the language it was written in.",
+          "hi": "काम शुरू होने से पहले आप और अभ्यर्थी लिखित लक्ष्यों पर सहमत होते हैं। लॉक होने के बाद उसे बदला नहीं जा सकता। विवाद में वही सूची पढ़ी जाती है, उसी भाषा में जिसमें लिखी गई थी।"
+         },
+         "heading": {
+          "en": "The agenda is the contract",
+          "hi": "लक्ष्य ही अनुबंध है"
+         }
+        },
+        {
+         "body": {
+          "en": "The aspirant pays before you start, but the money sits in escrow with a licensed payment aggregator. It reaches you when they confirm the agreed goals were met. You may charge less once the work has started — you may never negotiate the price before it.",
+          "hi": "अभ्यर्थी पहले भुगतान करता है, पर पैसा एस्क्रो में रहता है। लक्ष्य पूरे होने की पुष्टि पर आपको मिलता है। काम शुरू होने के बाद आप कम ले सकते हैं; उससे पहले मोल-भाव नहीं कर सकते।"
+         },
+         "heading": {
+          "en": "Money is held, not paid",
+          "hi": "पैसा रोका जाता है, दिया नहीं जाता"
+         }
+        },
+        {
+         "body": {
+          "en": "No outcome. Not a rank, not selection, not a mark. You may say what a stronger answer looks like; you may not say what it will score. And never compare one aspirant to another — progress here is measured against their own earlier work and nothing else.",
+          "hi": "किसी परिणाम का वादा नहीं — न रैंक, न चयन, न अंक। आप बता सकते हैं कि बेहतर उत्तर कैसा होता है; यह नहीं कि उसे कितने अंक मिलेंगे। किसी अभ्यर्थी की तुलना दूसरे से कभी न करें।"
+         },
+         "heading": {
+          "en": "What you may never promise",
+          "hi": "आप क्या वादा नहीं कर सकते"
+         }
+        }
+       ],
+       "questions": [
+        {
+         "code": "agenda_change",
+         "prompt": {
+          "en": "Halfway through, the aspirant asks you to review a second answer as well. What is correct?",
+          "hi": "बीच में अभ्यर्थी दूसरा उत्तर भी देखने को कहता है। सही क्या है?"
+         },
+         "correct": "b",
+         "options": [
+          {
+           "code": "a",
+           "labels": {
+            "en": "Do it — it is a small extra",
+            "hi": "कर दें — छोटी बात है"
+           }
+          },
+          {
+           "code": "b",
+           "labels": {
+            "en": "Agree a change to the goals first, so you both hold the same list",
+            "hi": "पहले लक्ष्यों में बदलाव पर सहमति लें"
+           }
+          },
+          {
+           "code": "c",
+           "labels": {
+            "en": "Refuse — the agenda can never change",
+            "hi": "मना करें — लक्ष्य कभी नहीं बदलते"
+           }
+          }
+         ]
+        },
+        {
+         "code": "outcome_promise",
+         "prompt": {
+          "en": "Which of these may you write in an evaluation?",
+          "hi": "मूल्यांकन में आप इनमें से क्या लिख सकते हैं?"
+         },
+         "correct": "c",
+         "options": [
+          {
+           "code": "a",
+           "labels": {
+            "en": "This answer would fetch 9 or 10 marks",
+            "hi": "इस उत्तर को 9-10 अंक मिलेंगे"
+           }
+          },
+          {
+           "code": "b",
+           "labels": {
+            "en": "At this standard you will clear Mains",
+            "hi": "इस स्तर पर आप मुख्य परीक्षा निकाल लेंगे"
+           }
+          },
+          {
+           "code": "c",
+           "labels": {
+            "en": "Your introduction states the issue but never examines it",
+            "hi": "आपकी भूमिका मुद्दा बताती है, उसकी परीक्षा नहीं करती"
+           }
+          }
+         ]
+        },
+        {
+         "code": "price_change",
+         "prompt": {
+          "en": "An aspirant asks for a discount before booking. What is correct?",
+          "hi": "बुकिंग से पहले अभ्यर्थी छूट मांगता है। सही क्या है?"
+         },
+         "correct": "b",
+         "options": [
+          {
+           "code": "a",
+           "labels": {
+            "en": "Agree a lower price with them",
+            "hi": "कम कीमत पर सहमत हों"
+           }
+          },
+          {
+           "code": "b",
+           "labels": {
+            "en": "The published price stands; you may reduce it later, once the work has started",
+            "hi": "प्रकाशित कीमत ही लागू; काम शुरू होने पर आप कम कर सकते हैं"
+           }
+          },
+          {
+           "code": "c",
+           "labels": {
+            "en": "Decline the booking",
+            "hi": "बुकिंग अस्वीकार करें"
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "code": "distress_escalation",
+       "labels": {
+        "en": "When someone is struggling",
+        "hi": "जब कोई संघर्ष कर रहा हो"
+       },
+       "required": true,
+       "sections": [
+        {
+         "body": {
+          "en": "Years of preparation, repeated failure and long isolation are ordinary in this population, and so is serious distress. You will meet it. Not often, but you will — and probably in the middle of a conversation about something else entirely.",
+          "hi": "वर्षों की तैयारी, बार-बार असफलता और लंबा अकेलापन यहाँ सामान्य हैं, और गंभीर मानसिक संकट भी। आप इसका सामना करेंगे — शायद किसी और बात के बीच में।"
+         },
+         "heading": {
+          "en": "Why this module exists",
+          "hi": "यह मॉड्यूल क्यों है"
+         }
+        },
+        {
+         "body": {
+          "en": "Stay with them. Do not end the session in order to escalate. Say plainly that you have heard them and that help exists, and give them the helpline numbers shown on this page. Then report it through the platform so a trained person follows up. You are not their counsellor and nobody expects you to be — you are the person who was there.",
+          "hi": "उनके साथ रहें। आगे बढ़ाने के लिए सत्र समाप्त न करें। स्पष्ट कहें कि आपने उन्हें सुना और सहायता उपलब्ध है, और इस पृष्ठ पर दिए हेल्पलाइन नंबर दें। फिर मंच पर रिपोर्ट करें ताकि प्रशिक्षित व्यक्ति संपर्क करे। आप उनके परामर्शदाता नहीं हैं।"
+         },
+         "heading": {
+          "en": "What to do",
+          "hi": "क्या करें"
+         }
+        },
+        {
+         "body": {
+          "en": "Do not tell them to work harder. Do not treat it as a motivation problem. Do not promise it will be fine if they simply keep going. And do not keep it to yourself because it felt private — reporting is not a punishment, and their post is never taken down for it.",
+          "hi": "यह न कहें कि और मेहनत करें। इसे प्रेरणा की समस्या न समझें। यह वादा न करें कि लगे रहने से सब ठीक हो जाएगा। और इसे अपने तक न रखें — रिपोर्ट करना दंड नहीं है।"
+         },
+         "heading": {
+          "en": "What never to do",
+          "hi": "क्या कभी न करें"
+         }
+        }
+       ],
+       "questions": [
+        {
+         "code": "mid_session",
+         "prompt": {
+          "en": "Mid-session, an aspirant tells you they have been thinking about harming themselves. What do you do first?",
+          "hi": "सत्र के बीच अभ्यर्थी कहता है कि उसने स्वयं को हानि पहुँचाने के बारे में सोचा है। पहले क्या करें?"
+         },
+         "correct": "b",
+         "options": [
+          {
+           "code": "a",
+           "labels": {
+            "en": "End the session so they can get help",
+            "hi": "सत्र समाप्त करें"
+           }
+          },
+          {
+           "code": "b",
+           "labels": {
+            "en": "Stay with them, say you have heard them, and give them the helpline numbers",
+            "hi": "उनके साथ रहें, कहें कि आपने सुना, और हेल्पलाइन नंबर दें"
+           }
+          },
+          {
+           "code": "c",
+           "labels": {
+            "en": "Change the subject and finish the review",
+            "hi": "विषय बदलें और समीक्षा पूरी करें"
+           }
+          }
+         ]
+        },
+        {
+         "code": "after",
+         "prompt": {
+          "en": "Afterwards, what do you do?",
+          "hi": "उसके बाद आप क्या करते हैं?"
+         },
+         "correct": "a",
+         "options": [
+          {
+           "code": "a",
+           "labels": {
+            "en": "Report it on the platform so a trained person follows up",
+            "hi": "मंच पर रिपोर्ट करें ताकि प्रशिक्षित व्यक्ति संपर्क करे"
+           }
+          },
+          {
+           "code": "b",
+           "labels": {
+            "en": "Nothing — it was said in confidence",
+            "hi": "कुछ नहीं — यह गोपनीय था"
+           }
+          },
+          {
+           "code": "c",
+           "labels": {
+            "en": "Post about it so others can help",
+            "hi": "इसके बारे में पोस्ट करें"
+           }
+          }
+         ]
+        },
+        {
+         "code": "not_motivation",
+         "prompt": {
+          "en": "Which response is wrong?",
+          "hi": "कौन-सी प्रतिक्रिया गलत है?"
+         },
+         "correct": "b",
+         "options": [
+          {
+           "code": "a",
+           "labels": {
+            "en": "Telling them help exists and where to find it",
+            "hi": "बताना कि सहायता है और कहाँ"
+           }
+          },
+          {
+           "code": "b",
+           "labels": {
+            "en": "Telling them they just need to work harder and stay motivated",
+            "hi": "कहना कि बस और मेहनत करें और प्रेरित रहें"
+           }
+          },
+          {
+           "code": "c",
+           "labels": {
+            "en": "Staying with them rather than ending the call",
+            "hi": "कॉल समाप्त करने के बजाय साथ रहना"
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "theme": {
+      "tokens": {
+       "--color-ink": "#1a1a2e",
+       "--color-paper": "#fdfcf7",
+       "--font-answer": "Noto Serif Devanagari, Georgia, serif",
+       "--color-rule-line": "#dbe4ee",
+       "--color-ink-correction": "#c1121f"
+      },
+      "signature": "ruled_answer_sheet"
+     }
+    },
+    "labels": {
+     "family": {
+      "en": "Civil Services Exams",
+      "hi": "सिविल सेवा परीक्षाएँ"
+     },
+     "seeker": {
+      "en": "Aspirant",
+      "hi": "अभ्यर्थी"
+     },
+     "category": {
+      "en": "Paper",
+      "hi": "प्रश्नपत्र"
+     },
+     "provider": {
+      "en": "Mentor",
+      "hi": "मेंटर"
+     },
+     "engagement": {
+      "en": "Task",
+      "hi": "कार्य"
+     },
+     "domain": {
+      "en": "UPSC Civil Services",
+      "hi": "संघ लोक सेवा आयोग"
+     }
+    },
+    "engagementTypes": [
+     "document_review",
+     "review_with_live",
+     "live_session",
+     "written_qa",
+     "async_task"
+    ],
+    "flagshipEngagement": "document_review",
+    "reviewDimensions": [
+     {
+      "code": "clarity",
+      "labels": {
+       "en": "Made it clear",
+       "hi": "स्पष्टता"
+      }
+     },
+     {
+      "code": "depth",
+      "labels": {
+       "en": "Went deep enough",
+       "hi": "गहराई"
+      }
+     },
+     {
+      "code": "candour",
+      "labels": {
+       "en": "Told me the hard truth",
+       "hi": "स्पष्टवादिता"
+      }
+     },
+     {
+      "code": "punctuality",
+      "labels": {
+       "en": "On time",
+       "hi": "समयनिष्ठा"
+      }
+     }
+    ],
+    "languages": [
+     "hi",
+     "en"
+    ],
+    "defaultLanguage": "hi",
+    "resultSource": {
+     "fields": [
+      "year",
+      "rollNo",
+      "rank"
+     ],
+     "verifier": "public_result_list",
+     "sourceCode": "upsc_cse_results"
+    },
+    "calendar": [
+     {
+      "phase": "prelims",
+      "demand": "peak",
+      "monthHint": 5
+     },
+     {
+      "phase": "mains",
+      "demand": "peak",
+      "monthHint": 9
+     },
+     {
+      "phase": "interview",
+      "demand": "steady",
+      "monthHint": 1
+     }
+    ],
+    "priceBands": {
+     "live_session": [
+      20000,
+      60000
+     ],
+     "document_review": [
+      8000,
+      25000
+     ],
+     "review_with_live": [
+      22000,
+      70000
+     ]
+    },
+    "policy": {
+     "disputeTiers": [
+      {
+       "code": "direct_resolution",
+       "tier": 1,
+       "responseHours": 48
+      },
+      {
+       "code": "platform_review",
+       "tier": 2,
+       "responseHours": 120
+      },
+      {
+       "code": "appeal_panel",
+       "tier": 3,
+       "final": true,
+       "responseHours": 240
+      }
+     ],
+     "minTierForPaidWork": "t2",
+     "freeQuestionsPerDay": 3,
+     "regulatedCategories": [],
+     "proposalQuotaPerWeek": 10
+    },
+    "theme": {
+     "signature": "ruled_answer_sheet",
+     "tokens": {
+      "--color-ink": "#1a1a2e",
+      "--color-paper": "#fdfcf7",
+      "--font-answer": "Noto Serif Devanagari, Georgia, serif",
+      "--color-rule-line": "#dbe4ee",
+      "--color-ink-correction": "#c1121f"
+     }
+    },
+    "publiclyListed": true,
+    "minProvidersToList": 5
+   }
+  },
+  "GET /me/agreements": {
+   "status": 200,
+   "body": []
+  },
+  "GET /domains/upsc_cse/categories": {
+   "status": 200,
+   "body": [
+    {
+     "id": "fd793bb7-f362-4305-9a57-5ea1e1de6d38",
+     "slug": "prelims",
+     "labels": {
+      "en": "Prelims",
+      "hi": "प्रारंभिक"
+     },
+     "assessmentTemplateId": null,
+     "traits": {
+      "patternSource": "unverified_placeholder"
+     },
+     "skillIds": [],
+     "children": [
+      {
+       "id": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+       "slug": "gs-paper-1",
+       "labels": {
+        "en": "GS Paper I"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "867edb48-ba21-4465-add3-1adb3afab56a"
+       ],
+       "children": []
+      },
+      {
+       "id": "79528c49-9333-4948-892f-af714e3e498a",
+       "slug": "csat",
+       "labels": {
+        "en": "CSAT (Paper II)"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "3dfd9126-9d67-4e29-b7ac-b75c409f6f51"
+       ],
+       "children": []
+      }
+     ]
+    },
+    {
+     "id": "e5f19d78-595a-47d6-b4a3-65ebd43eedc9",
+     "slug": "mains",
+     "labels": {
+      "en": "Mains",
+      "hi": "मुख्य"
+     },
+     "assessmentTemplateId": null,
+     "traits": {
+      "patternSource": "unverified_placeholder"
+     },
+     "skillIds": [],
+     "children": [
+      {
+       "id": "66573cc6-d14a-4f01-8825-eba8bf323dd3",
+       "slug": "essay",
+       "labels": {
+        "en": "Essay",
+        "hi": "निबंध"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "99b8527b-06c1-470f-a274-0a1fbba6e3e3"
+       ],
+       "children": []
+      },
+      {
+       "id": "0f1040cb-80a8-479c-8aad-2c071863836b",
+       "slug": "gs-1",
+       "labels": {
+        "en": "GS-I — heritage, history, geography, society"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+        "01a98e56-7115-4f9c-b224-8d0fac804260"
+       ],
+       "children": []
+      },
+      {
+       "id": "61d1bdce-f9ff-4a34-b9f4-da12ba42b921",
+       "slug": "gs-2",
+       "labels": {
+        "en": "GS-II — polity, governance, international relations"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "639948b8-4da4-4e28-b2fe-6e2c1590ad31"
+       ],
+       "children": []
+      },
+      {
+       "id": "a3e77662-25f8-4a93-9d5b-44b4d6a31429",
+       "slug": "gs-3",
+       "labels": {
+        "en": "GS-III — economy, environment, science & technology"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "54fd4223-4844-46e2-a61d-4a892b63df23",
+        "30d65857-44e8-4cc6-8411-7042755b7bc1",
+        "c1396175-f766-4dc7-b39a-0dac540ea51c"
+       ],
+       "children": []
+      },
+      {
+       "id": "4655f2ae-23fa-4320-b68b-44aa6f35f34c",
+       "slug": "gs-4",
+       "labels": {
+        "en": "GS-IV — ethics, integrity and aptitude"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "3c1f85c6-ce27-4ce9-b19a-8a3f13a16c73"
+       ],
+       "children": []
+      },
+      {
+       "id": "d09e1ff8-a0a3-4793-aff2-efb6984f964b",
+       "slug": "optional",
+       "labels": {
+        "en": "Optional subject"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "449ab5bf-1b64-4639-a76c-8716113950ac"
+       ],
+       "children": []
+      },
+      {
+       "id": "1a064be1-8d85-416d-a72e-4cf80cd6854d",
+       "slug": "language-qualifying",
+       "labels": {
+        "en": "Qualifying language papers"
+       },
+       "assessmentTemplateId": null,
+       "traits": {
+        "patternSource": "unverified_placeholder"
+       },
+       "skillIds": [
+        "a8fcac13-d422-4c26-95e1-3b6e177bcc4b",
+        "35e426c6-42dc-4bad-ac13-fe51846a6938"
+       ],
+       "children": []
+      }
+     ]
+    },
+    {
+     "id": "3b4a4d6e-9db2-4702-bd5a-a5a3a52b3040",
+     "slug": "interview",
+     "labels": {
+      "en": "Personality Test",
+      "hi": "साक्षात्कार"
+     },
+     "assessmentTemplateId": null,
+     "traits": {
+      "patternSource": "unverified_placeholder"
+     },
+     "skillIds": [
+      "9e0e8472-1f48-4988-9707-f164eb262f0b"
+     ],
+     "children": []
+    }
+   ]
+  },
+  "GET /domains/upsc_cse/working-languages": {
+   "status": 200,
+   "body": {
+    "languages": [
+     "bn",
+     "en",
+     "gu",
+     "hi",
+     "kn",
+     "mr",
+     "or",
+     "pa",
+     "ta",
+     "te"
+    ]
+   }
+  },
+  "GET /me/package-purchases": {
+   "status": 200,
+   "body": [
+    {
+     "id": "05e12b83-cbf0-43d8-95c7-ad43e0ea87ca",
+     "packageId": "d7f7dd15-4ed3-40db-ac83-d1ce725e86d8",
+     "title": "Three answer reviews",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "sessionsTotal": 3,
+     "sessionsUsed": 0,
+     "sessionsLeft": 3,
+     "amountPaise": "250000",
+     "perSessionPaise": "83333",
+     "currency": "INR",
+     "engagementType": "document_review",
+     "skillId": null,
+     "createdAt": "2026-08-31T09:11:26.010Z"
+    },
+    {
+     "id": "593b3475-7c64-4350-8a60-f1fad60f1710",
+     "packageId": "4643a170-fdf5-4bd1-bea0-c352baa741e9",
+     "title": "Five answer reviews",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "sessionsTotal": 5,
+     "sessionsUsed": 5,
+     "sessionsLeft": 0,
+     "amountPaise": "400000",
+     "perSessionPaise": "80000",
+     "currency": "INR",
+     "engagementType": "document_review",
+     "skillId": null,
+     "createdAt": "2026-08-31T08:40:37.290Z"
+    }
+   ]
+  },
+  "GET /engagements/99495bd2-1d01-4f34-b346-adb35943ace6/submissions/latest": {
+   "status": 200,
+   "body": {
+    "id": "9ec969e3-2f1e-4efc-9250-52c7ae96cbeb",
+    "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+    "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "contentRef": "s3://private/demo/answer-unanswered.pdf",
+    "attachmentId": null,
+    "attachmentContentType": null,
+    "note": "Demo submission",
+    "submittedAt": "2026-08-31T17:37:22.723Z"
+   }
+  },
+  "GET /engagements/99495bd2-1d01-4f34-b346-adb35943ace6/evaluations/latest": {
+   "status": 200,
+   "body": {
+    "id": "0d9e5055-1d41-4925-ab2a-ab701d0dc0f8",
+    "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+    "submissionId": "9ec969e3-2f1e-4efc-9250-52c7ae96cbeb",
+    "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "templateId": "0d461157-791c-4863-9476-e8b5ae554dd9",
+    "dimensions": [
+     {
+      "code": "content",
+      "labels": {
+       "en": "Content",
+       "hi": "विषयवस्तु"
+      }
+     },
+     {
+      "code": "structure",
+      "labels": {
+       "en": "Structure",
+       "hi": "संरचना"
+      }
+     },
+     {
+      "code": "directive",
+      "labels": {
+       "en": "Directive adherence"
+      }
+     },
+     {
+      "code": "word_limit",
+      "labels": {
+       "en": "Word limit"
+      }
+     },
+     {
+      "code": "data_diagrams",
+      "labels": {
+       "en": "Data and diagrams"
+      }
+     },
+     {
+      "code": "presentation",
+      "labels": {
+       "en": "Presentation"
+      }
+     }
+    ],
+    "annotatedRef": null,
+    "overallNote": "Returned.",
+    "returnedAt": "2026-08-31T17:37:22.813Z",
+    "scores": [
+     {
+      "dimensionCode": "content",
+      "score": 68,
+      "comment": ""
+     },
+     {
+      "dimensionCode": "structure",
+      "score": 68,
+      "comment": ""
+     },
+     {
+      "dimensionCode": "directive",
+      "score": 68,
+      "comment": ""
+     },
+     {
+      "dimensionCode": "word_limit",
+      "score": 68,
+      "comment": ""
+     },
+     {
+      "dimensionCode": "data_diagrams",
+      "score": 68,
+      "comment": ""
+     },
+     {
+      "dimensionCode": "presentation",
+      "score": 68,
+      "comment": ""
+     }
+    ],
+    "annotations": []
+   }
+  },
+  "GET /engagements/99495bd2-1d01-4f34-b346-adb35943ace6/assessment-template": {
+   "status": 200,
+   "body": {
+    "id": "0d461157-791c-4863-9476-e8b5ae554dd9",
+    "code": "answer_writing.v1",
+    "labels": {
+     "en": "Answer writing rubric",
+     "hi": "उत्तर लेखन रूब्रिक"
+    },
+    "dimensions": [
+     {
+      "code": "content",
+      "labels": {
+       "en": "Content",
+       "hi": "विषयवस्तु"
+      }
+     },
+     {
+      "code": "structure",
+      "labels": {
+       "en": "Structure",
+       "hi": "संरचना"
+      }
+     },
+     {
+      "code": "directive",
+      "labels": {
+       "en": "Directive adherence"
+      }
+     },
+     {
+      "code": "word_limit",
+      "labels": {
+       "en": "Word limit"
+      }
+     },
+     {
+      "code": "data_diagrams",
+      "labels": {
+       "en": "Data and diagrams"
+      }
+     },
+     {
+      "code": "presentation",
+      "labels": {
+       "en": "Presentation"
+      }
+     }
+    ]
+   }
+  },
+  "GET /families/civil_services_exams": {
+   "status": 200,
+   "body": {
+    "code": "civil_services_exams",
+    "version": "1.0.0",
+    "labels": {
+     "family": {
+      "en": "Civil Services Exams",
+      "hi": "सिविल सेवा परीक्षाएँ"
+     },
+     "seeker": {
+      "en": "Aspirant",
+      "hi": "अभ्यर्थी"
+     },
+     "category": {
+      "en": "Paper",
+      "hi": "प्रश्नपत्र"
+     },
+     "provider": {
+      "en": "Mentor",
+      "hi": "मेंटर"
+     },
+     "engagement": {
+      "en": "Task",
+      "hi": "कार्य"
+     }
+    },
+    "engagementTypes": [
+     "document_review",
+     "review_with_live",
+     "live_session",
+     "written_qa",
+     "async_task"
+    ],
+    "engagementTypeLabels": {},
+    "flagshipEngagement": "document_review",
+    "reviewDimensions": [
+     {
+      "code": "clarity",
+      "labels": {
+       "en": "Made it clear",
+       "hi": "स्पष्टता"
+      }
+     },
+     {
+      "code": "depth",
+      "labels": {
+       "en": "Went deep enough",
+       "hi": "गहराई"
+      }
+     },
+     {
+      "code": "candour",
+      "labels": {
+       "en": "Told me the hard truth",
+       "hi": "स्पष्टवादिता"
+      }
+     },
+     {
+      "code": "punctuality",
+      "labels": {
+       "en": "On time",
+       "hi": "समयनिष्ठा"
+      }
+     }
+    ],
+    "skills": [
+     {
+      "code": "answer_writing.gs.polity",
+      "labels": {
+       "en": "Polity answer writing",
+       "hi": "राजव्यवस्था उत्तर लेखन"
+      },
+      "template": "answer_writing.v1"
+     },
+     {
+      "code": "answer_writing.gs.history",
+      "labels": {
+       "en": "History answer writing",
+       "hi": "इतिहास उत्तर लेखन"
+      },
+      "template": "answer_writing.v1"
+     },
+     {
+      "code": "answer_writing.gs.geography",
+      "labels": {
+       "en": "Geography answer writing",
+       "hi": "भूगोल उत्तर लेखन"
+      },
+      "template": "answer_writing.v1"
+     },
+     {
+      "code": "answer_writing.gs.economy",
+      "labels": {
+       "en": "Economy answer writing",
+       "hi": "अर्थव्यवस्था उत्तर लेखन"
+      },
+      "template": "answer_writing.v1"
+     },
+     {
+      "code": "answer_writing.gs.science_tech",
+      "labels": {
+       "en": "Science & technology answer writing"
+      },
+      "template": "answer_writing.v1"
+     },
+     {
+      "code": "answer_writing.gs.environment",
+      "labels": {
+       "en": "Environment answer writing"
+      },
+      "template": "answer_writing.v1"
+     },
+     {
+      "code": "answer_writing.essay",
+      "labels": {
+       "en": "Essay writing",
+       "hi": "निबंध लेखन"
+      },
+      "template": "essay.v1"
+     },
+     {
+      "code": "answer_writing.ethics",
+      "labels": {
+       "en": "Ethics and case studies",
+       "hi": "नीतिशास्त्र"
+      },
+      "template": "ethics_case.v1"
+     },
+     {
+      "code": "interview.personality",
+      "labels": {
+       "en": "Personality test / interview",
+       "hi": "साक्षात्कार"
+      },
+      "template": "interview_mock.v1"
+     },
+     {
+      "code": "optional_subject.guidance",
+      "labels": {
+       "en": "Optional subject guidance"
+      },
+      "template": "answer_writing.v1"
+     },
+     {
+      "code": "prelims.objective_strategy",
+      "labels": {
+       "en": "Prelims objective strategy"
+      }
+     },
+     {
+      "code": "csat.aptitude",
+      "labels": {
+       "en": "Aptitude / CSAT"
+      }
+     },
+     {
+      "code": "state_gs.up",
+      "labels": {
+       "en": "Uttar Pradesh state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.bihar",
+      "labels": {
+       "en": "Bihar state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.mp",
+      "labels": {
+       "en": "Madhya Pradesh state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.rajasthan",
+      "labels": {
+       "en": "Rajasthan state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.jharkhand",
+      "labels": {
+       "en": "Jharkhand state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.chhattisgarh",
+      "labels": {
+       "en": "Chhattisgarh state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.uttarakhand",
+      "labels": {
+       "en": "Uttarakhand state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.haryana",
+      "labels": {
+       "en": "Haryana state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.himachal",
+      "labels": {
+       "en": "Himachal Pradesh state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.punjab",
+      "labels": {
+       "en": "Punjab state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.maharashtra",
+      "labels": {
+       "en": "Maharashtra state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.gujarat",
+      "labels": {
+       "en": "Gujarat state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.west_bengal",
+      "labels": {
+       "en": "West Bengal state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.odisha",
+      "labels": {
+       "en": "Odisha state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.tamil_nadu",
+      "labels": {
+       "en": "Tamil Nadu state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.karnataka",
+      "labels": {
+       "en": "Karnataka state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.andhra",
+      "labels": {
+       "en": "Andhra Pradesh state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "state_gs.telangana",
+      "labels": {
+       "en": "Telangana state GS"
+      },
+      "template": "answer_writing.v1",
+      "isDomainBound": true
+     },
+     {
+      "code": "language.hindi.formal",
+      "labels": {
+       "en": "Formal Hindi",
+       "hi": "सामान्य हिन्दी"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.english.formal",
+      "labels": {
+       "en": "Formal English"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.marathi.formal",
+      "labels": {
+       "en": "Formal Marathi"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.gujarati.formal",
+      "labels": {
+       "en": "Formal Gujarati"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.bengali.formal",
+      "labels": {
+       "en": "Formal Bengali"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.odia.formal",
+      "labels": {
+       "en": "Formal Odia"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.tamil.formal",
+      "labels": {
+       "en": "Formal Tamil"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.kannada.formal",
+      "labels": {
+       "en": "Formal Kannada"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.telugu.formal",
+      "labels": {
+       "en": "Formal Telugu"
+      },
+      "template": "language_paper.v1"
+     },
+     {
+      "code": "language.punjabi.formal",
+      "labels": {
+       "en": "Formal Punjabi"
+      },
+      "template": "language_paper.v1"
+     }
+    ],
+    "credentialTypes": [
+     {
+      "code": "exam_rank",
+      "active": true,
+      "labels": {
+       "en": "Exam rank",
+       "hi": "परीक्षा रैंक"
+      },
+      "verifier": "public_result_list",
+      "publicFields": [
+       "year",
+       "rank"
+      ],
+      "minTierGranted": "t3",
+      "grantsPaidWorkSanction": false,
+      "requiresPaidWorkSanction": false
+     },
+     {
+      "code": "mains_cleared",
+      "active": true,
+      "labels": {
+       "en": "Mains cleared",
+       "hi": "मुख्य परीक्षा उत्तीर्ण"
+      },
+      "verifier": "document_review",
+      "publicFields": [
+       "year"
+      ],
+      "minTierGranted": "t2",
+      "grantsPaidWorkSanction": false,
+      "requiresPaidWorkSanction": false
+     },
+     {
+      "code": "interview_appeared",
+      "active": true,
+      "labels": {
+       "en": "Interview appeared",
+       "hi": "साक्षात्कार में सम्मिलित"
+      },
+      "verifier": "document_review",
+      "publicFields": [
+       "year"
+      ],
+      "minTierGranted": "t2",
+      "grantsPaidWorkSanction": false,
+      "requiresPaidWorkSanction": false
+     },
+     {
+      "code": "subject_expertise",
+      "active": true,
+      "labels": {
+       "en": "Subject expertise",
+       "hi": "विषय विशेषज्ञता"
+      },
+      "verifier": "document_review",
+      "publicFields": [
+       "subject"
+      ],
+      "minTierGranted": "t2",
+      "grantsPaidWorkSanction": false,
+      "requiresPaidWorkSanction": false
+     },
+     {
+      "code": "serving_officer",
+      "active": true,
+      "labels": {
+       "en": "Serving government officer"
+      },
+      "verifier": "sanction_document",
+      "publicFields": [],
+      "grantsPaidWorkSanction": false,
+      "requiresPaidWorkSanction": true
+     },
+     {
+      "code": "departmental_sanction",
+      "active": true,
+      "labels": {
+       "en": "Departmental sanction for private work"
+      },
+      "verifier": "sanction_document",
+      "publicFields": [],
+      "grantsPaidWorkSanction": true,
+      "requiresPaidWorkSanction": false
+     }
+    ],
+    "policy": {
+     "disputeTiers": [
+      {
+       "code": "direct_resolution",
+       "tier": 1,
+       "responseHours": 48
+      },
+      {
+       "code": "platform_review",
+       "tier": 2,
+       "responseHours": 120
+      },
+      {
+       "code": "appeal_panel",
+       "tier": 3,
+       "final": true,
+       "responseHours": 240
+      }
+     ],
+     "minTierForPaidWork": "t2",
+     "freeQuestionsPerDay": 3,
+     "regulatedCategories": [],
+     "proposalQuotaPerWeek": 10
+    },
+    "reportReasons": [
+     {
+      "code": "harassment",
+      "labels": {
+       "en": "Harassment or abuse",
+       "hi": "उत्पीड़न या दुर्व्यवहार"
+      }
+     },
+     {
+      "code": "off_platform_solicitation",
+      "labels": {
+       "en": "Asked to move off the platform",
+       "hi": "मंच से बाहर ले जाने का प्रयास"
+      }
+     },
+     {
+      "code": "misrepresentation",
+      "labels": {
+       "en": "False claims about themselves",
+       "hi": "स्वयं के बारे में झूठे दावे"
+      }
+     },
+     {
+      "code": "sexual_content",
+      "labels": {
+       "en": "Sexual or explicit content",
+       "hi": "यौन या अश्लील सामग्री"
+      }
+     },
+     {
+      "code": "spam",
+      "labels": {
+       "en": "Spam or advertising",
+       "hi": "स्पैम या विज्ञापन"
+      }
+     },
+     {
+      "code": "welfare_concern",
+      "labels": {
+       "en": "I'm worried about this person",
+       "hi": "मुझे इस व्यक्ति की चिंता है"
+      },
+      "isWelfareConcern": true
+     },
+     {
+      "code": "other",
+      "labels": {
+       "en": "Something else",
+       "hi": "कुछ और"
+      }
+     }
+    ],
+    "agreementDocuments": [
+     {
+      "code": "terms_of_service",
+      "text": {
+       "en": "You agree to use Sankalp honestly: your account is yours alone, the qualifications you claim are real, and payment for work happens here rather than privately. You must be 18 or older. We hold money for an engagement until its agreed goals are met, and either side may raise a dispute.",
+       "hi": "आप सत्यनिष्ठा से संकल्प का उपयोग करने के लिए सहमत हैं: आपका खाता केवल आपका है, आपके द्वारा दावा की गई योग्यताएँ वास्तविक हैं, और कार्य का भुगतान यहीं होगा, निजी तौर पर नहीं। आपकी आयु 18 वर्ष या अधिक होनी चाहिए। सहमत लक्ष्य पूरे होने तक हम धनराशि सुरक्षित रखते हैं, और कोई भी पक्ष विवाद उठा सकता है।"
+      },
+      "version": "1"
+     },
+     {
+      "code": "adult_attestation",
+      "text": {
+       "en": "I confirm I am 18 years of age or older. This platform is not for anyone under 18.",
+       "hi": "मैं पुष्टि करता/करती हूँ कि मेरी आयु 18 वर्ष या उससे अधिक है। यह मंच 18 वर्ष से कम आयु वालों के लिए नहीं है।"
+      },
+      "version": "1"
+     },
+     {
+      "code": "session_extension",
+      "text": {
+       "en": "I am asking to extend this session and to pay for the extra time. I confirm the session so far has been delivered as agreed and I am satisfied with it. The extension is charged separately from the original booking. This does not affect any right I have to raise a dispute or seek a refund under applicable law.",
+       "hi": "मैं इस सत्र को बढ़ाने और अतिरिक्त समय का भुगतान करने का अनुरोध कर रहा/रही हूँ। मैं पुष्टि करता/करती हूँ कि अब तक का सत्र सहमति के अनुसार पूरा हुआ है और मैं इससे संतुष्ट हूँ। यह विस्तार मूल बुकिंग से अलग शुल्क के रूप में लिया जाएगा। इससे लागू कानून के अंतर्गत विवाद उठाने या धन-वापसी माँगने का मेरा कोई अधिकार प्रभावित नहीं होता।"
+      },
+      "version": "1"
+     }
+    ],
+    "supportResources": [
+     {
+      "label": "Tele-MANAS (national, 24x7)",
+      "value": "14416"
+     },
+     {
+      "label": "Tele-MANAS (alternate)",
+      "value": "1800-891-4416"
+     },
+     {
+      "label": "KIRAN mental health helpline",
+      "value": "1800-599-0019"
+     }
+    ],
+    "trainingModules": [
+     {
+      "code": "platform_rules",
+      "labels": {
+       "en": "How this platform works",
+       "hi": "यह मंच कैसे काम करता है"
+      },
+      "required": true,
+      "sections": [
+       {
+        "body": {
+         "en": "Before any work starts, you and the aspirant agree a written list of goals. Once it is locked it cannot be changed — a change needs a new version that both of you accept. In a dispute, that list is what gets read, in the language it was written in.",
+         "hi": "काम शुरू होने से पहले आप और अभ्यर्थी लिखित लक्ष्यों पर सहमत होते हैं। लॉक होने के बाद उसे बदला नहीं जा सकता। विवाद में वही सूची पढ़ी जाती है, उसी भाषा में जिसमें लिखी गई थी।"
+        },
+        "heading": {
+         "en": "The agenda is the contract",
+         "hi": "लक्ष्य ही अनुबंध है"
+        }
+       },
+       {
+        "body": {
+         "en": "The aspirant pays before you start, but the money sits in escrow with a licensed payment aggregator. It reaches you when they confirm the agreed goals were met. You may charge less once the work has started — you may never negotiate the price before it.",
+         "hi": "अभ्यर्थी पहले भुगतान करता है, पर पैसा एस्क्रो में रहता है। लक्ष्य पूरे होने की पुष्टि पर आपको मिलता है। काम शुरू होने के बाद आप कम ले सकते हैं; उससे पहले मोल-भाव नहीं कर सकते।"
+        },
+        "heading": {
+         "en": "Money is held, not paid",
+         "hi": "पैसा रोका जाता है, दिया नहीं जाता"
+        }
+       },
+       {
+        "body": {
+         "en": "No outcome. Not a rank, not selection, not a mark. You may say what a stronger answer looks like; you may not say what it will score. And never compare one aspirant to another — progress here is measured against their own earlier work and nothing else.",
+         "hi": "किसी परिणाम का वादा नहीं — न रैंक, न चयन, न अंक। आप बता सकते हैं कि बेहतर उत्तर कैसा होता है; यह नहीं कि उसे कितने अंक मिलेंगे। किसी अभ्यर्थी की तुलना दूसरे से कभी न करें।"
+        },
+        "heading": {
+         "en": "What you may never promise",
+         "hi": "आप क्या वादा नहीं कर सकते"
+        }
+       }
+      ],
+      "questions": [
+       {
+        "code": "agenda_change",
+        "prompt": {
+         "en": "Halfway through, the aspirant asks you to review a second answer as well. What is correct?",
+         "hi": "बीच में अभ्यर्थी दूसरा उत्तर भी देखने को कहता है। सही क्या है?"
+        },
+        "correct": "b",
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Do it — it is a small extra",
+           "hi": "कर दें — छोटी बात है"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Agree a change to the goals first, so you both hold the same list",
+           "hi": "पहले लक्ष्यों में बदलाव पर सहमति लें"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Refuse — the agenda can never change",
+           "hi": "मना करें — लक्ष्य कभी नहीं बदलते"
+          }
+         }
+        ]
+       },
+       {
+        "code": "outcome_promise",
+        "prompt": {
+         "en": "Which of these may you write in an evaluation?",
+         "hi": "मूल्यांकन में आप इनमें से क्या लिख सकते हैं?"
+        },
+        "correct": "c",
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "This answer would fetch 9 or 10 marks",
+           "hi": "इस उत्तर को 9-10 अंक मिलेंगे"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "At this standard you will clear Mains",
+           "hi": "इस स्तर पर आप मुख्य परीक्षा निकाल लेंगे"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Your introduction states the issue but never examines it",
+           "hi": "आपकी भूमिका मुद्दा बताती है, उसकी परीक्षा नहीं करती"
+          }
+         }
+        ]
+       },
+       {
+        "code": "price_change",
+        "prompt": {
+         "en": "An aspirant asks for a discount before booking. What is correct?",
+         "hi": "बुकिंग से पहले अभ्यर्थी छूट मांगता है। सही क्या है?"
+        },
+        "correct": "b",
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Agree a lower price with them",
+           "hi": "कम कीमत पर सहमत हों"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "The published price stands; you may reduce it later, once the work has started",
+           "hi": "प्रकाशित कीमत ही लागू; काम शुरू होने पर आप कम कर सकते हैं"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Decline the booking",
+           "hi": "बुकिंग अस्वीकार करें"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "code": "distress_escalation",
+      "labels": {
+       "en": "When someone is struggling",
+       "hi": "जब कोई संघर्ष कर रहा हो"
+      },
+      "required": true,
+      "sections": [
+       {
+        "body": {
+         "en": "Years of preparation, repeated failure and long isolation are ordinary in this population, and so is serious distress. You will meet it. Not often, but you will — and probably in the middle of a conversation about something else entirely.",
+         "hi": "वर्षों की तैयारी, बार-बार असफलता और लंबा अकेलापन यहाँ सामान्य हैं, और गंभीर मानसिक संकट भी। आप इसका सामना करेंगे — शायद किसी और बात के बीच में।"
+        },
+        "heading": {
+         "en": "Why this module exists",
+         "hi": "यह मॉड्यूल क्यों है"
+        }
+       },
+       {
+        "body": {
+         "en": "Stay with them. Do not end the session in order to escalate. Say plainly that you have heard them and that help exists, and give them the helpline numbers shown on this page. Then report it through the platform so a trained person follows up. You are not their counsellor and nobody expects you to be — you are the person who was there.",
+         "hi": "उनके साथ रहें। आगे बढ़ाने के लिए सत्र समाप्त न करें। स्पष्ट कहें कि आपने उन्हें सुना और सहायता उपलब्ध है, और इस पृष्ठ पर दिए हेल्पलाइन नंबर दें। फिर मंच पर रिपोर्ट करें ताकि प्रशिक्षित व्यक्ति संपर्क करे। आप उनके परामर्शदाता नहीं हैं।"
+        },
+        "heading": {
+         "en": "What to do",
+         "hi": "क्या करें"
+        }
+       },
+       {
+        "body": {
+         "en": "Do not tell them to work harder. Do not treat it as a motivation problem. Do not promise it will be fine if they simply keep going. And do not keep it to yourself because it felt private — reporting is not a punishment, and their post is never taken down for it.",
+         "hi": "यह न कहें कि और मेहनत करें। इसे प्रेरणा की समस्या न समझें। यह वादा न करें कि लगे रहने से सब ठीक हो जाएगा। और इसे अपने तक न रखें — रिपोर्ट करना दंड नहीं है।"
+        },
+        "heading": {
+         "en": "What never to do",
+         "hi": "क्या कभी न करें"
+        }
+       }
+      ],
+      "questions": [
+       {
+        "code": "mid_session",
+        "prompt": {
+         "en": "Mid-session, an aspirant tells you they have been thinking about harming themselves. What do you do first?",
+         "hi": "सत्र के बीच अभ्यर्थी कहता है कि उसने स्वयं को हानि पहुँचाने के बारे में सोचा है। पहले क्या करें?"
+        },
+        "correct": "b",
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "End the session so they can get help",
+           "hi": "सत्र समाप्त करें"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Stay with them, say you have heard them, and give them the helpline numbers",
+           "hi": "उनके साथ रहें, कहें कि आपने सुना, और हेल्पलाइन नंबर दें"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Change the subject and finish the review",
+           "hi": "विषय बदलें और समीक्षा पूरी करें"
+          }
+         }
+        ]
+       },
+       {
+        "code": "after",
+        "prompt": {
+         "en": "Afterwards, what do you do?",
+         "hi": "उसके बाद आप क्या करते हैं?"
+        },
+        "correct": "a",
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Report it on the platform so a trained person follows up",
+           "hi": "मंच पर रिपोर्ट करें ताकि प्रशिक्षित व्यक्ति संपर्क करे"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Nothing — it was said in confidence",
+           "hi": "कुछ नहीं — यह गोपनीय था"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Post about it so others can help",
+           "hi": "इसके बारे में पोस्ट करें"
+          }
+         }
+        ]
+       },
+       {
+        "code": "not_motivation",
+        "prompt": {
+         "en": "Which response is wrong?",
+         "hi": "कौन-सी प्रतिक्रिया गलत है?"
+        },
+        "correct": "b",
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Telling them help exists and where to find it",
+           "hi": "बताना कि सहायता है और कहाँ"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Telling them they just need to work harder and stay motivated",
+           "hi": "कहना कि बस और मेहनत करें और प्रेरित रहें"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Staying with them rather than ending the call",
+           "hi": "कॉल समाप्त करने के बजाय साथ रहना"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "theme": {
+     "tokens": {
+      "--color-ink": "#1a1a2e",
+      "--color-paper": "#fdfcf7",
+      "--font-answer": "Noto Serif Devanagari, Georgia, serif",
+      "--color-rule-line": "#dbe4ee",
+      "--color-ink-correction": "#c1121f"
+     },
+     "signature": "ruled_answer_sheet"
+    }
+   }
+  },
+  "GET /engagements/99495bd2-1d01-4f34-b346-adb35943ace6/reviews": {
+   "status": 200,
+   "body": [
+    {
+     "id": "d2074c7f-ab45-4233-a21a-a8e111ec5fab",
+     "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+     "reviewerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "subjectId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "direction": "seeker_on_provider",
+     "rating": 4,
+     "bodyOriginal": "Good detail on structure. I would have liked more on time management under exam conditions.",
+     "bodyLang": "en"
+    }
+   ]
+  },
+  "GET /report-reasons?domainCode=upsc_cse": {
+   "status": 200,
+   "body": [
+    {
+     "code": "harassment",
+     "labels": {
+      "en": "Harassment or abuse",
+      "hi": "उत्पीड़न या दुर्व्यवहार"
+     },
+     "isWelfareConcern": false
+    },
+    {
+     "code": "off_platform_solicitation",
+     "labels": {
+      "en": "Asked to move off the platform",
+      "hi": "मंच से बाहर ले जाने का प्रयास"
+     },
+     "isWelfareConcern": false
+    },
+    {
+     "code": "misrepresentation",
+     "labels": {
+      "en": "False claims about themselves",
+      "hi": "स्वयं के बारे में झूठे दावे"
+     },
+     "isWelfareConcern": false
+    },
+    {
+     "code": "sexual_content",
+     "labels": {
+      "en": "Sexual or explicit content",
+      "hi": "यौन या अश्लील सामग्री"
+     },
+     "isWelfareConcern": false
+    },
+    {
+     "code": "spam",
+     "labels": {
+      "en": "Spam or advertising",
+      "hi": "स्पैम या विज्ञापन"
+     },
+     "isWelfareConcern": false
+    },
+    {
+     "code": "welfare_concern",
+     "labels": {
+      "en": "I'm worried about this person",
+      "hi": "मुझे इस व्यक्ति की चिंता है"
+     },
+     "isWelfareConcern": true
+    },
+    {
+     "code": "other",
+     "labels": {
+      "en": "Something else",
+      "hi": "कुछ और"
+     },
+     "isWelfareConcern": false
+    }
+   ]
+  }
+ }
+}

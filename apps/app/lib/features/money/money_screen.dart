@@ -129,7 +129,12 @@ class _Line extends StatelessWidget {
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 2),
-                Row(
+                // Wraps rather than overflowing when large text pushes
+                // the date and the chip past a narrow screen's width.
+                Wrap(
+                  spacing: Space.sm,
+                  runSpacing: Space.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: <Widget>[
                     if (line.createdAt != null)
                       PackText(
@@ -138,18 +143,24 @@ class _Line extends StatelessWidget {
                           color: BaseColors.inkFaint,
                         ),
                       ),
-                    const SizedBox(width: Space.sm),
                     StatusChip(
                       switch (line.escrowStatus) {
                         'held' => 'Held',
                         'released' => 'Released',
                         'refunded' => 'Refunded',
-                        _ => line.escrowStatus ?? '—',
+                        // Every escrow state the API has, by name — a raw
+                        // "settled_split" chip is a code, not a sentence.
+                        'disputed_hold' => 'Held in a dispute',
+                        'settled_split' => 'Divided by a ruling',
+                        'provider_discount' => 'Charged less',
+                        'pending' => 'Not yet held',
+                        _ => 'Other',
                       },
                       tone: switch (line.escrowStatus) {
-                        'held' => ChipTone.caution,
+                        'held' || 'disputed_hold' => ChipTone.caution,
                         'released' => ChipTone.verified,
-                        'refunded' => ChipTone.info,
+                        'refunded' || 'settled_split' || 'provider_discount' =>
+                          ChipTone.info,
                         _ => ChipTone.neutral,
                       },
                     ),

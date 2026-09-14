@@ -141,6 +141,15 @@ describe('client request bodies against the real API (D70)', () => {
       proposedAmountPaise: 70000, message: 'Back within 48 hours.',
     });
     expect(offer.status).toBe(201);
+
+    // What the seeker's list of offers draws: the amount under the name the
+    // app reads, and whose offer it is — by name, never by email.
+    const listed = await http().get(`/board/posts/${post.body.id}/proposals`).set('Authorization', seeker);
+    expect(listed.status).toBe(200);
+    expect(listed.body[0].proposedAmountPaise).toBe('70000');
+    expect(typeof listed.body[0].providerName).toBe('string');
+    expect(listed.body[0].providerName).not.toContain('@');
+
     const accepted = await http().post(`/board/proposals/${offer.body.id}/accept`).set('Authorization', seeker).set('Idempotency-Key', `accept-${offer.body.id}`);
     expect(accepted.status).toBe(201);
     expect(typeof accepted.body.resultingEngagementId).toBe('string');
@@ -157,6 +166,12 @@ describe('client request bodies against the real API (D70)', () => {
       credentialTypeCode: 'mains_cleared', domainCode: 'uppsc', skillCodes: ['answer_writing.essay'], verifierData: { reference: 'R-1' },
     });
     expect(cred.status).toBe(201);
+
+    // The provider's own list names what they submitted, not just the field.
+    const mine = await http().get('/me/credentials').set('Authorization', provider);
+    expect(mine.status).toBe(200);
+    expect(mine.body[0].credentialTypeCode).toBe('mains_cleared');
+    expect(typeof mine.body[0].credentialTypeLabels.en).toBe('string');
   });
 
   it('books a session as a window, not a length', async () => {

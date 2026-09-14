@@ -29,4 +29,7 @@ export interface ProviderCredentialRow {
   reviewedAt: Date | null;
   decisionNote: string;
   skillIds: string[];
+  /** The credential type's code and labels, so a provider's own list names what they submitted. */
+  credentialTypeCode?: string;
+  credentialTypeLabels?: Record<string, string>;
 }

@@ -1,0 +1,3560 @@
+{
+ "routes": [
+  "/provider",
+  "/provider/requests",
+  "/provider/work",
+  "/provider/work/d61735bd-f6d3-408d-ade6-d0539c7689c2",
+  "/provider/work/d61735bd-f6d3-408d-ade6-d0539c7689c2/evaluate",
+  "/provider/work/99495bd2-1d01-4f34-b346-adb35943ace6",
+  "/provider/earnings",
+  "/provider/standing",
+  "/provider/services",
+  "/provider/availability",
+  "/provider/training",
+  "/provider/languages",
+  "/provider/payout",
+  "/board/d24d941c-e236-49c4-b587-90c6a92dc091",
+  "/board/questions",
+  "/sessions",
+  "/you",
+  "/you/profile"
+ ],
+ "responses": {
+  "GET /auth/me": {
+   "status": 200,
+   "body": {
+    "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "email": "asha.rathore@demo.local",
+    "role": "provider",
+    "status": "active",
+    "emailVerifiedAt": null,
+    "adultConfirmedAt": "2026-08-30T16:53:24.217Z",
+    "lastLoginAt": "2026-09-14T11:52:05.125Z",
+    "displayName": null,
+    "preferredLang": "en",
+    "signupFamilyCode": null
+   }
+  },
+  "GET /catalogue": {
+   "status": 200,
+   "body": [
+    {
+     "code": "accountancy",
+     "labels": {
+      "family": {
+       "en": "Accountancy & Compliance",
+       "hi": "लेखा एवं अनुपालन"
+      },
+      "seeker": {
+       "en": "Client",
+       "hi": "ग्राहक"
+      },
+      "category": {
+       "en": "Practice area",
+       "hi": "कार्यक्षेत्र"
+      },
+      "provider": {
+       "en": "Advisor",
+       "hi": "सलाहकार"
+      },
+      "engagement": {
+       "en": "Consultation",
+       "hi": "परामर्श"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-accent": "#14532d",
+       "--color-correction": "#b45309"
+      },
+      "signature": "ledger_column"
+     },
+     "domains": [
+      {
+       "domainCode": "india_gst",
+       "familyCode": "accountancy",
+       "labels": {
+        "domain": {
+         "en": "GST & indirect tax",
+         "hi": "जीएसटी एवं अप्रत्यक्ष कर"
+        }
+       },
+       "languages": [
+        "en",
+        "hi"
+       ],
+       "defaultLanguage": "en",
+       "priceBands": {
+        "written_qa": [
+         20000,
+         80000
+        ],
+        "document_review": [
+         50000,
+         300000
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "code": "civil_services_exams",
+     "labels": {
+      "family": {
+       "en": "Civil Services Exams",
+       "hi": "सिविल सेवा परीक्षाएँ"
+      },
+      "seeker": {
+       "en": "Aspirant",
+       "hi": "अभ्यर्थी"
+      },
+      "category": {
+       "en": "Paper",
+       "hi": "प्रश्नपत्र"
+      },
+      "provider": {
+       "en": "Mentor",
+       "hi": "मेंटर"
+      },
+      "engagement": {
+       "en": "Task",
+       "hi": "कार्य"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-ink": "#1a1a2e",
+       "--color-paper": "#fdfcf7",
+       "--font-answer": "Noto Serif Devanagari, Georgia, serif",
+       "--color-rule-line": "#dbe4ee",
+       "--color-ink-correction": "#c1121f"
+      },
+      "signature": "ruled_answer_sheet"
+     },
+     "domains": [
+      {
+       "domainCode": "upsc_cse",
+       "familyCode": "civil_services_exams",
+       "labels": {
+        "domain": {
+         "en": "UPSC Civil Services",
+         "hi": "संघ लोक सेवा आयोग"
+        }
+       },
+       "languages": [
+        "hi",
+        "en"
+       ],
+       "defaultLanguage": "hi",
+       "priceBands": {
+        "live_session": [
+         20000,
+         60000
+        ],
+        "document_review": [
+         8000,
+         25000
+        ],
+        "review_with_live": [
+         22000,
+         70000
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "code": "higher_education",
+     "labels": {
+      "family": {
+       "en": "Higher Education Guidance",
+       "hi": "उच्च शिक्षा मार्गदर्शन"
+      },
+      "seeker": {
+       "en": "Applicant",
+       "hi": "आवेदक"
+      },
+      "category": {
+       "en": "Stage",
+       "hi": "चरण"
+      },
+      "provider": {
+       "en": "Counsellor",
+       "hi": "परामर्शदाता"
+      },
+      "engagement": {
+       "en": "Session",
+       "hi": "सत्र"
+      }
+     },
+     "theme": {
+      "tokens": {
+       "--color-accent": "#1e3a8a",
+       "--color-correction": "#be123c"
+      },
+      "signature": "margin_draft"
+     },
+     "domains": [
+      {
+       "domainCode": "study_us",
+       "familyCode": "higher_education",
+       "labels": {
+        "domain": {
+         "en": "United States",
+         "hi": "संयुक्त राज्य अमेरिका"
+        }
+       },
+       "languages": [
+        "en",
+        "hi"
+       ],
+       "defaultLanguage": "en",
+       "priceBands": {
+        "live_session": [
+         100000,
+         400000
+        ],
+        "document_review": [
+         80000,
+         500000
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "GET /me/readiness": {
+   "status": 200,
+   "body": {
+    "bookable": false,
+    "families": [
+     "civil_services_exams"
+    ],
+    "steps": [
+     {
+      "code": "email_verified",
+      "done": false,
+      "blocking": true
+     },
+     {
+      "code": "profile_complete",
+      "done": false,
+      "blocking": true,
+      "detail": {
+       "hasName": false,
+       "hasBio": false
+      }
+     },
+     {
+      "code": "credential_submitted",
+      "done": true,
+      "blocking": true,
+      "detail": {
+       "pending": 1,
+       "rejected": 0
+      }
+     },
+     {
+      "code": "skill_verified_at_tier",
+      "done": true,
+      "blocking": true,
+      "detail": {
+       "minTierByFamily": {
+        "civil_services_exams": "t2"
+       },
+       "verifiedSkills": 14,
+       "atMinTier": 14
+      }
+     },
+     {
+      "code": "working_language",
+      "done": true,
+      "blocking": true,
+      "detail": {
+       "languages": 3
+      }
+     },
+     {
+      "code": "service_published",
+      "done": true,
+      "blocking": true,
+      "detail": {
+       "services": 3
+      }
+     },
+     {
+      "code": "training_complete",
+      "done": true,
+      "blocking": true,
+      "detail": {
+       "families": [
+        {
+         "familyCode": "civil_services_exams",
+         "done": true
+        }
+       ]
+      }
+     },
+     {
+      "code": "availability_set",
+      "done": true,
+      "blocking": false,
+      "detail": {
+       "rules": 1
+      }
+     },
+     {
+      "code": "payout_destination",
+      "done": true,
+      "blocking": false
+     }
+    ]
+   }
+  },
+  "GET /engagements": {
+   "status": 200,
+   "body": [
+    {
+     "id": "f637e074-cf86-46f7-ac92-5e1833e21b49",
+     "seekerId": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "live_session",
+     "status": "draft",
+     "amountPaise": "95000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-31T17:38:22.748Z",
+     "reference": "ENG-F637E0",
+     "seeker": {
+      "id": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+      "displayName": "B. 1788197897189"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "6118f1de-3a8c-4c38-b18c-a57ffc3afa41",
+      "engagementId": "f637e074-cf86-46f7-ac92-5e1833e21b49",
+      "version": 1,
+      "state": "locked",
+      "language": "hi",
+      "outOfScope": {
+       "original": "Rewriting the answer for me. Predicting a real exam mark.",
+       "originalLanguage": "hi"
+      },
+      "expectedDeliverable": "The marked answer with margin notes.",
+      "successCriteria": "I can name the two things that cost me marks.",
+      "lockedAt": "2026-08-31T17:38:24.413Z",
+      "contentHash": "b1c209db291aeb279aa5861472dfddbefcd825b282fc0189c137fbc0563451a8",
+      "items": [
+       {
+        "id": "9c1e1b21-32eb-4ed5-8c31-aacf6a5d52c8",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark this answer against the rubric",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": true,
+        "addressedAt": "2026-08-31T17:38:29.745Z"
+       },
+       {
+        "id": "88d3458e-b37a-44f8-92fb-9f84cd33c9bb",
+        "ordinal": 1,
+        "text": {
+         "original": "Show where the directive was not met",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "c15a8a32-43bc-4e56-b35d-38cf3983656d",
+        "ordinal": 2,
+        "text": {
+         "original": "Suggest one structure I can reuse",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "30000",
+      "platformFeePaise": "4500",
+      "providerNetPaise": "25500",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": "2026-09-01T07:30:00.000Z",
+     "unreadMessages": 0
+    },
+    {
+     "id": "99495bd2-1d01-4f34-b346-adb35943ace6",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T17:37:22.584Z",
+     "reference": "ENG-99495B",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "4cfb069f-440f-4aac-9a85-4d5c3b8d16d9",
+      "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T17:37:22.678Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "c20328b5-6ac6-40c2-bc08-91905d42b5a5",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T17:37:22.831Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "8ffe32a2-f35e-4298-8921-1b083c3dc266",
+     "seekerId": "2176b800-6743-466b-b6b5-ae7fe9a581ba",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "live_session",
+     "status": "draft",
+     "amountPaise": "95000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-31T17:33:59.768Z",
+     "reference": "ENG-8FFE32",
+     "seeker": {
+      "id": "2176b800-6743-466b-b6b5-ae7fe9a581ba",
+      "displayName": "B. 1788197633694"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "c122f377-092f-4913-8f99-c0631ed83869",
+      "engagementId": "8ffe32a2-f35e-4298-8921-1b083c3dc266",
+      "version": 1,
+      "state": "locked",
+      "language": "hi",
+      "outOfScope": {
+       "original": "Rewriting the answer for me. Predicting a real exam mark.",
+       "originalLanguage": "hi"
+      },
+      "expectedDeliverable": "The marked answer with margin notes.",
+      "successCriteria": "I can name the two things that cost me marks.",
+      "lockedAt": "2026-08-31T17:34:01.492Z",
+      "contentHash": "b1c209db291aeb279aa5861472dfddbefcd825b282fc0189c137fbc0563451a8",
+      "items": [
+       {
+        "id": "de41d2cb-1144-4e37-81b3-7a4340014993",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark this answer against the rubric",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": true,
+        "addressedAt": "2026-08-31T17:34:06.906Z"
+       },
+       {
+        "id": "0998fb03-7175-4804-b7e7-bc454c65d511",
+        "ordinal": 1,
+        "text": {
+         "original": "Show where the directive was not met",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "6942b8f6-d38b-4f92-8656-a00cf85e6858",
+        "ordinal": 2,
+        "text": {
+         "original": "Suggest one structure I can reuse",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "30000",
+      "platformFeePaise": "4500",
+      "providerNetPaise": "25500",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": "2026-09-01T05:30:00.000Z",
+     "unreadMessages": 0
+    },
+    {
+     "id": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T17:29:34.590Z",
+     "reference": "ENG-BBD13F",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "a4bcf6d3-8260-4c25-b8ea-737c86a1b9d6",
+      "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T17:29:34.694Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "50f1e335-7ca7-43e9-9506-21402359e17c",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T17:29:34.849Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "a7b1505d-498e-4a4e-aad9-7e70626c1fe8",
+     "seekerId": "d4303b8c-7163-438c-bb40-4bf7da5eca2b",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "live_session",
+     "status": "draft",
+     "amountPaise": "95000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-31T16:35:29.355Z",
+     "reference": "ENG-A7B150",
+     "seeker": {
+      "id": "d4303b8c-7163-438c-bb40-4bf7da5eca2b",
+      "displayName": "W. 1788194089116"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "9280035e-5a86-4770-b837-991754b5d332",
+      "engagementId": "a7b1505d-498e-4a4e-aad9-7e70626c1fe8",
+      "version": 1,
+      "state": "locked",
+      "language": "hi",
+      "outOfScope": {
+       "original": "Rewriting the answer for me. Predicting a real exam mark.",
+       "originalLanguage": "hi"
+      },
+      "expectedDeliverable": "The marked answer with margin notes.",
+      "successCriteria": "I can name the two things that cost me marks.",
+      "lockedAt": "2026-08-31T16:35:39.186Z",
+      "contentHash": "7fe2d1e999bafcbe006203f22da28ef3506003b00336b0ada03d0f494554a6c7",
+      "items": [
+       {
+        "id": "7728f396-3dbe-4f04-961e-2ac6fa170fb0",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark this answer against the rubric",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": true,
+        "addressedAt": "2026-08-31T16:35:58.864Z"
+       },
+       {
+        "id": "80fa7ec0-2818-49ba-8884-71abaf4cfbeb",
+        "ordinal": 1,
+        "text": {
+         "original": "Show where \"critically examine\" was not met",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "d724ce38-487f-4f2d-998e-781e3ad85f06",
+        "ordinal": 2,
+        "text": {
+         "original": "Suggest one structure I can reuse",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": null,
+     "scheduledAt": "2026-09-01T12:30:00.000Z",
+     "unreadMessages": 0
+    },
+    {
+     "id": "2b5cf9d3-cc5a-4d2c-8d99-a1a52389b187",
+     "seekerId": "f3ac96e9-4446-4cf0-b47d-8b69acd61dd3",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "live_session",
+     "status": "draft",
+     "amountPaise": "95000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-31T16:32:55.620Z",
+     "reference": "ENG-2B5CF9",
+     "seeker": {
+      "id": "f3ac96e9-4446-4cf0-b47d-8b69acd61dd3",
+      "displayName": "B. 1788193967438"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "21c254cd-bac4-4bd4-89dc-34a9f7f15e6d",
+      "engagementId": "2b5cf9d3-cc5a-4d2c-8d99-a1a52389b187",
+      "version": 1,
+      "state": "locked",
+      "language": "hi",
+      "outOfScope": {
+       "original": "Rewriting the answer for me. Predicting a real exam mark.",
+       "originalLanguage": "hi"
+      },
+      "expectedDeliverable": "The marked answer with margin notes.",
+      "successCriteria": "I can name the two things that cost me marks.",
+      "lockedAt": "2026-08-31T16:32:57.581Z",
+      "contentHash": "b1c209db291aeb279aa5861472dfddbefcd825b282fc0189c137fbc0563451a8",
+      "items": [
+       {
+        "id": "5678b100-3ca1-4bc6-a691-985fbe5d6a88",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark this answer against the rubric",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": true,
+        "addressedAt": "2026-08-31T16:33:03.715Z"
+       },
+       {
+        "id": "5f304d42-ca9e-49ed-b258-4551ef0ec5a3",
+        "ordinal": 1,
+        "text": {
+         "original": "Show where the directive was not met",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "c3de00d8-b28a-4e98-a997-24394cf34921",
+        "ordinal": 2,
+        "text": {
+         "original": "Suggest one structure I can reuse",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "30000",
+      "platformFeePaise": "4500",
+      "providerNetPaise": "25500",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": "2026-09-01T03:30:00.000Z",
+     "unreadMessages": 0
+    },
+    {
+     "id": "ea5ba3fe-6665-477a-8f53-ac46e8fbbb95",
+     "seekerId": "98dfc805-8055-4a8d-9ac1-5367057792c1",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "live_session",
+     "status": "draft",
+     "amountPaise": "95000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-31T16:31:19.285Z",
+     "reference": "ENG-EA5BA3",
+     "seeker": {
+      "id": "98dfc805-8055-4a8d-9ac1-5367057792c1",
+      "displayName": "B. 1788193871234"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "0bb0ae05-9a13-41ff-ad2f-32e47eb5f489",
+      "engagementId": "ea5ba3fe-6665-477a-8f53-ac46e8fbbb95",
+      "version": 1,
+      "state": "locked",
+      "language": "hi",
+      "outOfScope": {
+       "original": "Rewriting the answer for me. Predicting a real exam mark.",
+       "originalLanguage": "hi"
+      },
+      "expectedDeliverable": "The marked answer with margin notes.",
+      "successCriteria": "I can name the two things that cost me marks.",
+      "lockedAt": "2026-08-31T16:31:21.255Z",
+      "contentHash": "b1c209db291aeb279aa5861472dfddbefcd825b282fc0189c137fbc0563451a8",
+      "items": [
+       {
+        "id": "ea8186b2-11e8-4167-8084-bc70837e3b5c",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark this answer against the rubric",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": true,
+        "addressedAt": "2026-08-31T16:31:27.337Z"
+       },
+       {
+        "id": "4285a343-c2f5-4d18-8a2a-b1edae607790",
+        "ordinal": 1,
+        "text": {
+         "original": "Show where the directive was not met",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "915c78cc-224f-4c83-a358-138f583f722a",
+        "ordinal": 2,
+        "text": {
+         "original": "Suggest one structure I can reuse",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "30000",
+      "platformFeePaise": "4500",
+      "providerNetPaise": "25500",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": "2026-09-01T01:30:00.000Z",
+     "unreadMessages": 0
+    },
+    {
+     "id": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T16:27:41.352Z",
+     "reference": "ENG-3875B7",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "0dfaf808-5804-4936-be8a-82a62756fb6a",
+      "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T16:27:41.590Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "74b87aef-915c-4b7a-ae15-5ebf1b8a6787",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T16:27:41.842Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "70000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T16:26:04.033Z",
+     "reference": "ENG-4F75F7",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "77b1433b-5137-4fa7-bfdf-465dbc2ee078",
+      "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-31T16:26:04.256Z",
+      "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+      "items": [
+       {
+        "id": "90d477e0-3164-42c0-bfc9-2ec754264702",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "70000",
+      "platformFeePaise": "10500",
+      "providerNetPaise": "59500",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T16:26:04.581Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "live_session",
+     "status": "working",
+     "amountPaise": "60000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T14:36:35.905Z",
+     "reference": "ENG-AE6178",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "31eb1d10-367d-4bc2-918b-7b5d621ef8e7",
+      "engagementId": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "A plan for the next four weeks of answer practice",
+      "successCriteria": "I leave with a written weekly schedule I have agreed to",
+      "lockedAt": "2026-08-31T14:36:36.092Z",
+      "contentHash": "697615bb1b2c01ed70899f42d2e67ad753723f93a5b5fd98310f490b521631b1",
+      "items": [
+       {
+        "id": "6394dbd7-a41c-4bce-af66-1c9797e21514",
+        "ordinal": 0,
+        "text": {
+         "original": "Look at last month's answers together",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "a46070a9-88df-4d76-8eaa-7c816fcc20d6",
+        "ordinal": 1,
+        "text": {
+         "original": "Agree what to practise weekly",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "60000",
+      "platformFeePaise": "9000",
+      "providerNetPaise": "51000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": "2026-09-01T14:36:36.153Z",
+     "unreadMessages": 0
+    },
+    {
+     "id": "ea05a295-6869-4ea8-9ad3-0707f1b8ca85",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:41:06.902Z",
+     "reference": "ENG-EA05A2",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "41bebb90-061d-4604-9bd9-fe157fcfbaf2",
+      "engagementId": "ea05a295-6869-4ea8-9ad3-0707f1b8ca85",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer",
+      "successCriteria": "I can name my weakest areas",
+      "lockedAt": "2026-09-14T07:22:16.832Z",
+      "contentHash": "c566c360cac9f9de5cb8b6a89f73389b0b3fea3cfb1917cca4df517d9c6d158f",
+      "items": [
+       {
+        "id": "afa4a0c3-2c5f-45a7-a0de-dac6956f517c",
+        "ordinal": 0,
+        "text": {
+         "original": "Review my polity answer structure to",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": "2026-09-14T07:56:13.763Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "9ad8345b-c6e3-4774-bc03-918f9bed7bae",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:41:06.785Z",
+     "reference": "ENG-9AD834",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "cc7a18ca-40dd-45d8-b960-cf3d88960b22",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:41:06.598Z",
+     "reference": "ENG-CC7A18",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "6bed3f6c-bbe9-4ed6-aa50-2de86cb5a3ad",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:40:49.901Z",
+     "reference": "ENG-6BED3F",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "73795dd7-2fd5-479f-8704-8e9a754b990f",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "draft",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T08:40:49.702Z",
+     "reference": "ENG-73795D",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": null,
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "4a2203f6-2da1-4b26-b24b-95094087e49d",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "100000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T06:35:57.850Z",
+     "reference": "ENG-4A2203",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "c09cc40d-cf28-484b-b8d6-611021bcc3e0",
+      "engagementId": "4a2203f6-2da1-4b26-b24b-95094087e49d",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Marked answer",
+      "successCriteria": "Two fixes",
+      "lockedAt": "2026-08-31T06:35:58.417Z",
+      "contentHash": "0ab3bfc70cae5596925fbd490a5c7859a5d88ddce8ec2b7cb3f904efdcfa6964",
+      "items": [
+       {
+        "id": "0e86be68-be35-419d-a64b-feff04dd6fbb",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my answer",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "settled_split",
+      "heldPaise": "100000",
+      "platformFeePaise": "15000",
+      "providerNetPaise": "85000",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T06:37:44.549Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "17b6ec1d-bea5-4696-92f7-e1e8f998f13f",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "100000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T06:32:27.721Z",
+     "reference": "ENG-17B6EC",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "98dd6964-858f-42c8-bcfd-7fd656d60900",
+      "engagementId": "17b6ec1d-bea5-4696-92f7-e1e8f998f13f",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Marked answer",
+      "successCriteria": "Two fixes",
+      "lockedAt": "2026-08-31T06:33:13.108Z",
+      "contentHash": "0ab3bfc70cae5596925fbd490a5c7859a5d88ddce8ec2b7cb3f904efdcfa6964",
+      "items": [
+       {
+        "id": "5aa7ac8f-c83f-4986-9abf-6599d098a134",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my answer",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "100000",
+      "platformFeePaise": "15000",
+      "providerNetPaise": "85000",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "120000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-31T05:26:18.910Z",
+     "reference": "ENG-0F0DC2",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "163df5c3-8261-49c6-b3fb-26b74b404fc4",
+      "engagementId": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Marked answer",
+      "successCriteria": "Two fixes named",
+      "lockedAt": "2026-08-31T05:26:19.464Z",
+      "contentHash": "b066fc0e198e6d5002a139efb35aa411fcde7e5c4435e2b1b3768a99b644bed1",
+      "items": [
+       {
+        "id": "7f86d08f-7be4-41b0-850b-c4397edbb139",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my GS1 answer",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "120000",
+      "platformFeePaise": "18000",
+      "providerNetPaise": "102000",
+      "currency": "INR",
+      "releasedOn": "2026-08-31T05:45:27.947Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "delivered",
+     "amountPaise": "150000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-30T19:49:14.631Z",
+     "reference": "ENG-D61735",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "d1e58a1d-fece-4e46-924c-c675e5468d04",
+      "engagementId": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": {
+       "original": "Not the essay paper",
+       "originalLanguage": "en"
+      },
+      "expectedDeliverable": "Marked answer with written remarks",
+      "successCriteria": "I can name two concrete fixes to my structure",
+      "lockedAt": "2026-08-30T19:49:15.349Z",
+      "contentHash": "c49192a1a569c69d3172a039be8148def42f512c408c57c24cd964078a6b77e6",
+      "items": [
+       {
+        "id": "73ecfb17-78b5-498d-8166-83d805a6c021",
+        "ordinal": 0,
+        "text": {
+         "original": "Mark my GS1 modern history answer against the rubric",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "81a407f8-c723-4080-81bb-b08d3fce3d34",
+        "ordinal": 1,
+        "text": {
+         "original": "Show me what a top-scoring introduction looks like",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "150000",
+      "platformFeePaise": "22500",
+      "providerNetPaise": "127500",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "3292091e-d3f3-45e3-9d45-6a1d14c5bc55",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "status": "working",
+     "amountPaise": "8000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-30T17:59:53.772Z",
+     "reference": "ENG-329209",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "2b9f5dc5-ef4e-4522-9dae-ec38ab2745b5",
+      "engagementId": "3292091e-d3f3-45e3-9d45-6a1d14c5bc55",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": {
+       "original": "No essay paper",
+       "originalLanguage": "en"
+      },
+      "expectedDeliverable": "Marked answer with remarks",
+      "successCriteria": "I know two concrete fixes",
+      "lockedAt": "2026-08-30T19:45:53.361Z",
+      "contentHash": "4477bf6f7dce714d2fe68d40c4d612961d60cdbebb023eda9336e7e506610c22",
+      "items": [
+       {
+        "id": "cb33c6c1-7440-4f8e-ba12-dbb94dff124e",
+        "ordinal": 0,
+        "text": {
+         "original": "Review my GS1 history answer for structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "5111f558-4ffa-474a-b894-ab059bfea80d",
+        "ordinal": 1,
+        "text": {
+         "original": "Show what a top-scoring introduction looks like",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "awarded",
+      "status": "held",
+      "heldPaise": "8000",
+      "platformFeePaise": "1200",
+      "providerNetPaise": "6800",
+      "currency": "INR",
+      "releasedOn": null
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "aff47792-3169-48bc-9e56-b19e61885366",
+     "seekerId": "0bcaacfe-af41-405a-93da-63ce40ab3d8e",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "80000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-30T16:53:37.497Z",
+     "reference": "ENG-AFF477",
+     "seeker": {
+      "id": "0bcaacfe-af41-405a-93da-63ce40ab3d8e",
+      "displayName": "S. Iyer"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "9e5fb926-4450-43cf-b3c8-3d6506363968",
+      "engagementId": "aff47792-3169-48bc-9e56-b19e61885366",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-30T16:53:37.515Z",
+      "contentHash": "68c503bfc5e1e9def3bd9c4423e8a42046b19d6b5740247b06cd1c6ee2ca7e17",
+      "items": [
+       {
+        "id": "3ecef627-7cdc-49d3-b4c4-4a36e8300788",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "aa9b2554-382f-4947-baf2-cfbc89d55eb3",
+        "ordinal": 1,
+        "text": {
+         "original": "Check the factual claims",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "80000",
+      "platformFeePaise": "12000",
+      "providerNetPaise": "68000",
+      "currency": "INR",
+      "releasedOn": "2026-08-30T16:53:37.581Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "77290f66-d6c6-4311-994f-c48ab2e8dcc7",
+     "seekerId": "e4cd3099-e3b2-4cf5-a19c-f940c29bd7de",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "95000",
+     "currency": "INR",
+     "language": "hi",
+     "createdAt": "2026-08-30T16:53:37.377Z",
+     "reference": "ENG-77290F",
+     "seeker": {
+      "id": "e4cd3099-e3b2-4cf5-a19c-f940c29bd7de",
+      "displayName": "R. Verma"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "d189e5ae-0e1d-4dea-a372-22a4455e8b45",
+      "engagementId": "77290f66-d6c6-4311-994f-c48ab2e8dcc7",
+      "version": 1,
+      "state": "locked",
+      "language": "hi",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-30T16:53:37.396Z",
+      "contentHash": "5fbf5a2b2cf0e57071562407366f3ecfded22ea32a74a93388b9c269a3feddf5",
+      "items": [
+       {
+        "id": "b9a6dc53-0bb8-4cd6-9030-f461f3796447",
+        "ordinal": 0,
+        "text": {
+         "original": "संरचना की समीक्षा करें",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "e805f316-00a7-48ab-9808-5842cb288fac",
+        "ordinal": 1,
+        "text": {
+         "original": "तथ्यों की जाँच करें",
+         "originalLanguage": "hi",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "95000",
+      "platformFeePaise": "14250",
+      "providerNetPaise": "80750",
+      "currency": "INR",
+      "releasedOn": "2026-08-30T16:53:37.466Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    },
+    {
+     "id": "cc20505f-0be9-4980-a758-8bb14b78b937",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "status": "completed",
+     "amountPaise": "120000",
+     "currency": "INR",
+     "language": "en",
+     "createdAt": "2026-08-30T16:53:36.964Z",
+     "reference": "ENG-CC2050",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "provider": {
+      "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "displayName": "A. Rathore"
+     },
+     "familyCode": "civil_services_exams",
+     "agenda": {
+      "id": "1d9a396f-4fbb-4279-a3a6-686deba1203a",
+      "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+      "version": 1,
+      "state": "locked",
+      "language": "en",
+      "outOfScope": null,
+      "expectedDeliverable": "Annotated answer with a scored rubric",
+      "successCriteria": "The seeker can name their three weakest areas",
+      "lockedAt": "2026-08-30T16:53:37.146Z",
+      "contentHash": "68c503bfc5e1e9def3bd9c4423e8a42046b19d6b5740247b06cd1c6ee2ca7e17",
+      "items": [
+       {
+        "id": "969cc965-4e39-4adf-b83d-a0184c016e82",
+        "ordinal": 0,
+        "text": {
+         "original": "Review the structure",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       },
+       {
+        "id": "84c6b91f-4c3c-4912-8f92-c25da1555a13",
+        "ordinal": 1,
+        "text": {
+         "original": "Check the factual claims",
+         "originalLanguage": "en",
+         "translations": {}
+        },
+        "addressed": false,
+        "addressedAt": null
+       }
+      ]
+     },
+     "escrow": {
+      "stage": "released",
+      "status": "released",
+      "heldPaise": "120000",
+      "platformFeePaise": "18000",
+      "providerNetPaise": "102000",
+      "currency": "INR",
+      "releasedOn": "2026-08-30T16:53:37.306Z"
+     },
+     "scheduledAt": null,
+     "unreadMessages": 0
+    }
+   ]
+  },
+  "GET /me/earnings": {
+   "status": 200,
+   "body": {
+    "summary": {
+     "currency": "INR",
+     "inEscrowPaise": "758000",
+     "owedPaise": "722500",
+     "paidOutPaise": "0",
+     "inTransitPaise": "722500",
+     "failedPaise": "0",
+     "platformFeePaise": "131250"
+    },
+    "lines": [
+     {
+      "payoutId": "ca29aeb0-ee62-473b-bd24-ab0eac5af0c4",
+      "engagementId": "ea05a295-6869-4ea8-9ad3-0707f1b8ca85",
+      "amountPaise": "68000",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": "5501",
+      "createdAt": "2026-09-14T07:56:13.763Z"
+     },
+     {
+      "payoutId": "45acbf1a-fd37-4289-9ab7-97cf844531c4",
+      "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+      "amountPaise": "59500",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": "5501",
+      "createdAt": "2026-08-31T17:37:22.831Z"
+     },
+     {
+      "payoutId": "ae8ae561-2134-4b0f-9544-02f81e86cb32",
+      "engagementId": "bbd13f54-96c9-4142-92ec-4fe465984d8b",
+      "amountPaise": "59500",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": "5501",
+      "createdAt": "2026-08-31T17:29:34.849Z"
+     },
+     {
+      "payoutId": "1490ac18-cb14-4a9d-b1d6-9202e51db12d",
+      "engagementId": "3875b7cc-9aae-4a33-bbc6-589c0028959d",
+      "amountPaise": "59500",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": "5501",
+      "createdAt": "2026-08-31T16:27:41.842Z"
+     },
+     {
+      "payoutId": "09de54a3-bca2-4a78-88b5-b6f54bac734b",
+      "engagementId": "4f75f71d-6765-4ff1-b8f9-d304b25c64cf",
+      "amountPaise": "59500",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": "5501",
+      "createdAt": "2026-08-31T16:26:04.581Z"
+     },
+     {
+      "payoutId": "f016281f-e907-4645-804c-ec97e0783c16",
+      "engagementId": "4a2203f6-2da1-4b26-b24b-95094087e49d",
+      "amountPaise": "63750",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": "5501",
+      "createdAt": "2026-08-31T06:37:44.549Z"
+     },
+     {
+      "payoutId": "f60ba158-c795-419d-8122-5de053748e25",
+      "engagementId": "0f0dc2db-0f97-481a-97be-2c5ae3c4efff",
+      "amountPaise": "102000",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": "5501",
+      "createdAt": "2026-08-31T05:45:27.947Z"
+     },
+     {
+      "payoutId": "17fa6638-cc6c-4f80-9e54-84ca80ec5fe3",
+      "engagementId": "aff47792-3169-48bc-9e56-b19e61885366",
+      "amountPaise": "68000",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": null,
+      "createdAt": "2026-08-30T16:53:37.581Z"
+     },
+     {
+      "payoutId": "0145f30c-bc2a-44f0-94b5-fbaf081f2ff4",
+      "engagementId": "77290f66-d6c6-4311-994f-c48ab2e8dcc7",
+      "amountPaise": "80750",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": null,
+      "createdAt": "2026-08-30T16:53:37.466Z"
+     },
+     {
+      "payoutId": "944a2b4d-053c-4689-81a0-8667dccdbe49",
+      "engagementId": "cc20505f-0be9-4980-a758-8bb14b78b937",
+      "amountPaise": "102000",
+      "currency": "INR",
+      "status": "initiated",
+      "bankAccountLast4": null,
+      "createdAt": "2026-08-30T16:53:37.306Z"
+     }
+    ],
+    "destination": {
+     "accountHolderName": "Asha Rathore",
+     "bankAccountLast4": "5501",
+     "bankIfsc": "HDFC0001234",
+     "verifiedAt": "2026-08-31T05:42:03.199Z",
+     "verificationNote": "sandbox penny-drop: no real deposit was made",
+     "updatedAt": "2026-08-31T05:42:03.201Z"
+    }
+   }
+  },
+  "GET /me/paid-work-status": {
+   "status": 200,
+   "body": {
+    "blocked": false
+   }
+  },
+  "GET /board/posts": {
+   "status": 200,
+   "body": [
+    {
+     "id": "d24d941c-e236-49c4-b587-90c6a92dc091",
+     "seekerId": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-D24D94",
+     "postedAt": "2026-08-31T17:38:35.682Z",
+     "seeker": {
+      "id": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+      "displayName": "B. 1788197897189"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 1
+    },
+    {
+     "id": "faa6dcbb-7d72-486c-bb13-ad1feb52448d",
+     "seekerId": "2176b800-6743-466b-b6b5-ae7fe9a581ba",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-FAA6DC",
+     "postedAt": "2026-08-31T17:34:12.910Z",
+     "seeker": {
+      "id": "2176b800-6743-466b-b6b5-ae7fe9a581ba",
+      "displayName": "B. 1788197633694"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "fb07fb85-4b27-4c44-90ca-e163aca75c07",
+     "seekerId": "d4303b8c-7163-438c-bb40-4bf7da5eca2b",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-FB07FB",
+     "postedAt": "2026-08-31T16:36:12.532Z",
+     "seeker": {
+      "id": "d4303b8c-7163-438c-bb40-4bf7da5eca2b",
+      "displayName": "W. 1788194089116"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "561ee7d3-39d6-4697-8b5a-44b59731a26d",
+     "seekerId": "f3ac96e9-4446-4cf0-b47d-8b69acd61dd3",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-561EE7",
+     "postedAt": "2026-08-31T16:33:10.571Z",
+     "seeker": {
+      "id": "f3ac96e9-4446-4cf0-b47d-8b69acd61dd3",
+      "displayName": "B. 1788193967438"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "da52b950-b510-4798-85ab-80597e8b0ac6",
+     "seekerId": "98dfc805-8055-4a8d-9ac1-5367057792c1",
+     "domainCode": "upsc_cse",
+     "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "engagementType": "document_review",
+     "language": "hi",
+     "currency": "INR",
+     "budgetMinPaise": "8000",
+     "budgetMaxPaise": "25000",
+     "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+     "status": "open",
+     "reference": "REQ-DA52B9",
+     "postedAt": "2026-08-31T16:31:34.039Z",
+     "seeker": {
+      "id": "98dfc805-8055-4a8d-9ac1-5367057792c1",
+      "displayName": "B. 1788193871234"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 0
+    },
+    {
+     "id": "c2220d51-b905-48e1-a49e-0ba032d2bb48",
+     "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "domainCode": "upsc_cse",
+     "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "engagementType": "document_review",
+     "language": "en",
+     "currency": "INR",
+     "budgetMinPaise": "60000",
+     "budgetMaxPaise": "120000",
+     "description": "Four answers from last week's test. I want to know whether the problem is what I know or how I am writing it down.",
+     "status": "open",
+     "reference": "REQ-C2220D",
+     "postedAt": "2026-08-31T14:36:36.180Z",
+     "seeker": {
+      "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+      "displayName": "P. Nair"
+     },
+     "familyCode": "civil_services_exams",
+     "proposalCount": 1
+    }
+   ]
+  },
+  "GET /engagements/d61735bd-f6d3-408d-ade6-d0539c7689c2": {
+   "status": 200,
+   "body": {
+    "id": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+    "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "domainCode": "upsc_cse",
+    "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+    "engagementType": "document_review",
+    "currency": "INR",
+    "amountPaise": "150000",
+    "language": "en",
+    "status": "delivered",
+    "reference": "ENG-D61735",
+    "seeker": {
+     "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "displayName": "P. Nair"
+    },
+    "provider": {
+     "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "displayName": "A. Rathore"
+    },
+    "familyCode": "civil_services_exams",
+    "agenda": {
+     "id": "d1e58a1d-fece-4e46-924c-c675e5468d04",
+     "engagementId": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+     "version": 1,
+     "state": "locked",
+     "language": "en",
+     "outOfScope": {
+      "original": "Not the essay paper",
+      "originalLanguage": "en"
+     },
+     "expectedDeliverable": "Marked answer with written remarks",
+     "successCriteria": "I can name two concrete fixes to my structure",
+     "lockedAt": "2026-08-30T19:49:15.349Z",
+     "contentHash": "c49192a1a569c69d3172a039be8148def42f512c408c57c24cd964078a6b77e6",
+     "items": [
+      {
+       "id": "73ecfb17-78b5-498d-8166-83d805a6c021",
+       "ordinal": 0,
+       "text": {
+        "original": "Mark my GS1 modern history answer against the rubric",
+        "originalLanguage": "en",
+        "translations": {}
+       },
+       "addressed": false,
+       "addressedAt": null
+      },
+      {
+       "id": "81a407f8-c723-4080-81bb-b08d3fce3d34",
+       "ordinal": 1,
+       "text": {
+        "original": "Show me what a top-scoring introduction looks like",
+        "originalLanguage": "en",
+        "translations": {}
+       },
+       "addressed": false,
+       "addressedAt": null
+      }
+     ]
+    },
+    "escrow": {
+     "stage": "awarded",
+     "status": "held",
+     "heldPaise": "150000",
+     "platformFeePaise": "22500",
+     "providerNetPaise": "127500",
+     "currency": "INR",
+     "releasedOn": null
+    },
+    "scheduledAt": null,
+    "unreadMessages": 0
+   }
+  },
+  "GET /engagements/d61735bd-f6d3-408d-ade6-d0539c7689c2/assessment-template": {
+   "status": 204,
+   "body": null
+  },
+  "GET /engagements/d61735bd-f6d3-408d-ade6-d0539c7689c2/evaluations/latest": {
+   "status": 204,
+   "body": null
+  },
+  "GET /engagements/d61735bd-f6d3-408d-ade6-d0539c7689c2/submissions/latest": {
+   "status": 200,
+   "body": {
+    "id": "0c821e68-d5d8-4813-bdd6-d91e86e8edf7",
+    "engagementId": "d61735bd-f6d3-408d-ade6-d0539c7689c2",
+    "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "contentRef": "",
+    "attachmentId": "7389ad5f-c782-4e42-89d5-c967bf33cd2d",
+    "attachmentContentType": "application/pdf",
+    "note": "Ran out of time on the last part",
+    "submittedAt": "2026-08-30T20:13:23.869Z"
+   }
+  },
+  "GET /engagements/99495bd2-1d01-4f34-b346-adb35943ace6": {
+   "status": 200,
+   "body": {
+    "id": "99495bd2-1d01-4f34-b346-adb35943ace6",
+    "seekerId": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+    "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+    "domainCode": "upsc_cse",
+    "categoryId": "0f1040cb-80a8-479c-8aad-2c071863836b",
+    "engagementType": "document_review",
+    "currency": "INR",
+    "amountPaise": "70000",
+    "language": "en",
+    "status": "completed",
+    "reference": "ENG-99495B",
+    "seeker": {
+     "id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "displayName": "P. Nair"
+    },
+    "provider": {
+     "id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "displayName": "A. Rathore"
+    },
+    "familyCode": "civil_services_exams",
+    "agenda": {
+     "id": "4cfb069f-440f-4aac-9a85-4d5c3b8d16d9",
+     "engagementId": "99495bd2-1d01-4f34-b346-adb35943ace6",
+     "version": 1,
+     "state": "locked",
+     "language": "en",
+     "outOfScope": null,
+     "expectedDeliverable": "Annotated answer with a scored rubric",
+     "successCriteria": "The seeker can name their three weakest areas",
+     "lockedAt": "2026-08-31T17:37:22.678Z",
+     "contentHash": "21332020872c460f63f943c670ddfc47a1f2a544d3a0b63a10ee9a60a50b4c24",
+     "items": [
+      {
+       "id": "c20328b5-6ac6-40c2-bc08-91905d42b5a5",
+       "ordinal": 0,
+       "text": {
+        "original": "Review the structure",
+        "originalLanguage": "en",
+        "translations": {}
+       },
+       "addressed": false,
+       "addressedAt": null
+      }
+     ]
+    },
+    "escrow": {
+     "stage": "released",
+     "status": "released",
+     "heldPaise": "70000",
+     "platformFeePaise": "10500",
+     "providerNetPaise": "59500",
+     "currency": "INR",
+     "releasedOn": "2026-08-31T17:37:22.831Z"
+    },
+    "scheduledAt": null,
+    "unreadMessages": 0
+   }
+  },
+  "GET /me/payout-destination": {
+   "status": 200,
+   "body": {
+    "accountHolderName": "Asha Rathore",
+    "bankAccountLast4": "5501",
+    "bankIfsc": "HDFC0001234",
+    "verifiedAt": "2026-08-31T05:42:03.199Z",
+    "verificationNote": "sandbox penny-drop: no real deposit was made",
+    "updatedAt": "2026-08-31T05:42:03.201Z"
+   }
+  },
+  "GET /me/skill-stats": {
+   "status": 200,
+   "body": [
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "01a98e56-7115-4f9c-b224-8d0fac804260",
+     "tier": "t3",
+     "completedEngagements": 7,
+     "refundedEngagements": 0,
+     "reviewCount": 7,
+     "avgRating": 4,
+     "lastCompletedAt": "2026-08-31T17:37:22.841Z",
+     "skillCode": "answer_writing.gs.geography",
+     "labels": {
+      "en": "Geography answer writing",
+      "hi": "भूगोल उत्तर लेखन"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "30d65857-44e8-4cc6-8411-7042755b7bc1",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "answer_writing.gs.environment",
+     "labels": {
+      "en": "Environment answer writing"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "35e426c6-42dc-4bad-ac13-fe51846a6938",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "language.english.formal",
+     "labels": {
+      "en": "Formal English"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "3c1f85c6-ce27-4ce9-b19a-8a3f13a16c73",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "answer_writing.ethics",
+     "labels": {
+      "en": "Ethics and case studies",
+      "hi": "नीतिशास्त्र"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "3dfd9126-9d67-4e29-b7ac-b75c409f6f51",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "csat.aptitude",
+     "labels": {
+      "en": "Aptitude / CSAT"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "449ab5bf-1b64-4639-a76c-8716113950ac",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "optional_subject.guidance",
+     "labels": {
+      "en": "Optional subject guidance"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "54fd4223-4844-46e2-a61d-4a892b63df23",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "answer_writing.gs.economy",
+     "labels": {
+      "en": "Economy answer writing",
+      "hi": "अर्थव्यवस्था उत्तर लेखन"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "639948b8-4da4-4e28-b2fe-6e2c1590ad31",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "answer_writing.gs.polity",
+     "labels": {
+      "en": "Polity answer writing",
+      "hi": "राजव्यवस्था उत्तर लेखन"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "6538f327-8f8b-4458-8db5-c03e8b8a3528",
+     "tier": "t3",
+     "completedEngagements": 7,
+     "refundedEngagements": 0,
+     "reviewCount": 7,
+     "avgRating": 4,
+     "lastCompletedAt": "2026-08-31T17:37:22.841Z",
+     "skillCode": "answer_writing.gs.history",
+     "labels": {
+      "en": "History answer writing",
+      "hi": "इतिहास उत्तर लेखन"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "867edb48-ba21-4465-add3-1adb3afab56a",
+     "tier": "t3",
+     "completedEngagements": 4,
+     "refundedEngagements": 0,
+     "reviewCount": 1,
+     "avgRating": 4,
+     "lastCompletedAt": "2026-09-14T07:56:13.889Z",
+     "skillCode": "prelims.objective_strategy",
+     "labels": {
+      "en": "Prelims objective strategy"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "99b8527b-06c1-470f-a274-0a1fbba6e3e3",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "answer_writing.essay",
+     "labels": {
+      "en": "Essay writing",
+      "hi": "निबंध लेखन"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "9e0e8472-1f48-4988-9707-f164eb262f0b",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "interview.personality",
+     "labels": {
+      "en": "Personality test / interview",
+      "hi": "साक्षात्कार"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "a8fcac13-d422-4c26-95e1-3b6e177bcc4b",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "language.hindi.formal",
+     "labels": {
+      "en": "Formal Hindi",
+      "hi": "सामान्य हिन्दी"
+     }
+    },
+    {
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "skillId": "c1396175-f766-4dc7-b39a-0dac540ea51c",
+     "tier": "t3",
+     "completedEngagements": 0,
+     "refundedEngagements": 0,
+     "reviewCount": 0,
+     "avgRating": null,
+     "lastCompletedAt": null,
+     "skillCode": "answer_writing.gs.science_tech",
+     "labels": {
+      "en": "Science & technology answer writing"
+     }
+    }
+   ]
+  },
+  "GET /me/credentials": {
+   "status": 200,
+   "body": [
+    {
+     "id": "e1b0a55b-102c-459b-b769-d3889b1d5a57",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "6a1301bb-4e27-40bc-bb36-1fc3a017525e",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "year": 2020,
+      "documentRef": "s3://private/call-letter.pdf",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c2"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-28T04:40:33.559Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "interview_appeared",
+     "credentialTypeLabels": {
+      "en": "Interview appeared",
+      "hi": "साक्षात्कार में सम्मिलित"
+     }
+    },
+    {
+     "id": "12eaa1f7-86f8-4a63-b6af-af7b7910d14a",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "d22d87da-eaff-48bd-8bdf-e730f0e5c854",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "rank": 342,
+      "year": 2019,
+      "rollNumber": "0451923",
+      "claimedName": "Asha Rathore",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c1"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-28T04:40:33.553Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "exam_rank",
+     "credentialTypeLabels": {
+      "en": "Exam rank",
+      "hi": "परीक्षा रैंक"
+     }
+    },
+    {
+     "id": "b5d21a12-3819-4fb1-a74c-b2991f875f90",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "6a1301bb-4e27-40bc-bb36-1fc3a017525e",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "year": 2020,
+      "documentRef": "s3://private/call-letter.pdf",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c2"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-27T17:15:00.719Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "interview_appeared",
+     "credentialTypeLabels": {
+      "en": "Interview appeared",
+      "hi": "साक्षात्कार में सम्मिलित"
+     }
+    },
+    {
+     "id": "a3cd6730-4f37-41e1-9d50-b1e747f0edca",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "d22d87da-eaff-48bd-8bdf-e730f0e5c854",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "rank": 342,
+      "year": 2019,
+      "rollNumber": "0451923",
+      "claimedName": "Asha Rathore",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c1"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-27T17:15:00.714Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "exam_rank",
+     "credentialTypeLabels": {
+      "en": "Exam rank",
+      "hi": "परीक्षा रैंक"
+     }
+    },
+    {
+     "id": "c9c0a982-72cf-4709-9701-6eb2ac5e04b2",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "6a1301bb-4e27-40bc-bb36-1fc3a017525e",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "year": 2020,
+      "documentRef": "s3://private/call-letter.pdf",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c2"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-22T17:14:40.336Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "interview_appeared",
+     "credentialTypeLabels": {
+      "en": "Interview appeared",
+      "hi": "साक्षात्कार में सम्मिलित"
+     }
+    },
+    {
+     "id": "795c83f1-ee0e-4006-8678-b97f4673f37a",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "d22d87da-eaff-48bd-8bdf-e730f0e5c854",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "rank": 342,
+      "year": 2019,
+      "rollNumber": "0451923",
+      "claimedName": "Asha Rathore",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c1"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-22T17:14:40.332Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "exam_rank",
+     "credentialTypeLabels": {
+      "en": "Exam rank",
+      "hi": "परीक्षा रैंक"
+     }
+    },
+    {
+     "id": "9b0849c7-d688-492e-a6ed-c2841d0b0f8f",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "6a1301bb-4e27-40bc-bb36-1fc3a017525e",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "year": 2020,
+      "documentRef": "s3://private/call-letter.pdf",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c2"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-22T16:30:45.306Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "interview_appeared",
+     "credentialTypeLabels": {
+      "en": "Interview appeared",
+      "hi": "साक्षात्कार में सम्मिलित"
+     }
+    },
+    {
+     "id": "dff48746-5327-409e-95d4-bee3097751fa",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "d22d87da-eaff-48bd-8bdf-e730f0e5c854",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "rank": 342,
+      "year": 2019,
+      "rollNumber": "0451923",
+      "claimedName": "Asha Rathore",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c1"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-22T16:30:45.299Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "exam_rank",
+     "credentialTypeLabels": {
+      "en": "Exam rank",
+      "hi": "परीक्षा रैंक"
+     }
+    },
+    {
+     "id": "8d2f4299-ef46-4544-8ddb-41bd984d324b",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "ba4845ca-1fa0-4088-8743-8932b5d424b2",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "attachmentId": "59e2f9f4-4f42-4a56-be5a-231fde8f0acb"
+     },
+     "automatedCheckResult": {
+      "detail": {
+       "note": "no automated check — requires a human to review the uploaded document"
+      },
+      "passed": null,
+      "verifier": "document_review"
+     },
+     "status": "under_review",
+     "reviewedBy": null,
+     "reviewedAt": null,
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "mains_cleared",
+     "credentialTypeLabels": {
+      "en": "Mains cleared",
+      "hi": "मुख्य परीक्षा उत्तीर्ण"
+     }
+    },
+    {
+     "id": "ca5817f5-da05-486f-a27d-020a15512785",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "6a1301bb-4e27-40bc-bb36-1fc3a017525e",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "year": 2020,
+      "documentRef": "s3://private/call-letter.pdf",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c2"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-21T19:23:07.826Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "interview_appeared",
+     "credentialTypeLabels": {
+      "en": "Interview appeared",
+      "hi": "साक्षात्कार में सम्मिलित"
+     }
+    },
+    {
+     "id": "e1f058c1-91bc-43be-8e3d-bcbad1b64f3e",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "d22d87da-eaff-48bd-8bdf-e730f0e5c854",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "rank": 342,
+      "year": 2019,
+      "rollNumber": "0451923",
+      "claimedName": "Asha Rathore",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c1"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-21T19:23:07.819Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "exam_rank",
+     "credentialTypeLabels": {
+      "en": "Exam rank",
+      "hi": "परीक्षा रैंक"
+     }
+    },
+    {
+     "id": "91163892-de01-4683-8244-3974154acb61",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "6a1301bb-4e27-40bc-bb36-1fc3a017525e",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "year": 2020,
+      "documentRef": "s3://private/call-letter.pdf",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c2"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-21T16:53:24.345Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "interview_appeared",
+     "credentialTypeLabels": {
+      "en": "Interview appeared",
+      "hi": "साक्षात्कार में सम्मिलित"
+     }
+    },
+    {
+     "id": "87440daa-da98-4308-bdae-8aee1a763c17",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "credentialTypeId": "d22d87da-eaff-48bd-8bdf-e730f0e5c854",
+     "domainCode": "upsc_cse",
+     "verifierData": {
+      "rank": 342,
+      "year": 2019,
+      "rollNumber": "0451923",
+      "claimedName": "Asha Rathore",
+      "attachmentId": "00000000-0000-4000-8000-00000000d0c1"
+     },
+     "automatedCheckResult": null,
+     "status": "verified",
+     "reviewedBy": "5142bc0e-47de-4d09-8d8b-4bd22aabac85",
+     "reviewedAt": "2026-07-21T16:53:24.337Z",
+     "decisionNote": "",
+     "skillIds": [],
+     "credentialTypeCode": "exam_rank",
+     "credentialTypeLabels": {
+      "en": "Exam rank",
+      "hi": "परीक्षा रैंक"
+     }
+    }
+   ]
+  },
+  "GET /me/rates": {
+   "status": 200,
+   "body": [
+    {
+     "id": "bea53173-6fd3-41de-be4d-f8a39fb01293",
+     "engagementType": "document_review",
+     "skillId": null,
+     "skillCode": null,
+     "skillLabels": null,
+     "currency": "INR",
+     "amountPaise": "95000",
+     "durationMinutes": null,
+     "turnaroundHours": 72
+    },
+    {
+     "id": "d0e81806-2500-4511-b957-0549fee38af4",
+     "engagementType": "live_session",
+     "skillId": null,
+     "skillCode": null,
+     "skillLabels": null,
+     "currency": "INR",
+     "amountPaise": "95000",
+     "durationMinutes": 45,
+     "turnaroundHours": null
+    },
+    {
+     "id": "2145e2cc-5c7e-443e-be3c-6fc3af22dd72",
+     "engagementType": "review_with_live",
+     "skillId": null,
+     "skillCode": null,
+     "skillLabels": null,
+     "currency": "INR",
+     "amountPaise": "165000",
+     "durationMinutes": 45,
+     "turnaroundHours": 72
+    }
+   ]
+  },
+  "GET /me/packages": {
+   "status": 200,
+   "body": [
+    {
+     "id": "d7f7dd15-4ed3-40db-ac83-d1ce725e86d8",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "engagementType": "document_review",
+     "skillId": null,
+     "title": "Three answer reviews",
+     "sessionCount": 3,
+     "amountPaise": "250000",
+     "perSessionPaise": "83333",
+     "currency": "INR",
+     "durationMinutes": null,
+     "turnaroundHours": 48
+    },
+    {
+     "id": "4643a170-fdf5-4bd1-bea0-c352baa741e9",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "engagementType": "document_review",
+     "skillId": null,
+     "title": "Five answer reviews",
+     "sessionCount": 5,
+     "amountPaise": "400000",
+     "perSessionPaise": "80000",
+     "currency": "INR",
+     "durationMinutes": null,
+     "turnaroundHours": 72
+    }
+   ]
+  },
+  "GET /me/availability": {
+   "status": 200,
+   "body": {
+    "rules": [
+     {
+      "id": "f3388f5d-fce6-4fa7-8719-d7037292a9b5",
+      "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+      "timezone": "Asia/Kolkata",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU",
+      "startMinute": 420,
+      "endMinute": 1320,
+      "effectiveFrom": "2026-09-04",
+      "effectiveTo": null
+     }
+    ],
+    "policy": {
+     "minNoticeMinutes": 120,
+     "bufferMinutes": 15,
+     "maxAdvanceDays": 60,
+     "slotMinutes": 60
+    },
+    "exceptions": []
+   }
+  },
+  "GET /me/languages": {
+   "status": 200,
+   "body": [
+    {
+     "langCode": "bn",
+     "canEvaluate": true
+    },
+    {
+     "langCode": "en",
+     "canEvaluate": true
+    },
+    {
+     "langCode": "hi",
+     "canEvaluate": true
+    }
+   ]
+  },
+  "GET /board/posts/d24d941c-e236-49c4-b587-90c6a92dc091": {
+   "status": 200,
+   "body": {
+    "id": "d24d941c-e236-49c4-b587-90c6a92dc091",
+    "seekerId": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+    "domainCode": "upsc_cse",
+    "categoryId": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+    "engagementType": "document_review",
+    "language": "hi",
+    "currency": "INR",
+    "budgetMinPaise": "8000",
+    "budgetMaxPaise": "25000",
+    "description": "I keep losing marks on directive words in GS-II. Need a hard review.",
+    "status": "open",
+    "reference": "REQ-D24D94",
+    "postedAt": "2026-08-31T17:38:35.682Z",
+    "seeker": {
+     "id": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+     "displayName": "B. 1788197897189"
+    },
+    "familyCode": "civil_services_exams",
+    "proposalCount": 1
+   }
+  },
+  "GET /board/posts/d24d941c-e236-49c4-b587-90c6a92dc091/proposals": {
+   "status": 200,
+   "body": [
+    {
+     "id": "03e14194-4ad8-4a71-a03b-475500d0792f",
+     "boardPostId": "d24d941c-e236-49c4-b587-90c6a92dc091",
+     "providerId": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "message": "I will mark directive words line by line\n\nBack within 3 hours.",
+     "proposedAmountPaise": "20000",
+     "status": "submitted",
+     "resultingEngagementId": null,
+     "providerName": "A. Rathore",
+     "submittedAt": "2026-09-14T07:53:36.611Z"
+    }
+   ]
+  },
+  "GET /board/questions": {
+   "status": 200,
+   "body": []
+  },
+  "GET /sessions": {
+   "status": 200,
+   "body": [
+    {
+     "id": "8132ab16-662e-4446-b067-d8087ecc04d0",
+     "engagement_id": "ae6178a7-07b0-4f6a-bddf-cf0a0c9455c7",
+     "scheduled_start": "2026-09-01T14:36:36.153Z",
+     "scheduled_end": "2026-09-01T15:21:36.153Z",
+     "timezone": "Asia/Kolkata",
+     "room_provider": null,
+     "room_reference": null,
+     "mode": "video",
+     "recording_active": false,
+     "status": "scheduled",
+     "started_at": null,
+     "ended_at": null,
+     "created_at": "2026-08-31T14:36:36.160Z",
+     "updated_at": "2026-08-31T14:36:36.160Z",
+     "warning_raised_at": null,
+     "credited_seconds": 0,
+     "recording_retention_until": null,
+     "recording_legal_hold": false,
+     "seeker_id": "d8ce2f6c-abea-4a3b-aab7-6f3db2074493",
+     "provider_id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domain_code": "upsc_cse",
+     "category_id": "0f1040cb-80a8-479c-8aad-2c071863836b",
+     "counterpart": "P. Nair",
+     "durationMinutes": 45,
+     "consent": {
+      "seeker": null,
+      "provider": null
+     },
+     "recordingAvailable": false,
+     "transcriptAvailable": false
+    },
+    {
+     "id": "bd27679b-e2d0-4e4d-bfbf-a7e81724eae8",
+     "engagement_id": "a7b1505d-498e-4a4e-aad9-7e70626c1fe8",
+     "scheduled_start": "2026-09-01T12:30:00.000Z",
+     "scheduled_end": "2026-09-01T13:30:00.000Z",
+     "timezone": "Asia/Calcutta",
+     "room_provider": "100ms_sandbox",
+     "room_reference": "sandbox_room_bd27679b-e2d0-4e4d-bfbf-a7e81724eae8",
+     "mode": "audio_only",
+     "recording_active": false,
+     "status": "in_progress",
+     "started_at": "2026-08-31T16:35:56.455Z",
+     "ended_at": null,
+     "created_at": "2026-08-31T16:35:29.395Z",
+     "updated_at": "2026-08-31T16:36:01.117Z",
+     "warning_raised_at": null,
+     "credited_seconds": 0,
+     "recording_retention_until": null,
+     "recording_legal_hold": false,
+     "seeker_id": "d4303b8c-7163-438c-bb40-4bf7da5eca2b",
+     "provider_id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domain_code": "upsc_cse",
+     "category_id": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "counterpart": "W. 1788194089116",
+     "durationMinutes": 60,
+     "consent": {
+      "seeker": true,
+      "provider": null
+     },
+     "recordingAvailable": false,
+     "transcriptAvailable": false
+    },
+    {
+     "id": "a0bb4319-454f-48d5-9c10-fdc5adc9fe39",
+     "engagement_id": "f637e074-cf86-46f7-ac92-5e1833e21b49",
+     "scheduled_start": "2026-09-01T07:30:00.000Z",
+     "scheduled_end": "2026-09-01T08:45:00.000Z",
+     "timezone": "Asia/Calcutta",
+     "room_provider": "100ms_sandbox",
+     "room_reference": "sandbox_room_a0bb4319-454f-48d5-9c10-fdc5adc9fe39",
+     "mode": "video",
+     "recording_active": false,
+     "status": "in_progress",
+     "started_at": "2026-08-31T17:38:28.428Z",
+     "ended_at": null,
+     "created_at": "2026-08-31T17:38:22.765Z",
+     "updated_at": "2026-08-31T17:38:32.549Z",
+     "warning_raised_at": null,
+     "credited_seconds": 0,
+     "recording_retention_until": null,
+     "recording_legal_hold": false,
+     "seeker_id": "ef3db8a1-d067-46fd-ac95-c045cefffc40",
+     "provider_id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domain_code": "upsc_cse",
+     "category_id": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "counterpart": "B. 1788197897189",
+     "durationMinutes": 75,
+     "consent": {
+      "seeker": true,
+      "provider": null
+     },
+     "recordingAvailable": false,
+     "transcriptAvailable": false
+    },
+    {
+     "id": "ea99c9b3-02c6-413d-a020-b0f5b0aedff7",
+     "engagement_id": "8ffe32a2-f35e-4298-8921-1b083c3dc266",
+     "scheduled_start": "2026-09-01T05:30:00.000Z",
+     "scheduled_end": "2026-09-01T06:45:00.000Z",
+     "timezone": "Asia/Calcutta",
+     "room_provider": "100ms_sandbox",
+     "room_reference": "sandbox_room_ea99c9b3-02c6-413d-a020-b0f5b0aedff7",
+     "mode": "video",
+     "recording_active": false,
+     "status": "in_progress",
+     "started_at": "2026-08-31T17:34:05.596Z",
+     "ended_at": null,
+     "created_at": "2026-08-31T17:33:59.781Z",
+     "updated_at": "2026-08-31T17:34:09.742Z",
+     "warning_raised_at": null,
+     "credited_seconds": 0,
+     "recording_retention_until": null,
+     "recording_legal_hold": false,
+     "seeker_id": "2176b800-6743-466b-b6b5-ae7fe9a581ba",
+     "provider_id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domain_code": "upsc_cse",
+     "category_id": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "counterpart": "B. 1788197633694",
+     "durationMinutes": 75,
+     "consent": {
+      "seeker": true,
+      "provider": null
+     },
+     "recordingAvailable": false,
+     "transcriptAvailable": false
+    },
+    {
+     "id": "c478cbb5-343d-40ab-a66b-41d5c46cbb3c",
+     "engagement_id": "2b5cf9d3-cc5a-4d2c-8d99-a1a52389b187",
+     "scheduled_start": "2026-09-01T03:30:00.000Z",
+     "scheduled_end": "2026-09-01T04:45:00.000Z",
+     "timezone": "Asia/Calcutta",
+     "room_provider": "100ms_sandbox",
+     "room_reference": "sandbox_room_c478cbb5-343d-40ab-a66b-41d5c46cbb3c",
+     "mode": "video",
+     "recording_active": false,
+     "status": "in_progress",
+     "started_at": "2026-08-31T16:33:02.280Z",
+     "ended_at": null,
+     "created_at": "2026-08-31T16:32:55.653Z",
+     "updated_at": "2026-08-31T16:33:06.745Z",
+     "warning_raised_at": null,
+     "credited_seconds": 0,
+     "recording_retention_until": null,
+     "recording_legal_hold": false,
+     "seeker_id": "f3ac96e9-4446-4cf0-b47d-8b69acd61dd3",
+     "provider_id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domain_code": "upsc_cse",
+     "category_id": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "counterpart": "B. 1788193967438",
+     "durationMinutes": 75,
+     "consent": {
+      "seeker": true,
+      "provider": null
+     },
+     "recordingAvailable": false,
+     "transcriptAvailable": false
+    },
+    {
+     "id": "de54c34d-8969-445a-8138-c73245375bd6",
+     "engagement_id": "ea5ba3fe-6665-477a-8f53-ac46e8fbbb95",
+     "scheduled_start": "2026-09-01T01:30:00.000Z",
+     "scheduled_end": "2026-09-01T02:45:00.000Z",
+     "timezone": "Asia/Calcutta",
+     "room_provider": "100ms_sandbox",
+     "room_reference": "sandbox_room_de54c34d-8969-445a-8138-c73245375bd6",
+     "mode": "video",
+     "recording_active": false,
+     "status": "in_progress",
+     "started_at": "2026-08-31T16:31:25.887Z",
+     "ended_at": null,
+     "created_at": "2026-08-31T16:31:19.308Z",
+     "updated_at": "2026-08-31T16:31:30.373Z",
+     "warning_raised_at": null,
+     "credited_seconds": 0,
+     "recording_retention_until": null,
+     "recording_legal_hold": false,
+     "seeker_id": "98dfc805-8055-4a8d-9ac1-5367057792c1",
+     "provider_id": "64fb9778-6749-45fa-a29b-e4d8277f65b9",
+     "domain_code": "upsc_cse",
+     "category_id": "f9c56cd3-1aef-4ad1-b4e8-e620ed9bbda0",
+     "counterpart": "B. 1788193871234",
+     "durationMinutes": 75,
+     "consent": {
+      "seeker": true,
+      "provider": null
+     },
+     "recordingAvailable": false,
+     "transcriptAvailable": false
+    }
+   ]
+  },
+  "GET /me/domains": {
+   "status": 200,
+   "body": [
+    {
+     "domainCode": "appsc_group1",
+     "labels": {
+      "en": "APPSC Group I",
+      "te": "ఏపీపీఎస్సీ"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "bpsc",
+     "labels": {
+      "en": "BPSC",
+      "hi": "बीपीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "cgpsc",
+     "labels": {
+      "en": "CG PSC (Chhattisgarh)",
+      "hi": "सीजी पीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "gpsc",
+     "labels": {
+      "en": "GPSC (Gujarat)",
+      "gu": "જીપીએસસી"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "hppsc",
+     "labels": {
+      "en": "HPPSC (Himachal Pradesh)",
+      "hi": "एचपीपीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "hpsc",
+     "labels": {
+      "en": "HPSC (Haryana)",
+      "hi": "एचपीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "jpsc",
+     "labels": {
+      "en": "JPSC (Jharkhand)",
+      "hi": "जेपीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "kpsc_kas",
+     "labels": {
+      "en": "KAS (Karnataka)",
+      "kn": "ಕೆಎಎಸ್"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "mppsc",
+     "labels": {
+      "en": "MP PSC",
+      "hi": "एमपी पीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "mpsc",
+     "labels": {
+      "en": "MPSC (Maharashtra)",
+      "mr": "एमपीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "opsc_oas",
+     "labels": {
+      "en": "OAS (Odisha)",
+      "or": "ଓଏଏସ"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "ppsc",
+     "labels": {
+      "en": "PPSC (Punjab)",
+      "pa": "ਪੀਪੀਐਸਸੀ"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "rpsc_ras",
+     "labels": {
+      "en": "RAS (Rajasthan)",
+      "hi": "आरएएस"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "tgpsc_group1",
+     "labels": {
+      "en": "TGPSC Group I",
+      "te": "టీజీపీఎస్సీ"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "tnpsc_group1",
+     "labels": {
+      "en": "TNPSC Group I",
+      "ta": "டிஎன்பிஎஸ்சி"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "ukpsc",
+     "labels": {
+      "en": "UKPSC (Uttarakhand)",
+      "hi": "यूकेपीएससी"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "uppsc",
+     "labels": {
+      "en": "UP PCS",
+      "hi": "यूपी पीसीएस"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "upsc_cse",
+     "labels": {
+      "en": "UPSC Civil Services",
+      "hi": "संघ लोक सेवा आयोग"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    },
+    {
+     "domainCode": "wbcs",
+     "labels": {
+      "bn": "ডব্লিউবিসিএস",
+      "en": "WBCS (West Bengal)"
+     },
+     "familyCode": "civil_services_exams",
+     "workingLanguage": null,
+     "isPrimary": false
+    }
+   ]
+  },
+  "GET /me/profile": {
+   "status": 200,
+   "body": {
+    "displayName": null,
+    "preferredLang": "en",
+    "email": "asha.rathore@demo.local",
+    "emailVerified": false,
+    "role": "provider",
+    "signupFamilyCode": null,
+    "provider": {
+     "headline": null,
+     "bio": null,
+     "bioLang": null
+    }
+   }
+  },
+  "GET /me/training?family=civil_services_exams": {
+   "status": 200,
+   "body": {
+    "familyCode": "civil_services_exams",
+    "manifestVersion": "1.0.0",
+    "modules": [
+     {
+      "code": "platform_rules",
+      "labels": {
+       "en": "How this platform works",
+       "hi": "यह मंच कैसे काम करता है"
+      },
+      "required": true,
+      "sections": [
+       {
+        "body": {
+         "en": "Before any work starts, you and the aspirant agree a written list of goals. Once it is locked it cannot be changed — a change needs a new version that both of you accept. In a dispute, that list is what gets read, in the language it was written in.",
+         "hi": "काम शुरू होने से पहले आप और अभ्यर्थी लिखित लक्ष्यों पर सहमत होते हैं। लॉक होने के बाद उसे बदला नहीं जा सकता। विवाद में वही सूची पढ़ी जाती है, उसी भाषा में जिसमें लिखी गई थी।"
+        },
+        "heading": {
+         "en": "The agenda is the contract",
+         "hi": "लक्ष्य ही अनुबंध है"
+        }
+       },
+       {
+        "body": {
+         "en": "The aspirant pays before you start, but the money sits in escrow with a licensed payment aggregator. It reaches you when they confirm the agreed goals were met. You may charge less once the work has started — you may never negotiate the price before it.",
+         "hi": "अभ्यर्थी पहले भुगतान करता है, पर पैसा एस्क्रो में रहता है। लक्ष्य पूरे होने की पुष्टि पर आपको मिलता है। काम शुरू होने के बाद आप कम ले सकते हैं; उससे पहले मोल-भाव नहीं कर सकते।"
+        },
+        "heading": {
+         "en": "Money is held, not paid",
+         "hi": "पैसा रोका जाता है, दिया नहीं जाता"
+        }
+       },
+       {
+        "body": {
+         "en": "No outcome. Not a rank, not selection, not a mark. You may say what a stronger answer looks like; you may not say what it will score. And never compare one aspirant to another — progress here is measured against their own earlier work and nothing else.",
+         "hi": "किसी परिणाम का वादा नहीं — न रैंक, न चयन, न अंक। आप बता सकते हैं कि बेहतर उत्तर कैसा होता है; यह नहीं कि उसे कितने अंक मिलेंगे। किसी अभ्यर्थी की तुलना दूसरे से कभी न करें।"
+        },
+        "heading": {
+         "en": "What you may never promise",
+         "hi": "आप क्या वादा नहीं कर सकते"
+        }
+       }
+      ],
+      "questions": [
+       {
+        "code": "agenda_change",
+        "prompt": {
+         "en": "Halfway through, the aspirant asks you to review a second answer as well. What is correct?",
+         "hi": "बीच में अभ्यर्थी दूसरा उत्तर भी देखने को कहता है। सही क्या है?"
+        },
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Do it — it is a small extra",
+           "hi": "कर दें — छोटी बात है"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Agree a change to the goals first, so you both hold the same list",
+           "hi": "पहले लक्ष्यों में बदलाव पर सहमति लें"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Refuse — the agenda can never change",
+           "hi": "मना करें — लक्ष्य कभी नहीं बदलते"
+          }
+         }
+        ]
+       },
+       {
+        "code": "outcome_promise",
+        "prompt": {
+         "en": "Which of these may you write in an evaluation?",
+         "hi": "मूल्यांकन में आप इनमें से क्या लिख सकते हैं?"
+        },
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "This answer would fetch 9 or 10 marks",
+           "hi": "इस उत्तर को 9-10 अंक मिलेंगे"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "At this standard you will clear Mains",
+           "hi": "इस स्तर पर आप मुख्य परीक्षा निकाल लेंगे"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Your introduction states the issue but never examines it",
+           "hi": "आपकी भूमिका मुद्दा बताती है, उसकी परीक्षा नहीं करती"
+          }
+         }
+        ]
+       },
+       {
+        "code": "price_change",
+        "prompt": {
+         "en": "An aspirant asks for a discount before booking. What is correct?",
+         "hi": "बुकिंग से पहले अभ्यर्थी छूट मांगता है। सही क्या है?"
+        },
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Agree a lower price with them",
+           "hi": "कम कीमत पर सहमत हों"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "The published price stands; you may reduce it later, once the work has started",
+           "hi": "प्रकाशित कीमत ही लागू; काम शुरू होने पर आप कम कर सकते हैं"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Decline the booking",
+           "hi": "बुकिंग अस्वीकार करें"
+          }
+         }
+        ]
+       }
+      ],
+      "completedAt": "2026-09-03T12:37:36.574Z",
+      "needsRetake": false
+     },
+     {
+      "code": "distress_escalation",
+      "labels": {
+       "en": "When someone is struggling",
+       "hi": "जब कोई संघर्ष कर रहा हो"
+      },
+      "required": true,
+      "sections": [
+       {
+        "body": {
+         "en": "Years of preparation, repeated failure and long isolation are ordinary in this population, and so is serious distress. You will meet it. Not often, but you will — and probably in the middle of a conversation about something else entirely.",
+         "hi": "वर्षों की तैयारी, बार-बार असफलता और लंबा अकेलापन यहाँ सामान्य हैं, और गंभीर मानसिक संकट भी। आप इसका सामना करेंगे — शायद किसी और बात के बीच में।"
+        },
+        "heading": {
+         "en": "Why this module exists",
+         "hi": "यह मॉड्यूल क्यों है"
+        }
+       },
+       {
+        "body": {
+         "en": "Stay with them. Do not end the session in order to escalate. Say plainly that you have heard them and that help exists, and give them the helpline numbers shown on this page. Then report it through the platform so a trained person follows up. You are not their counsellor and nobody expects you to be — you are the person who was there.",
+         "hi": "उनके साथ रहें। आगे बढ़ाने के लिए सत्र समाप्त न करें। स्पष्ट कहें कि आपने उन्हें सुना और सहायता उपलब्ध है, और इस पृष्ठ पर दिए हेल्पलाइन नंबर दें। फिर मंच पर रिपोर्ट करें ताकि प्रशिक्षित व्यक्ति संपर्क करे। आप उनके परामर्शदाता नहीं हैं।"
+        },
+        "heading": {
+         "en": "What to do",
+         "hi": "क्या करें"
+        }
+       },
+       {
+        "body": {
+         "en": "Do not tell them to work harder. Do not treat it as a motivation problem. Do not promise it will be fine if they simply keep going. And do not keep it to yourself because it felt private — reporting is not a punishment, and their post is never taken down for it.",
+         "hi": "यह न कहें कि और मेहनत करें। इसे प्रेरणा की समस्या न समझें। यह वादा न करें कि लगे रहने से सब ठीक हो जाएगा। और इसे अपने तक न रखें — रिपोर्ट करना दंड नहीं है।"
+        },
+        "heading": {
+         "en": "What never to do",
+         "hi": "क्या कभी न करें"
+        }
+       }
+      ],
+      "questions": [
+       {
+        "code": "mid_session",
+        "prompt": {
+         "en": "Mid-session, an aspirant tells you they have been thinking about harming themselves. What do you do first?",
+         "hi": "सत्र के बीच अभ्यर्थी कहता है कि उसने स्वयं को हानि पहुँचाने के बारे में सोचा है। पहले क्या करें?"
+        },
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "End the session so they can get help",
+           "hi": "सत्र समाप्त करें"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Stay with them, say you have heard them, and give them the helpline numbers",
+           "hi": "उनके साथ रहें, कहें कि आपने सुना, और हेल्पलाइन नंबर दें"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Change the subject and finish the review",
+           "hi": "विषय बदलें और समीक्षा पूरी करें"
+          }
+         }
+        ]
+       },
+       {
+        "code": "after",
+        "prompt": {
+         "en": "Afterwards, what do you do?",
+         "hi": "उसके बाद आप क्या करते हैं?"
+        },
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Report it on the platform so a trained person follows up",
+           "hi": "मंच पर रिपोर्ट करें ताकि प्रशिक्षित व्यक्ति संपर्क करे"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Nothing — it was said in confidence",
+           "hi": "कुछ नहीं — यह गोपनीय था"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Post about it so others can help",
+           "hi": "इसके बारे में पोस्ट करें"
+          }
+         }
+        ]
+       },
+       {
+        "code": "not_motivation",
+        "prompt": {
+         "en": "Which response is wrong?",
+         "hi": "कौन-सी प्रतिक्रिया गलत है?"
+        },
+        "options": [
+         {
+          "code": "a",
+          "labels": {
+           "en": "Telling them help exists and where to find it",
+           "hi": "बताना कि सहायता है और कहाँ"
+          }
+         },
+         {
+          "code": "b",
+          "labels": {
+           "en": "Telling them they just need to work harder and stay motivated",
+           "hi": "कहना कि बस और मेहनत करें और प्रेरित रहें"
+          }
+         },
+         {
+          "code": "c",
+          "labels": {
+           "en": "Staying with them rather than ending the call",
+           "hi": "कॉल समाप्त करने के बजाय साथ रहना"
+          }
+         }
+        ]
+       }
+      ],
+      "completedAt": "2026-08-31T11:27:45.102Z",
+      "needsRetake": false
+     }
+    ],
+    "complete": true,
+    "supportResources": [
+     {
+      "label": "Tele-MANAS (national, 24x7)",
+      "value": "14416"
+     },
+     {
+      "label": "Tele-MANAS (alternate)",
+      "value": "1800-891-4416"
+     },
+     {
+      "label": "KIRAN mental health helpline",
+      "value": "1800-599-0019"
+     }
+    ]
+   }
+  }
+ }
+}

@@ -30,6 +30,8 @@ interface CredentialDbRow {
   reviewed_by: string | null;
   reviewed_at: Date | null;
   decision_note: string;
+  credential_type_code?: string;
+  credential_type_labels?: Record<string, string>;
 }
 
 /**
@@ -158,7 +160,13 @@ export class CredentialService {
       // submitted_at again — the second of two in this file. A sweep of
       // every ORDER BY created_at against the tables that have no such
       // column found exactly these two (D40).
-      `SELECT * FROM provider_credentials WHERE provider_id = $1 ORDER BY submitted_at DESC`,
+      // With the type's name: "upsc_cse · Verified" told a provider which
+      // field, not what they had submitted.
+      `SELECT c.*, t.code AS credential_type_code, t.labels AS credential_type_labels
+         FROM provider_credentials c
+         JOIN credential_types t ON t.id = c.credential_type_id
+        WHERE c.provider_id = $1
+        ORDER BY c.submitted_at DESC`,
       [providerId],
     );
     return Promise.all(res.rows.map((row) => this.hydrate(row)));
@@ -488,6 +496,9 @@ export class CredentialService {
       reviewedAt: row.reviewed_at,
       decisionNote: row.decision_note,
       skillIds: skillsRes.rows.map((r) => r.skill_id),
+      ...(row.credential_type_code
+        ? { credentialTypeCode: row.credential_type_code, credentialTypeLabels: row.credential_type_labels ?? {} }
+        : {}),
     };
   }
 }

@@ -49,16 +49,19 @@ abstract final class Shells {
       icon: Icons.home_outlined,
       selectedIcon: Icons.home,
     ),
-    ShellTab(
+    // Structural words, not nouns. The shell sits above every field at
+    // once (a seeker may be in three), so no family's word for a provider
+    // fits it — and the platform's own words, "Provider" and
+    // "Engagement", read as internal jargon on a tab.
+    const ShellTab(
       path: '/find',
-      // "Find a Mentor" / "Find a Provider" — the noun is the family's.
-      label: vocab.provider,
+      label: Label(<String, String>{'en': 'Find', 'hi': 'खोजें'}),
       icon: Icons.search_outlined,
       selectedIcon: Icons.search,
     ),
-    ShellTab(
+    const ShellTab(
       path: '/work',
-      label: vocab.engagement,
+      label: Label(<String, String>{'en': 'Work', 'hi': 'काम'}),
       icon: Icons.folder_outlined,
       selectedIcon: Icons.folder,
     ),
@@ -89,9 +92,9 @@ abstract final class Shells {
       icon: Icons.inbox_outlined,
       selectedIcon: Icons.inbox,
     ),
-    ShellTab(
+    const ShellTab(
       path: '/provider/work',
-      label: vocab.engagement,
+      label: Label(<String, String>{'en': 'Work', 'hi': 'काम'}),
       icon: Icons.folder_outlined,
       selectedIcon: Icons.folder,
     ),

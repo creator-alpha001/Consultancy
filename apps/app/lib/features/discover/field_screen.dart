@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../api/models/engagement.dart';
 import '../../data.dart';
 import '../../money/paise.dart';
 import '../../providers.dart';
@@ -74,6 +75,35 @@ class FieldScreen extends ConsumerWidget {
   }
 }
 
+/// A kind of work by its name, not its wire code ("written qa").
+String _workLabel(String code) =>
+    EngagementType.tryParse(code)?.neutralLabel ?? _humanize(code);
+
+/// A code a pack gave no label for, made readable rather than shown raw.
+String _humanize(String code) {
+  final String spaced = code.replaceAll('_', ' ').trim();
+  return spaced.isEmpty ? spaced : spaced[0].toUpperCase() + spaced.substring(1);
+}
+
+const List<String> _months = <String>[
+  'January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December',
+];
+
+/// "Mains — usually around September". A month hint is a hint, and is
+/// worded as one (#26: no implied intensity).
+String _phaseLine(Map<String, dynamic> p, String lang) {
+  final String name = FieldScreen._label(
+    p['labels'],
+    lang,
+    _humanize((p['code'] ?? p['phase'] ?? '').toString()),
+  );
+  final Object? month = p['monthHint'];
+  return month is int && month >= 1 && month <= 12
+      ? '$name — usually around ${_months[month - 1]}'
+      : name;
+}
+
 class _Kinds extends StatelessWidget {
   const _Kinds({required this.domain, required this.lang});
 
@@ -100,7 +130,7 @@ class _Kinds extends StatelessWidget {
         runSpacing: Space.sm,
         children: <Widget>[
           for (final String t in types)
-            StatusChip(t.replaceAll('_', ' '), tone: ChipTone.neutral),
+            StatusChip(_workLabel(t), tone: ChipTone.neutral),
         ],
       ),
     );
@@ -196,7 +226,7 @@ class _Bands extends StatelessWidget {
                 child: Row(
                   children: <Widget>[
                     Expanded(
-                      child: PackText(e.key.replaceAll('_', ' ')),
+                      child: PackText(_workLabel(e.key)),
                     ),
                     // Bands arrive as integer paise like everything else
                     // on the wire (CLAUDE.md #5); nothing here does
@@ -257,11 +287,7 @@ class _Calendar extends StatelessWidget {
                   const SizedBox(width: Space.sm),
                   Expanded(
                     child: PackText(
-                      FieldScreen._label(
-                        p['labels'],
-                        lang,
-                        (p['code'] ?? p['phase'] ?? '').toString(),
-                      ),
+                      _phaseLine(p, lang),
                     ),
                   ),
                 ],

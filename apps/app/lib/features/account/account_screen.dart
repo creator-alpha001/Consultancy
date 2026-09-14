@@ -155,12 +155,33 @@ class AccountScreen extends ConsumerWidget {
                     leading: const Icon(Icons.schedule, size: 20),
                     onTap: () => context.push('/provider/availability'),
                   ),
+                  NavRow(
+                    title: 'Working languages',
+                    leading: const Icon(Icons.translate, size: 20),
+                    onTap: () => context.push('/provider/languages'),
+                  ),
+                  NavRow(
+                    title: 'Where you get paid',
+                    leading: const Icon(
+                      Icons.account_balance_outlined,
+                      size: 20,
+                    ),
+                    onTap: () => context.push('/provider/payout'),
+                  ),
+                  NavRow(
+                    title: 'Training',
+                    leading: const Icon(Icons.menu_book_outlined, size: 20),
+                    onTap: () => context.push('/provider/training'),
+                  ),
                 ],
               ),
             ),
 
           const _Devices(),
-          const _RecoveryCodes(),
+          // Recovery codes stand in for a second factor, which only
+          // accounts that give guidance (and admins) hold (#32). Offering
+          // them to a seeker described an authenticator they never set up.
+          if (user != null && user.role != Role.seeker) const _RecoveryCodes(),
 
           Panel(
             title: 'Legal',

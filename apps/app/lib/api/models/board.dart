@@ -85,7 +85,11 @@ class Proposal {
     id: json.reqStr('id'),
     postId: json.str('postId', json.str('boardPostId')),
     providerId: json.str('providerId'),
-    amount: Paise.tryParse(json['amountPaise']) ?? Paise.zero,
+    // The API names it proposedAmountPaise; reading amountPaise alone
+    // showed every offer as ₹0.
+    amount:
+        Paise.tryParse(json['proposedAmountPaise'] ?? json['amountPaise']) ??
+        Paise.zero,
     status: json.str('status', 'open'),
     message: json.strOrNull('message'),
     providerName:
@@ -93,7 +97,7 @@ class Proposal {
         ? Party.fromJson(json.obj('provider')!).displayName
         : json.strOrNull('providerName'),
     tier: Tier.tryParse(json.strOrNull('tier')),
-    createdAt: json.date('createdAt'),
+    createdAt: json.date('createdAt') ?? json.date('submittedAt'),
     turnaroundHours: json.intOrNull('turnaroundHours'),
     durationMinutes: json.intOrNull('durationMinutes'),
   );

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { displayNameFor } from '../../common/display-name';
 import { Pool } from 'pg';
 import { PG_POOL } from '../../database/db.module';
 import { DomainLoaderService } from '../domains/domain-loader.service';
@@ -24,6 +25,8 @@ interface ProposalDbRow {
   proposed_amount_paise: bigint;
   status: ProposalRow['status'];
   resulting_engagement_id: string | null;
+  provider_email?: string;
+  provider_display_name?: string | null;
 }
 
 interface BoardPostDbRow {
@@ -46,6 +49,9 @@ function mapProposal(row: ProposalDbRow): ProposalRow {
     proposedAmountPaise: row.proposed_amount_paise,
     status: row.status,
     resultingEngagementId: row.resulting_engagement_id,
+    ...(row.provider_email !== undefined
+      ? { providerName: displayNameFor(row.provider_email, row.provider_display_name) }
+      : {}),
   };
 }
 
@@ -120,7 +126,13 @@ export class ProposalService {
   async listForPost(boardPostId: string): Promise<ProposalRow[]> {
     // Recency only — no price sort, ever (hard rule #15).
     const res = await this.pool.query<ProposalDbRow>(
-      `SELECT * FROM proposals WHERE board_post_id = $1 ORDER BY created_at ASC`,
+      // The name, never the email: displayNameFor gives "A. Rathore" or
+      // what the provider chose to be called.
+      `SELECT p.*, u.email AS provider_email, u.display_name AS provider_display_name
+         FROM proposals p
+         JOIN users u ON u.id = p.provider_id
+        WHERE p.board_post_id = $1
+        ORDER BY p.created_at ASC`,
       [boardPostId],
     );
     return res.rows.map(mapProposal);

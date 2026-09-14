@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'providers.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
+import 'widgets/messenger.dart';
 
 void main() {
   runApp(const ProviderScope(child: SankalpApp()));
@@ -41,6 +42,7 @@ class _SankalpAppState extends ConsumerState<SankalpApp> {
     return MaterialApp.router(
       title: 'Sankalp',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: rootMessenger,
       // The ROOT theme is always the platform's. A family's accent is
       // applied to the subtree showing that family's record, never here —
       // see theme/app_theme.dart for why that is a rule and not a taste.

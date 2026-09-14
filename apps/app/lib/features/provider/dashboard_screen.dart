@@ -69,7 +69,16 @@ class ProviderDashboardScreen extends ConsumerWidget {
                         e.status == EngagementStatus.delivered ||
                         e.status == EngagementStatus.working,
                   )
-                  .toList();
+                  .toList()
+                // Work that has been sent and is waiting on them first:
+                // that is the one they can act on now.
+                ..sort(
+                  (Engagement a, Engagement b) =>
+                      (a.status == EngagementStatus.delivered ? 0 : 1)
+                          .compareTo(
+                            b.status == EngagementStatus.delivered ? 0 : 1,
+                          ),
+                );
               return Panel(
                 title: 'Needs you',
                 note: needsMe.isEmpty
@@ -80,7 +89,13 @@ class ProviderDashboardScreen extends ConsumerWidget {
                     for (final Engagement e in needsMe.take(5))
                       NavRow(
                         title: e.seeker?.displayName ?? e.reference,
-                        subtitle: e.type?.neutralLabel,
+                        subtitle: <String>[
+                          if (e.status == EngagementStatus.delivered)
+                            'Work sent — assess it'
+                          else
+                            'Under way',
+                          ?e.type?.neutralLabel,
+                        ].join(' · '),
                         trailing: Money(e.amount),
                         onTap: () => context.push('/provider/work/${e.id}'),
                       ),

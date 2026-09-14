@@ -47,7 +47,7 @@ class Panel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          if (title != null) ...<Widget>[
+          if (title != null)
             Row(
               children: <Widget>[
                 Expanded(
@@ -56,17 +56,19 @@ class Panel extends StatelessWidget {
                 ?trailing,
               ],
             ),
-            if (note != null) ...<Widget>[
-              const SizedBox(height: Space.xs),
-              PackText(
-                note!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: BaseColors.inkMuted,
-                ),
+          // A note is drawn with or without a title. It used to sit inside
+          // the title branch, so every untitled panel silently dropped its
+          // explanation — "Forgot your password" showed a bare email box.
+          if (note != null) ...<Widget>[
+            if (title != null) const SizedBox(height: Space.xs),
+            PackText(
+              note!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: BaseColors.inkMuted,
               ),
-            ],
-            const SizedBox(height: Space.lg),
+            ),
           ],
+          if (title != null || note != null) const SizedBox(height: Space.lg),
           child,
         ],
       ),
