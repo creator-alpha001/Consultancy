@@ -28,7 +28,7 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   go_router: ^17.5.0
   intl: ^0.20.2
-  permission_handler: ^13.0.2
+  permission_handler: ^12.0.1
   qr_flutter: ^4.1.0
 
 dev_dependencies:
@@ -39,33 +39,26 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # TODO(slice-1): bundle Inter and Noto Sans Devanagari as assets.
-  #
-  # The FONT SELECTION MECHANISM exists and is tested — see
-  # lib/theme/script.dart, which picks a family per string because Inter
-  # has no Devanagari coverage and a Devanagari label set in Inter renders
-  # as tofu. What is missing is the two .ttf files themselves.
-  #
-  # They must be BUNDLED rather than fetched (no google_fonts): a font
-  # download on a patchy network is a blank screen, and these users are
-  # the reason that rule exists. Until the files land, both names fall
-  # through to the platform's own font, which on Android does cover
-  # Devanagari — so the app is readable now and merely not yet on-brand.
-  #
-  # fonts:
-  #   - family: Inter
-  #     fonts:
-  #       - asset: assets/fonts/Inter-Regular.ttf
-  #         weight: 400
-  #       - asset: assets/fonts/Inter-Medium.ttf
-  #         weight: 500
-  #       - asset: assets/fonts/Inter-SemiBold.ttf
-  #         weight: 600
-  #   - family: Noto Sans Devanagari
-  #     fonts:
-  #       - asset: assets/fonts/NotoSansDevanagari-Regular.ttf
-  #         weight: 400
-  #       - asset: assets/fonts/NotoSansDevanagari-Medium.ttf
-  #         weight: 500
-  #       - asset: assets/fonts/NotoSansDevanagari-SemiBold.ttf
-  #         weight: 600
+  # Bundled, never fetched (no google_fonts): a font download on a patchy
+  # network is a blank screen. lib/theme/script.dart picks the family per
+  # string, because Inter has no Devanagari coverage and a Hindi label set
+  # in Inter renders as tofu. Inter 4.1 (rsms/inter) and Noto Sans
+  # Devanagari 2.007 (notofonts, hinted), both SIL OFL — licences sit
+  # beside the files.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+    - family: Noto Sans Devanagari
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansDevanagari-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansDevanagari-SemiBold.ttf
+          weight: 600

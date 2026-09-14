@@ -448,9 +448,7 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Icon(
-                    a.isActionItem
-                        ? Icons.flag_outlined
-                        : Icons.edit_outlined,
+                    a.isActionItem ? Icons.flag_outlined : Icons.edit_outlined,
                     size: 16,
                     color: BaseColors.inkMuted,
                   ),
@@ -472,10 +470,12 @@ class _AnnotationEditorState extends ConsumerState<_AnnotationEditor> {
           if (annotations.isNotEmpty) const Divider(height: Space.xl),
           TextField(
             controller: _body,
+            onChanged: (_) => setState(() {}),
             minLines: 2,
             maxLines: 4,
             decoration: const InputDecoration(
-              hintText: 'e.g. the second paragraph answers a different '
+              hintText:
+                  'e.g. the second paragraph answers a different '
                   'question than the one asked',
             ),
           ),

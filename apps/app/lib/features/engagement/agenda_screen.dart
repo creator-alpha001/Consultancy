@@ -201,13 +201,9 @@ class _TickState extends ConsumerState<_Tick> {
   @override
   Widget build(BuildContext context) {
     final Widget icon = Icon(
-      widget.item.addressed
-          ? Icons.check_circle
-          : Icons.radio_button_unchecked,
+      widget.item.addressed ? Icons.check_circle : Icons.radio_button_unchecked,
       size: 18,
-      color: widget.item.addressed
-          ? BaseColors.verified
-          : BaseColors.inkFaint,
+      color: widget.item.addressed ? BaseColors.verified : BaseColors.inkFaint,
     );
     if (!widget.enabled) return icon;
 
@@ -407,7 +403,21 @@ class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
         if (_error != null) Note(_error!, tone: ChipTone.danger),
 
         FilledButton(
-          onPressed: _busy ? null : () => _save(),
+          onPressed: _busy
+              ? null
+              : () async {
+                  final Agenda? saved = await _save();
+                  if (saved == null || !context.mounted) return;
+                  // Without this a save looks exactly like a tap that did
+                  // nothing, and people tap again or leave unsure.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: PackText(
+                        'Draft saved. Nothing is agreed until you both lock it.',
+                      ),
+                    ),
+                  );
+                },
           child: const PackText('Save draft'),
         ),
         OutlinedButton(
@@ -416,7 +426,9 @@ class _AgendaDraftFormState extends ConsumerState<AgendaDraftForm> {
         ),
         PackText(
           'Locking is final. Nothing is charged by locking.',
-          style: theme.textTheme.bodySmall?.copyWith(color: BaseColors.inkMuted),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: BaseColors.inkMuted,
+          ),
           textAlign: TextAlign.center,
         ),
       ],

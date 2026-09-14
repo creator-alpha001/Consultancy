@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/api_error.dart';
 import '../../api/models/engagement.dart';
+import '../../api/models/user.dart';
 import '../../data.dart';
 import '../../providers.dart';
 import '../../theme/generated_tokens.dart';
@@ -31,6 +32,7 @@ class EngagementScreen extends ConsumerWidget {
     final AsyncValue<Engagement> engagement = ref.watch(
       engagementProvider(engagementId),
     );
+    final bool asProvider = ref.watch(authProvider).user?.role == Role.provider;
 
     return Scaffold(
       appBar: AppBar(
@@ -58,9 +60,12 @@ class EngagementScreen extends ConsumerWidget {
           onRefresh: () async =>
               ref.invalidate(engagementProvider(engagementId)),
           children: <Widget>[
-            _Summary(engagement: e),
-            _NextStep(engagement: e),
-            EscrowRail(escrow: e.escrow),
+            _Summary(engagement: e, asProvider: asProvider),
+            if (asProvider)
+              _ProviderNextStep(engagement: e)
+            else
+              _NextStep(engagement: e),
+            EscrowRail(escrow: e.escrow, forProvider: asProvider),
             _Links(engagement: e),
             _CallItOff(engagement: e),
           ],
@@ -71,9 +76,10 @@ class EngagementScreen extends ConsumerWidget {
 }
 
 class _Summary extends StatelessWidget {
-  const _Summary({required this.engagement});
+  const _Summary({required this.engagement, required this.asProvider});
 
   final Engagement engagement;
+  final bool asProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -86,8 +92,9 @@ class _Summary extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: PackText(
-                  engagement.provider?.displayName ??
-                      engagement.seeker?.displayName ??
+                  // The other party, never yourself.
+                  (asProvider ? engagement.seeker : engagement.provider)
+                          ?.displayName ??
                       '',
                   style: theme.textTheme.titleLarge,
                 ),
@@ -237,8 +244,32 @@ class _NextStepState extends ConsumerState<_NextStep> {
       );
     }
 
-    if (e.status == EngagementStatus.inReview ||
-        e.status == EngagementStatus.delivered) {
+    if (e.status == EngagementStatus.delivered) {
+      return Panel(
+        title: 'With them to assess',
+        note:
+            'Your work has been sent. The assessment appears under "The work '
+            'and its assessment" when they return it. The money stays held '
+            'until you confirm.',
+        child: const SizedBox.shrink(),
+      );
+    }
+
+    if (e.status == EngagementStatus.disputed) {
+      return Panel(
+        title: 'In dispute',
+        note:
+            'The money is held until the dispute is decided, against the '
+            'goals as they were locked.',
+        child: OutlinedButton(
+          onPressed: () => context.push('/work/${e.id}/dispute'),
+          child: const PackText('Open the dispute'),
+        ),
+      );
+    }
+
+    // Complete is refused by the API in any other state.
+    if (e.status == EngagementStatus.assessed) {
       return Panel(
         title: 'Your turn',
         note:
@@ -330,6 +361,31 @@ class _NextStepState extends ConsumerState<_NextStep> {
   }
 
   Future<void> _complete() async {
+    // Releasing is final: the money reaches them and a dispute is no
+    // longer open to you. One stray tap must not do that.
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const PackText('Release the money?'),
+        content: PackText(
+          'This pays them for the work and cannot be undone. If a goal was '
+          'not met, go back and choose "Something is wrong" instead — the '
+          'money stays held while that is looked at.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const PackText('Go back'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const PackText('Release it'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
     setState(() {
       _busy = true;
       _error = null;
@@ -345,6 +401,127 @@ class _NextStepState extends ConsumerState<_NextStep> {
         ..invalidate(engagementProvider(widget.engagement.id))
         ..invalidate(engagementsProvider)
         ..invalidate(moneyProvider);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// The provider's side of "what happens next".
+///
+/// The seeker's version asks them to confirm, write goals, hold money and
+/// release it; none of those are the provider's to do, and a provider who
+/// was shown "Hold the money" on their own work was being shown the wrong
+/// app. Here each state says who is waiting on whom, and the provider's
+/// one action — assessing work that has been sent — is the button.
+class _ProviderNextStep extends ConsumerStatefulWidget {
+  const _ProviderNextStep({required this.engagement});
+
+  final Engagement engagement;
+
+  @override
+  ConsumerState<_ProviderNextStep> createState() => _ProviderNextStepState();
+}
+
+class _ProviderNextStepState extends ConsumerState<_ProviderNextStep> {
+  bool _busy = false;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) {
+    final Engagement e = widget.engagement;
+
+    return switch (e.status) {
+      // Either party may confirm the terms (the API allows both).
+      EngagementStatus.draft => Panel(
+        title: 'Confirm this is right',
+        note:
+            'Confirm the kind of work, the language and the price are what '
+            'you will deliver. The goals and the money come after.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (_error != null) ...<Widget>[
+              Note(_error!, tone: ChipTone.danger),
+              const SizedBox(height: Space.md),
+            ],
+            FilledButton(
+              onPressed: _busy ? null : _agree,
+              child: const PackText('Yes, this is right'),
+            ),
+          ],
+        ),
+      ),
+      _ when !e.agendaReady && !e.status.isFinished => Panel(
+        title: 'Waiting for the goals',
+        note:
+            'They write the goals and lock them. Read them before you start: '
+            'the work is judged against exactly that list.',
+        child: OutlinedButton(
+          onPressed: () => context.push('/work/${e.id}/agenda'),
+          child: const PackText('Read the goals'),
+        ),
+      ),
+      _ when !e.escrowReady && !e.status.isFinished => const Panel(
+        title: 'Waiting for the money to be held',
+        note:
+            'Do not start until it is. Until the money is held, nothing '
+            'protects your time.',
+        child: SizedBox.shrink(),
+      ),
+      EngagementStatus.working => const Panel(
+        title: 'Under way',
+        note:
+            'The goals are locked and the money is held. When they send '
+            'their work, it appears here for you to assess.',
+        child: SizedBox.shrink(),
+      ),
+      EngagementStatus.delivered => Panel(
+        title: 'Your turn: assess the work',
+        note:
+            'Score it against the category and mark it up. They confirm the '
+            'goals were met once your assessment is back.',
+        child: FilledButton(
+          onPressed: () => context.push('/provider/work/${e.id}/evaluate'),
+          child: const PackText('Assess this work'),
+        ),
+      ),
+      EngagementStatus.assessed => const Panel(
+        title: 'Waiting on them',
+        note:
+            'Your assessment is back with them. The money is released when '
+            'they confirm the goals were met.',
+        child: SizedBox.shrink(),
+      ),
+      EngagementStatus.disputed => const Panel(
+        title: 'In dispute',
+        note:
+            'The money is held until the dispute is decided, against the '
+            'goals as they were locked. A failure on the platform\'s side is '
+            'never counted against you.',
+        child: SizedBox.shrink(),
+      ),
+      EngagementStatus.completed => const Panel(
+        title: 'Done',
+        note: 'Released to your earnings.',
+        child: SizedBox.shrink(),
+      ),
+      _ => const SizedBox.shrink(),
+    };
+  }
+
+  Future<void> _agree() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(repositoryProvider).agree(widget.engagement.id);
+      ref
+        ..invalidate(engagementProvider(widget.engagement.id))
+        ..invalidate(engagementsProvider);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -405,13 +582,16 @@ class _Links extends ConsumerWidget {
           // refuses it for them regardless, because the redirect decides
           // what to draw and never what is allowed (CLAUDE.md #28).
           if (isProvider) ...<Widget>[
-            NavRow(
-              title: 'Assess this work',
-              subtitle: 'Score it against the category and mark it up',
-              leading: const Icon(Icons.rate_review_outlined, size: 20),
-              onTap: () =>
-                  context.push('/provider/work/${engagement.id}/evaluate'),
-            ),
+            // Only while there is work waiting to be assessed; otherwise
+            // it leads to a screen with nothing to do.
+            if (engagement.status == EngagementStatus.delivered)
+              NavRow(
+                title: 'Assess this work',
+                subtitle: 'Score it against the category and mark it up',
+                leading: const Icon(Icons.rate_review_outlined, size: 20),
+                onTap: () =>
+                    context.push('/provider/work/${engagement.id}/evaluate'),
+              ),
             // Only once work is under way: before that, the price is
             // what was agreed and changing it is a new agreement.
             if (engagement.canStart && !engagement.status.isFinished)
@@ -473,10 +653,13 @@ class _CallItOffState extends ConsumerState<_CallItOff> {
 
     return Panel(
       title: 'Call this off',
-      note: widget.engagement.escrowReady
-          ? 'The money held comes back to you in full. Nothing has been '
-                'done yet, so nothing is owed.'
-          : 'Nothing has been agreed or held yet, so this simply ends.',
+      note: !widget.engagement.escrowReady
+          ? 'Nothing has been agreed or held yet, so this simply ends.'
+          : (ref.watch(authProvider).user?.role == Role.provider)
+          ? 'The money held goes back to them in full. Nothing has been '
+                'done yet, so nothing is owed either way.'
+          : 'The money held comes back to you in full. Nothing has been '
+                'done yet, so nothing is owed.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -511,9 +694,7 @@ class _CallItOffState extends ConsumerState<_CallItOff> {
             // button will work.
             TextField(
               controller: _reason,
-              decoration: const InputDecoration(
-                labelText: 'Why? (optional)',
-              ),
+              decoration: const InputDecoration(labelText: 'Why? (optional)'),
             ),
           ],
         ),

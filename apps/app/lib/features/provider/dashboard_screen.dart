@@ -64,8 +64,10 @@ class ProviderDashboardScreen extends ConsumerWidget {
               final List<Engagement> needsMe = list
                   .where(
                     (Engagement e) =>
-                        e.status == EngagementStatus.inProgress ||
-                        e.status == EngagementStatus.revision,
+                        // Work sent and waiting to be assessed, or under
+                        // way with nothing yet sent.
+                        e.status == EngagementStatus.delivered ||
+                        e.status == EngagementStatus.working,
                   )
                   .toList();
               return Panel(
@@ -77,8 +79,7 @@ class ProviderDashboardScreen extends ConsumerWidget {
                   children: <Widget>[
                     for (final Engagement e in needsMe.take(5))
                       NavRow(
-                        title:
-                            e.seeker?.displayName ?? e.reference,
+                        title: e.seeker?.displayName ?? e.reference,
                         subtitle: e.type?.neutralLabel,
                         trailing: Money(e.amount),
                         onTap: () => context.push('/provider/work/${e.id}'),
@@ -152,7 +153,9 @@ class _Readiness extends StatelessWidget {
         .toList();
 
     return Panel(
-      title: readiness.bookable ? 'Worth finishing' : 'Before you can be booked',
+      title: readiness.bookable
+          ? 'Worth finishing'
+          : 'Before you can be booked',
       note: readiness.bookable
           ? 'You can be booked. These would make you easier to find.'
           : null,

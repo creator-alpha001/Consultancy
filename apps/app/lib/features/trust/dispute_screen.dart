@@ -62,14 +62,11 @@ class DisputeScreen extends ConsumerWidget {
                   ?.theme ??
               FamilyTheme.none,
           child: existing.when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
+            loading: () => const Center(child: CircularProgressIndicator()),
             error: (Object err, _) => PageBody(
               children: <Widget>[
                 Note(
-                  err is ApiException
-                      ? err.message
-                      : 'Could not load this.',
+                  err is ApiException ? err.message : 'Could not load this.',
                   tone: ChipTone.danger,
                 ),
               ],
@@ -203,6 +200,8 @@ class _RaiseFormState extends ConsumerState<_RaiseForm> {
               'able to decide from this and the goals alone.',
           child: TextField(
             controller: _body,
+            // The raise button depends on this text, so it must rebuild.
+            onChanged: (_) => setState(() {}),
             minLines: 5,
             maxLines: 12,
             decoration: const InputDecoration(
@@ -339,10 +338,7 @@ class _DisputeDetail extends ConsumerWidget {
           ),
         ),
 
-        _Ladder(
-          familyCode: engagement.familyCode,
-          currentTier: dispute.tier,
-        ),
+        _Ladder(familyCode: engagement.familyCode, currentTier: dispute.tier),
 
         rulings.when(
           loading: () => const Panel(child: LinearProgressIndicator()),
@@ -438,8 +434,7 @@ class _Ladder extends ConsumerWidget {
                           ),
                           const SizedBox(width: Space.sm),
                           Expanded(child: PackText(t.humanised)),
-                          if (t.isFinal)
-                            const StatusChip('Final'),
+                          if (t.isFinal) const StatusChip('Final'),
                         ],
                       ),
                     ),
@@ -485,7 +480,8 @@ class _ActionsState extends ConsumerState<_Actions> {
     final DisputeTier? here = widget.tiers.valueOrNull
         ?.where((DisputeTier t) => t.tier == widget.dispute.tier)
         .firstOrNull;
-    final bool canAppeal = widget.dispute.canAppeal && !(here?.isFinal ?? false);
+    final bool canAppeal =
+        widget.dispute.canAppeal && !(here?.isFinal ?? false);
 
     return Panel(
       child: Column(
@@ -505,6 +501,7 @@ class _ActionsState extends ConsumerState<_Actions> {
           if (_appealing) ...<Widget>[
             TextField(
               controller: _reason,
+              onChanged: (_) => setState(() {}),
               minLines: 3,
               maxLines: 8,
               autofocus: true,

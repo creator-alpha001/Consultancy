@@ -122,9 +122,7 @@ class _MfaEnrolScreenState extends ConsumerState<MfaEnrolScreen> {
                             );
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: PackText('Key copied'),
-                                ),
+                                const SnackBar(content: PackText('Key copied')),
                               );
                             }
                           },
@@ -138,6 +136,7 @@ class _MfaEnrolScreenState extends ConsumerState<MfaEnrolScreen> {
             title: 'Then confirm it works',
             child: TextField(
               controller: _code,
+              onChanged: (_) => setState(() {}),
               keyboardType: TextInputType.number,
               maxLength: 6,
               decoration: const InputDecoration(
@@ -278,9 +277,7 @@ class _RecoveryCodesState extends ConsumerState<_RecoveryCodes> {
             // Deliberately gated. Someone who taps past this screen and
             // loses their phone has no way back into an account that can
             // move money.
-            onPressed: _saved
-                ? () => ref.read(authProvider).restore()
-                : null,
+            onPressed: _saved ? () => ref.read(authProvider).restore() : null,
             child: const PackText('Done'),
           ),
         ],

@@ -43,14 +43,27 @@ enum EngagementType {
 /// The API's transition table is the authority on what may follow what,
 /// and the client never decides a transition is legal — it offers an
 /// action and lets the server refuse.
+///
+/// Exactly the API's `engagement_status` enum (migration 0010), in its
+/// order. An earlier version of this list was invented — it had
+/// `in_progress`, `in_review` and `revision`, which the API never sends,
+/// and lacked `working` and `assessed`, which it always does — so every
+/// engagement under way rendered as unknown.
 enum EngagementStatus {
+  /// Being set up; terms not yet confirmed.
   draft,
+
+  /// Terms confirmed; waiting on the agenda lock and/or the escrow hold.
   agreed,
-  awaitingPayment,
-  inProgress,
+
+  /// Both preconditions met (#12). The only state work may happen in.
+  working,
+
+  /// The seeker has sent their work; it is with the provider to assess.
   delivered,
-  inReview,
-  revision,
+
+  /// The provider has returned the assessment; the seeker confirms.
+  assessed,
   completed,
   disputed,
   cancelled,
@@ -60,11 +73,9 @@ enum EngagementStatus {
   static EngagementStatus parse(String? raw) => switch (raw) {
     'draft' => EngagementStatus.draft,
     'agreed' => EngagementStatus.agreed,
-    'awaiting_payment' => EngagementStatus.awaitingPayment,
-    'in_progress' => EngagementStatus.inProgress,
+    'working' => EngagementStatus.working,
     'delivered' => EngagementStatus.delivered,
-    'in_review' || 'review' => EngagementStatus.inReview,
-    'revision' => EngagementStatus.revision,
+    'assessed' => EngagementStatus.assessed,
     'completed' => EngagementStatus.completed,
     'disputed' => EngagementStatus.disputed,
     'cancelled' => EngagementStatus.cancelled,
@@ -270,11 +281,18 @@ class Engagement {
     categoryId: json.strOrNull('categoryId'),
     currency: json.str('currency', 'INR'),
     createdAt: json.date('createdAt'),
-    seeker: json.obj('seeker') != null ? Party.fromJson(json.obj('seeker')!) : null,
-    provider:
-        json.obj('provider') != null ? Party.fromJson(json.obj('provider')!) : null,
-    agenda: json.obj('agenda') != null ? Agenda.fromJson(json.obj('agenda')!) : null,
-    escrow: json.obj('escrow') != null ? Escrow.fromJson(json.obj('escrow')!) : null,
+    seeker: json.obj('seeker') != null
+        ? Party.fromJson(json.obj('seeker')!)
+        : null,
+    provider: json.obj('provider') != null
+        ? Party.fromJson(json.obj('provider')!)
+        : null,
+    agenda: json.obj('agenda') != null
+        ? Agenda.fromJson(json.obj('agenda')!)
+        : null,
+    escrow: json.obj('escrow') != null
+        ? Escrow.fromJson(json.obj('escrow')!)
+        : null,
   );
 
   final String id;
@@ -301,7 +319,8 @@ class Engagement {
   /// separate steps, because being told "not ready" without being told
   /// which half is missing is a dead end.
   bool get agendaReady => agenda?.isLocked ?? false;
-  bool get escrowReady => escrow?.isHeld ?? escrow?.isReleased ?? false;
+  bool get escrowReady =>
+      (escrow?.isHeld ?? false) || (escrow?.isReleased ?? false);
   bool get canStart => agendaReady && escrowReady;
 }
 

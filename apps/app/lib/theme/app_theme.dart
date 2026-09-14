@@ -69,9 +69,13 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: BaseColors.canvas,
-      // fontFamily is deliberately unset at the theme level: the face is
-      // chosen per string, because a Devanagari label set in Inter
-      // renders as tofu. See theme/script.dart and widgets/text.dart.
+      // The default for everything that is not a PackText — typed input
+      // above all, where a person may write in Hindi. Inter first with
+      // Noto Sans Devanagari behind it, so no glyph is ever tofu. PackText
+      // still picks the primary face per string (theme/script.dart),
+      // which matches metrics better than fallback alone.
+      fontFamily: FontFamilies.latin,
+      fontFamilyFallback: const <String>[FontFamilies.devanagari],
       textTheme: _textTheme,
       dividerColor: BaseColors.line,
       splashFactory: InkSparkle.splashFactory,

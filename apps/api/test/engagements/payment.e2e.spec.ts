@@ -9,6 +9,7 @@ import { DomainsModule } from '../../src/modules/domains/domains.module';
 import { FamilyManifestService } from '../../src/modules/domains/family-manifest.service';
 import { EngagementsService } from '../../src/modules/engagements/engagements.service';
 import { EngagementsModule } from '../../src/modules/engagements/engagements.module';
+import { EscrowService } from '../../src/modules/money/escrow.service';
 import { MoneyModule } from '../../src/modules/money/money.module';
 import { closeTestApp, createTestApp } from '../nest-test-app';
 import { accountBalance, findAccountId, resetDatabase, seedFeeSchedule, seedUsers } from '../test-utils';
@@ -191,5 +192,60 @@ describe('the seeker pays into escrow', () => {
     const escrowAccount = await findAccountId(pool, 'escrow', null, 'INR');
     // The balance is the thing that matters: two calls, one charge.
     expect(await accountBalance(pool, escrowAccount!, 'INR')).toBe(100_000n);
+  });
+
+  /*
+   * A package draw holds the escrow while the engagement is still a draft,
+   * so the three events can arrive in any order. Found on a device: held,
+   * then locked, then agreed — and the engagement sat in `agreed` for ever,
+   * refusing the seeker's work (migration 0056).
+   */
+  describe('whatever order held, locked and agreed arrive in', () => {
+    async function draftWithHeldEscrow() {
+      const { seekerId, providerId } = await seedUsers(pool);
+      const engagement = await engagements.createDraft({
+        seekerId,
+        providerId,
+        domainCode: 'uppsc',
+        categoryId,
+        engagementType: 'document_review',
+        currency: 'INR',
+        amountPaise: 80_000n,
+        language: 'hi',
+      });
+      await app.get(EscrowService).hold({
+        engagementId: engagement.id,
+        seekerId,
+        providerId,
+        currency: 'INR',
+        amountPaise: 80_000n,
+        idempotencyKey: `draw:${engagement.id}`,
+        actorId: seekerId,
+        actorRole: 'seeker',
+      });
+      const agenda = await agendas.createDraft({
+        engagementId: engagement.id,
+        originalLang: 'hi',
+        expectedDeliverable: 'Annotated answer',
+        successCriteria: 'Two concrete fixes named',
+        items: [{ labelLang: 'hi', labelText: 'संरचना की समीक्षा करें' }],
+      });
+      return { engagementId: engagement.id, agendaId: agenda.id };
+    }
+
+    it('held, locked, then agreed: agreeing starts the work', async () => {
+      const { engagementId, agendaId } = await draftWithHeldEscrow();
+      await agendas.lock(agendaId);
+      expect((await engagements.get(engagementId)).status).toBe('draft');
+
+      await engagements.agree(engagementId);
+      expect((await engagements.get(engagementId)).status).toBe('working');
+    });
+
+    it('held, agreed, not locked: agreeing alone does not start it (#12)', async () => {
+      const { engagementId } = await draftWithHeldEscrow();
+      await engagements.agree(engagementId);
+      expect((await engagements.get(engagementId)).status).toBe('agreed');
+    });
   });
 });

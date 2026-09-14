@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../api/api_error.dart';
 import '../../api/models/board.dart';
+import '../../api/models/user.dart';
 import '../../data.dart';
 import '../../providers.dart';
 import '../../theme/generated_tokens.dart';
@@ -28,13 +29,18 @@ class QuestionsScreen extends ConsumerWidget {
       questionsProvider,
     );
 
+    // Providers answer here; asking is a seeker's act.
+    final bool asProvider = ref.watch(authProvider).user?.role == Role.provider;
+
     return Scaffold(
       appBar: AppBar(title: const PackText('Questions')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/board/ask'),
-        icon: const Icon(Icons.help_outline),
-        label: const PackText('Ask'),
-      ),
+      floatingActionButton: asProvider
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => context.push('/board/ask'),
+              icon: const Icon(Icons.help_outline),
+              label: const PackText('Ask'),
+            ),
       body: AsyncBody<List<BoardQuestion>>(
         value: questions,
         onRetry: () => ref.invalidate(questionsProvider),
@@ -313,7 +319,9 @@ class _AnswerBoxState extends ConsumerState<_AnswerBox> {
       _error = null;
     });
     try {
-      await ref.read(repositoryProvider).answerQuestion(widget.questionId, body);
+      await ref
+          .read(repositoryProvider)
+          .answerQuestion(widget.questionId, body);
       _body.clear();
       ref
         ..invalidate(questionProvider(widget.questionId))

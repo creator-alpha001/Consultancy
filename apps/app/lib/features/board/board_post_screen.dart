@@ -352,6 +352,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       ref
         ..invalidate(proposalsProvider(widget.postId))
         ..invalidate(boardPostProvider(widget.postId))
+        ..invalidate(boardPostsProvider)
         ..invalidate(engagementsProvider);
       if (mounted) {
         context.go(
@@ -470,7 +471,10 @@ class _ProposeButtonState extends ConsumerState<_ProposeButton> {
                 'Back within ${int.parse(_turnaround.text.trim())} hours.',
             ].where((String s) => s.isNotEmpty).join('\n\n'),
           );
-      ref.invalidate(proposalsProvider(widget.post.id));
+      ref
+        ..invalidate(proposalsProvider(widget.post.id))
+        // The list shows an offer count, and the post may have closed.
+        ..invalidate(boardPostsProvider);
       if (mounted) Navigator.of(context).pop();
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -571,7 +575,10 @@ class _MyOfferState extends ConsumerState<_MyOffer> {
     });
     try {
       await ref.read(repositoryProvider).withdrawProposal(proposalId);
-      ref.invalidate(proposalsProvider(widget.post.id));
+      ref
+        ..invalidate(proposalsProvider(widget.post.id))
+        // The list shows an offer count, and the post may have closed.
+        ..invalidate(boardPostsProvider);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {

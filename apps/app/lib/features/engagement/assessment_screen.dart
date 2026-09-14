@@ -48,7 +48,8 @@ class AssessmentScreen extends ConsumerWidget {
         emptyWhen: (_) => false,
         emptyMessage: '',
         builder: (Engagement e) => FamilyScope(
-          family: ref
+          family:
+              ref
                   .watch(catalogueProvider)
                   .valueOrNull
                   ?.family(e.familyCode)
@@ -218,7 +219,10 @@ class _EvaluationPanel extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   if (ev.overallNote.isNotEmpty)
-                    PackText(ev.overallNote, style: Theme.of(context).textTheme.bodyMedium),
+                    PackText(
+                      ev.overallNote,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   if (!hasDimensions) ...<Widget>[
                     if (ev.overallNote.isNotEmpty)
                       const SizedBox(height: Space.md),
@@ -264,7 +268,8 @@ class _Scores extends StatelessWidget {
       // Named rather than assumed. The dimensions are whatever the
       // template bound to this category declares — this app knows none
       // of them by name.
-      note: 'Against the ${evaluation.dimensions.length} dimensions this '
+      note:
+          'Against the ${evaluation.dimensions.length} dimensions this '
           'kind of work is assessed on.',
       child: Column(
         children: <Widget>[
@@ -492,6 +497,8 @@ class _SubmitScreenState extends ConsumerState<SubmitScreen> {
               'often more useful than the work itself.',
           child: TextField(
             controller: _note,
+            // The send button depends on this text, so it must rebuild.
+            onChanged: (_) => setState(() {}),
             minLines: 3,
             maxLines: 8,
             decoration: const InputDecoration(
@@ -539,6 +546,7 @@ class _SubmitScreenState extends ConsumerState<SubmitScreen> {
                   const SizedBox(height: Space.md),
                   TextField(
                     controller: _textEquivalent,
+                    onChanged: (_) => setState(() {}),
                     minLines: 2,
                     maxLines: 5,
                     decoration: const InputDecoration(

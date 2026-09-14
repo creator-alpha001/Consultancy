@@ -34,21 +34,35 @@ final ChangeNotifierProvider<AuthController> authProvider =
       ),
     );
 
-/// Every API call the app makes. Screens read this, never the raw client.
-final Provider<Repository> repositoryProvider = Provider<Repository>(
-  (Ref ref) => Repository(ref.watch(apiClientProvider)),
+/// Who the cached data belongs to. `null` when nobody is signed in.
+final Provider<String?> accountIdProvider = Provider<String?>(
+  (Ref ref) => ref.watch(authProvider.select((AuthController a) => a.user?.id)),
 );
+
+/// Every API call the app makes. Screens read this, never the raw client.
+///
+/// Rebuilt whenever the signed-in account changes. Every fetch in
+/// `data.dart` watches this, so a new account throws away everything the
+/// last one loaded. Without it, signing out and in as someone else on the
+/// same phone showed the new person the previous person's engagements
+/// from memory (#28) — found on a device, not in a test.
+final Provider<Repository> repositoryProvider = Provider<Repository>((Ref ref) {
+  ref.watch(accountIdProvider);
+  return Repository(ref.watch(apiClientProvider));
+});
 
 /// Uploading files. Separate from [Repository] because it is the one
 /// place that turns bytes into a request, and because its size limit is
 /// a client-side courtesy rather than an API call.
-final Provider<Uploads> uploadsProvider = Provider<Uploads>(
-  (Ref ref) => Uploads(ref.watch(apiClientProvider)),
-);
+final Provider<Uploads> uploadsProvider = Provider<Uploads>((Ref ref) {
+  ref.watch(accountIdProvider);
+  return Uploads(ref.watch(apiClientProvider));
+});
 
-final Provider<PackRepository> packRepositoryProvider = Provider<PackRepository>(
-  (Ref ref) => PackRepository(ref.watch(apiClientProvider)),
-);
+final Provider<PackRepository> packRepositoryProvider =
+    Provider<PackRepository>(
+      (Ref ref) => PackRepository(ref.watch(apiClientProvider)),
+    );
 
 /// The published catalogue. Every screen that renders a noun needs it.
 final FutureProvider<Catalogue> catalogueProvider = FutureProvider<Catalogue>(

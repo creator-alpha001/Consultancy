@@ -37,8 +37,8 @@ a piece of debt — belongs in the root file with a `D` number, not here.
 | Route coverage | **130/130 (100%)**, against `apps/frontend`'s 76/152 (50%). The two emailed-link landings (reset, verify) are web pages by design and exempt. Parity is method-blind (root D64); a method-aware pass found and closed two hidden gaps |
 | Screens built | **34 — none stubbed** |
 | Screens stubbed | **0** (table below is empty, and a test keeps it that way) |
-| Dart tests | 107 across 10 files. Request bodies are checked against the API by `scripts/contract-bodies.mjs` (root D70) |
-| Driven against a real API | `./scripts/dev.sh app-drive` |
+| Dart tests | 130 across 13 files. Request bodies are checked against the API by `scripts/contract-bodies.mjs` (root D70) |
+| Driven against a real API | `./scripts/dev.sh app-drive`. Also driven by hand on an Android 16 emulator as seeker and provider through the whole document-review loop (root D71) |
 
 Run `node scripts/parity.mjs --missing apps/app` for the routes still
 uncalled — that list is the honest backlog, and it is generated rather
@@ -131,7 +131,7 @@ a row here is a red build.
 
 | | |
 |---|---|
-| **Fonts are not bundled** | Inter and Noto Sans Devanagari are declared in a commented-out `pubspec.yaml` block; the `.ttf` files are missing. The *selection* mechanism exists and is tested (`lib/theme/script.dart`), and both names fall through to the platform font — which does cover Devanagari on Android — so the app is readable and merely not yet on-brand. Must be bundled, never fetched: a font download on a patchy network is a blank screen. |
+| **Fonts: bundled 2026-09-14, three scripts short** | Inter 4.1 and Noto Sans Devanagari 2.007 (hinted), 400/500/600, in `assets/fonts` with their OFL licences; never fetched. The theme defaults to Inter with Devanagari fallback so typed input is covered too, and `PackText` still picks the primary face per string. `test/theme/fonts_test.dart` checks every declared file exists and is TrueType. Tamil, Bengali, Gujarati, Gurmukhi, Telugu, Kannada, Malayalam and Odia still use the platform font (readable, not on-brand). |
 | **Viewing a document in-app** | Upload is built (root D51): submissions, credential documents and session files. Images open in-app; a PDF shows its live signed link rather than a viewer. |
 | **Generated types** | Routes are generated; types are hand-written on both clients (root D57). An endpoint whose response *shape* changes breaks neither build. |
 | **Push notifications** | Not started. The API's `outbox` relay is the right seam. A marketplace where a proposal arrives silently does not work, so this matters before launch. |

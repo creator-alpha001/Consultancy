@@ -87,7 +87,9 @@ class _NewRequestScreenState extends ConsumerState<NewRequestScreen> {
                   children: <Widget>[
                     for (final Map<String, dynamic> d in list)
                       ChoiceChip(
-                        label: PackText(_label(d['labels'], lang, '${d['domainCode']}')),
+                        label: PackText(
+                          _label(d['labels'], lang, '${d['domainCode']}'),
+                        ),
                         selected: _domainCode == d['domainCode'],
                         onSelected: (_) => setState(() {
                           _domainCode = d['domainCode'] as String?;
@@ -138,6 +140,8 @@ class _NewRequestScreenState extends ConsumerState<NewRequestScreen> {
                 'for structure" beats "help with writing".',
             child: TextField(
               controller: _description,
+              // "Post the request" depends on this text, so it must rebuild.
+              onChanged: (_) => setState(() {}),
               minLines: 4,
               maxLines: 10,
             ),
@@ -259,8 +263,9 @@ class _Categories extends ConsumerWidget {
   final void Function(String) onPick;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      ref.watch(categoriesProvider(domainCode)).maybeWhen(
+  Widget build(BuildContext context, WidgetRef ref) => ref
+      .watch(categoriesProvider(domainCode))
+      .maybeWhen(
         data: (List<Map<String, dynamic>> list) => Panel(
           title: 'Which part?',
           child: Wrap(
@@ -298,8 +303,9 @@ class _Languages extends ConsumerWidget {
   final void Function(String) onPick;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      ref.watch(workingLanguagesProvider(domainCode)).maybeWhen(
+  Widget build(BuildContext context, WidgetRef ref) => ref
+      .watch(workingLanguagesProvider(domainCode))
+      .maybeWhen(
         data: (List<String> list) => Panel(
           title: 'In which language?',
           // A matching dimension, not a display preference: a provider

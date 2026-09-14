@@ -83,14 +83,8 @@ GoRouter buildRouter(WidgetRef ref) {
             Role.admin => '/admin-elsewhere',
           };
         }
-        final bool providerPath = path.startsWith('/provider/') ||
-            path == '/provider';
-        if (providerPath && s.user.role != Role.provider) return '/home';
-        if (!providerPath &&
-            s.user.role == Role.provider &&
-            !_sharedPaths.any(path.startsWith)) {
-          return '/provider';
-        }
+        final String? bounce = bounceFor(s.user.role, path);
+        if (bounce != null) return bounce;
       }
       return null;
     },
@@ -132,10 +126,7 @@ GoRouter buildRouter(WidgetRef ref) {
         builder: (_, GoRouterState s) =>
             QuestionScreen(questionId: s.pathParameters['id']!),
       ),
-      GoRoute(
-        path: '/board/new',
-        builder: (_, _) => const NewRequestScreen(),
-      ),
+      GoRoute(path: '/board/new', builder: (_, _) => const NewRequestScreen()),
       GoRoute(
         path: '/board/:id',
         builder: (_, GoRouterState s) =>
@@ -194,9 +185,8 @@ GoRouter buildRouter(WidgetRef ref) {
                   ),
                   GoRoute(
                     path: 'assessment',
-                    builder: (_, GoRouterState s) => AssessmentScreen(
-                      engagementId: s.pathParameters['id']!,
-                    ),
+                    builder: (_, GoRouterState s) =>
+                        AssessmentScreen(engagementId: s.pathParameters['id']!),
                   ),
                   GoRoute(
                     path: 'review',
@@ -217,7 +207,10 @@ GoRouter buildRouter(WidgetRef ref) {
             path: '/you',
             builder: (_, _) => const AccountScreen(),
             routes: <RouteBase>[
-              GoRoute(path: 'profile', builder: (_, _) => const ProfileScreen()),
+              GoRoute(
+                path: 'profile',
+                builder: (_, _) => const ProfileScreen(),
+              ),
               GoRoute(
                 path: 'password',
                 builder: (_, _) => const ChangePasswordScreen(),
@@ -226,37 +219,39 @@ GoRouter buildRouter(WidgetRef ref) {
             ],
           ),
 
+          // The provider's tabs are siblings of the dashboard, not its
+          // children. Nested, going to a tab stacked the dashboard under it
+          // and every tab drew a back arrow.
+          GoRoute(
+            path: '/provider/requests',
+            builder: (_, _) => const BoardScreen(),
+          ),
+          GoRoute(
+            path: '/provider/work',
+            builder: (_, _) => const WorkScreen(),
+            routes: <RouteBase>[
+              GoRoute(
+                path: ':id',
+                builder: (_, GoRouterState s) =>
+                    EngagementScreen(engagementId: s.pathParameters['id']!),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'evaluate',
+                    builder: (_, GoRouterState s) =>
+                        EvaluateScreen(engagementId: s.pathParameters['id']!),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/provider/earnings',
+            builder: (_, _) => const ProviderEarningsScreen(),
+          ),
           GoRoute(
             path: '/provider',
             builder: (_, _) => const ProviderDashboardScreen(),
             routes: <RouteBase>[
-              GoRoute(
-                path: 'requests',
-                builder: (_, _) => const BoardScreen(),
-              ),
-              GoRoute(
-                path: 'work',
-                builder: (_, _) => const WorkScreen(),
-                routes: <RouteBase>[
-                  GoRoute(
-                    path: ':id',
-                    builder: (_, GoRouterState s) =>
-                        EngagementScreen(engagementId: s.pathParameters['id']!),
-                    routes: <RouteBase>[
-                      GoRoute(
-                        path: 'evaluate',
-                        builder: (_, GoRouterState s) => EvaluateScreen(
-                          engagementId: s.pathParameters['id']!,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              GoRoute(
-                path: 'earnings',
-                builder: (_, _) => const ProviderEarningsScreen(),
-              ),
               GoRoute(
                 path: 'standing',
                 builder: (_, _) => const ProviderStandingScreen(),
@@ -296,8 +291,36 @@ const List<String> _signedOutPaths = <String>[
   '/forgot-password',
 ];
 
-/// Paths a provider may visit without being bounced to their dashboard.
-const List<String> _sharedPaths = <String>['/you', '/sessions', '/work'];
+/// Where a signed-in person is sent instead of [path], or `null` to stay.
+///
+/// Decides what to DRAW, never what is allowed — the API refuses the
+/// wrong role regardless (#28).
+///
+/// A provider is kept out of the seeker-only screens, rather than let into
+/// a short list of shared ones. The list version bounced providers off
+/// every screen nobody had thought to add: opening a board request to make
+/// an offer, the free questions, reporting a problem, the legal terms. A
+/// provider could not propose from the app at all.
+String? bounceFor(Role role, String path) {
+  final bool providerPath =
+      path == '/provider' || path.startsWith('/provider/');
+  return switch (role) {
+    Role.provider when !providerPath && _seekerOnly(path) => '/provider',
+    Role.seeker || Role.admin when providerPath => '/home',
+    _ => null,
+  };
+}
+
+/// Screens that only mean something to a person seeking guidance.
+bool _seekerOnly(String path) => const <String>{
+  '/home',
+  '/find',
+  '/money',
+  '/progress',
+  '/board',
+  '/board/new',
+  '/board/ask',
+}.contains(path);
 
 class _Splash extends StatelessWidget {
   const _Splash();

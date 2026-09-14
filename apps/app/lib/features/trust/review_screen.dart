@@ -96,7 +96,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   Panel(
                     title: 'You reviewed this',
                     note: 'A review cannot be edited once left.',
-                    child: _ReviewBody(review: mine, dimensions: dimensions, lang: lang),
+                    child: _ReviewBody(
+                      review: mine,
+                      dimensions: dimensions,
+                      lang: lang,
+                    ),
                   ),
 
                 existing.when(
@@ -218,8 +222,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       _error = null;
     });
     try {
-      final bool iAmProvider =
-          ref.read(authProvider).user?.isProvider ?? false;
+      final bool iAmProvider = ref.read(authProvider).user?.isProvider ?? false;
       await ref
           .read(repositoryProvider)
           .review(
@@ -275,9 +278,7 @@ class _Stars extends StatelessWidget {
               minWidth: small ? 36 : kTouchTarget,
               minHeight: small ? 36 : kTouchTarget,
             ),
-            tooltip: label == null
-                ? '$i out of 5'
-                : '${label!}: $i out of 5',
+            tooltip: label == null ? '$i out of 5' : '${label!}: $i out of 5',
             icon: Icon(
               i <= rating ? Icons.star : Icons.star_border,
               color: i <= rating ? brand.brand : BaseColors.inkFaint,
@@ -428,6 +429,7 @@ class _TheirReviewState extends ConsumerState<_TheirReview> {
             const SizedBox(height: Space.md),
             TextField(
               controller: _reply,
+              onChanged: (_) => setState(() {}),
               minLines: 2,
               maxLines: 6,
               autofocus: true,
@@ -450,9 +452,7 @@ class _TheirReviewState extends ConsumerState<_TheirReview> {
                 ),
                 const Spacer(),
                 FilledButton(
-                  onPressed: _busy || _reply.text.trim().isEmpty
-                      ? null
-                      : _send,
+                  onPressed: _busy || _reply.text.trim().isEmpty ? null : _send,
                   child: const PackText('Post the reply'),
                 ),
               ],

@@ -82,7 +82,12 @@ enum ChipTone { neutral, brand, verified, caution, danger, info }
 /// it. That is the Definition of Done's accessibility bar, and it is also
 /// simply how someone reads a list quickly.
 class StatusChip extends StatelessWidget {
-  const StatusChip(this.label, {this.tone = ChipTone.neutral, this.icon, super.key});
+  const StatusChip(
+    this.label, {
+    this.tone = ChipTone.neutral,
+    this.icon,
+    super.key,
+  });
 
   final String label;
   final ChipTone tone;
@@ -113,7 +118,11 @@ class StatusChip extends StatelessWidget {
         BaseColors.dangerLine,
         BaseColors.danger,
       ),
-      ChipTone.info => (BaseColors.infoSoft, BaseColors.infoLine, BaseColors.info),
+      ChipTone.info => (
+        BaseColors.infoSoft,
+        BaseColors.infoLine,
+        BaseColors.info,
+      ),
     };
 
     return Container(
@@ -168,12 +177,7 @@ class Money extends StatelessWidget {
 
 /// A label and a value, stacked. The workhorse of every detail screen.
 class Field extends StatelessWidget {
-  const Field({
-    required this.label,
-    required this.value,
-    this.tone,
-    super.key,
-  });
+  const Field({required this.label, required this.value, this.tone, super.key});
 
   final String label;
   final Widget value;
@@ -208,9 +212,13 @@ class Field extends StatelessWidget {
 /// feel identical to someone who has just watched their balance drop. So
 /// the state is named, not implied.
 class EscrowRail extends StatelessWidget {
-  const EscrowRail({required this.escrow, super.key});
+  const EscrowRail({required this.escrow, this.forProvider = false, super.key});
 
   final Escrow? escrow;
+
+  /// The same money reads differently from the other side: to a provider
+  /// it is "held for you, not yet yours", never "your money has left".
+  final bool forProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -220,23 +228,40 @@ class EscrowRail extends StatelessWidget {
     final (String title, String detail, ChipTone tone) = switch (e) {
       null => (
         'Not funded yet',
-        'Nothing has been taken. Work starts once the money is held.',
+        forProvider
+            ? 'Nothing is held yet. Do not start until it is.'
+            : 'Nothing has been taken. Work starts once the money is held.',
         ChipTone.neutral,
       ),
       final Escrow x when x.isHeld => (
         'Held',
-        'Your money has left your account but has NOT reached them. It '
-            'moves only when you confirm the agreed goals were met.',
+        forProvider
+            ? 'Held by the payment provider for this work. It reaches you '
+                  'when they confirm the agreed goals were met.'
+            : 'Your money has left your account but has NOT reached them. It '
+                  'moves only when you confirm the agreed goals were met.',
+        ChipTone.caution,
+      ),
+      final Escrow x when x.status == 'disputed_hold' => (
+        'Held during the dispute',
+        'Nobody receives it until the dispute is decided.',
         ChipTone.caution,
       ),
       final Escrow x when x.isReleased => (
         'Released',
-        'Paid out after you confirmed the goals were met.',
+        forProvider
+            ? 'Paid to you after they confirmed the goals were met.'
+            : 'Paid out after you confirmed the goals were met.',
         ChipTone.verified,
+      ),
+      final Escrow x when x.status == 'settled_split' => (
+        'Divided by a ruling',
+        'Split between you as the dispute decision set out.',
+        ChipTone.info,
       ),
       final Escrow x when x.isRefunded => (
         'Refunded',
-        'Returned to you.',
+        forProvider ? 'Returned to them.' : 'Returned to you.',
         ChipTone.info,
       ),
       _ => (e.status, '', ChipTone.neutral),
@@ -250,8 +275,7 @@ class EscrowRail extends StatelessWidget {
             children: <Widget>[
               StatusChip(title, tone: tone, icon: Icons.lock_outline),
               const Spacer(),
-              if (e != null)
-                Money(e.held, style: theme.textTheme.titleLarge),
+              if (e != null) Money(e.held, style: theme.textTheme.titleLarge),
             ],
           ),
           if (detail.isNotEmpty) ...<Widget>[
@@ -470,11 +494,11 @@ StatusChip engagementChip(EngagementStatus status) {
   final (String label, ChipTone tone) = switch (status) {
     EngagementStatus.draft => ('Draft', ChipTone.neutral),
     EngagementStatus.agreed => ('Agreed', ChipTone.info),
-    EngagementStatus.awaitingPayment => ('Needs funding', ChipTone.caution),
-    EngagementStatus.inProgress => ('In progress', ChipTone.brand),
-    EngagementStatus.delivered => ('Delivered', ChipTone.info),
-    EngagementStatus.inReview => ('With you to review', ChipTone.caution),
-    EngagementStatus.revision => ('Being revised', ChipTone.caution),
+    EngagementStatus.working => ('In progress', ChipTone.brand),
+    // Neutral on purpose: the same chip is read by both parties, and
+    // "with you" is true for only one of them.
+    EngagementStatus.delivered => ('Work sent', ChipTone.info),
+    EngagementStatus.assessed => ('Assessed', ChipTone.caution),
     EngagementStatus.completed => ('Completed', ChipTone.verified),
     EngagementStatus.disputed => ('In dispute', ChipTone.danger),
     EngagementStatus.cancelled => ('Cancelled', ChipTone.neutral),

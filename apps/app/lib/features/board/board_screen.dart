@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/models/board.dart';
+import '../../api/models/user.dart';
 import '../../data.dart';
 import '../../providers.dart';
 import '../../theme/generated_tokens.dart';
@@ -24,6 +25,8 @@ class BoardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BoardPost>> posts = ref.watch(boardPostsProvider);
+    // Providers read requests to offer on them; asking is a seeker's act.
+    final bool asProvider = ref.watch(authProvider).user?.role == Role.provider;
 
     return Scaffold(
       appBar: AppBar(
@@ -39,11 +42,13 @@ class BoardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _choose(context),
-        icon: const Icon(Icons.add),
-        label: const PackText('Ask for help'),
-      ),
+      floatingActionButton: asProvider
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _choose(context),
+              icon: const Icon(Icons.add),
+              label: const PackText('Ask for help'),
+            ),
       body: AsyncBody<List<BoardPost>>(
         value: posts,
         onRetry: () => ref.invalidate(boardPostsProvider),
@@ -128,7 +133,10 @@ class _PostCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  StatusChip(post.language.toUpperCase(), icon: Icons.translate),
+                  StatusChip(
+                    post.language.toUpperCase(),
+                    icon: Icons.translate,
+                  ),
                 ],
               ),
               const SizedBox(height: Space.sm),
@@ -243,7 +251,8 @@ class _AskScreenState extends ConsumerState<AskScreen> {
                       ChoiceChip(
                         label: PackText(
                           ((d['labels'] as Map<String, dynamic>?)?[lang] ??
-                                  (d['labels'] as Map<String, dynamic>?)?['en'] ??
+                                  (d['labels']
+                                      as Map<String, dynamic>?)?['en'] ??
                                   d['domainCode'])
                               .toString(),
                         ),
@@ -264,7 +273,8 @@ class _AskScreenState extends ConsumerState<AskScreen> {
               minLines: 4,
               maxLines: 10,
               decoration: const InputDecoration(
-                hintText: 'Be specific — a precise question gets a precise '
+                hintText:
+                    'Be specific — a precise question gets a precise '
                     'answer.',
               ),
             ),
