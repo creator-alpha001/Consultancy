@@ -1,14 +1,16 @@
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import {
-  Avatar, Button, ButtonLink, Card, Chip, Divider, Eyebrow, FieldChip, LanguageChip, PageHead, Panel, Rating, SlaClock, TierChip,
+  Avatar, Button, ButtonLink, Card, Chip, Divider, Eyebrow, Field, FieldChip, LanguageChip, PageHead, Panel, Rating, SlaClock,
+  StatusChip, TextArea, TierChip,
 } from '@/components/ui';
 import { preview, contextFor } from '@/lib/preview';
 import { t, tl, categoryLabel, languageName } from '@/lib/pack';
 import { getBoardRequest, listProposals } from '@/lib/data';
 import { ago, money, until } from '@/lib/format';
 import { randomUUID } from 'node:crypto';
-import { acceptProposal } from '@/app/actions/board';
+import { acceptProposal, proposeOnPost, withdrawProposal } from '@/app/actions/board';
+import { currentUser } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,9 +41,68 @@ export default async function BoardRequestPage({
   const { error } = await searchParams;
   const { id } = await params;
   const { lang } = await preview('seeker');
-  const [request, proposals] = await Promise.all([getBoardRequest(id), listProposals(id)]);
+  const [request, proposals, me] = await Promise.all([getBoardRequest(id), listProposals(id), currentUser()]);
   if (!request) notFound();
   const fam = contextFor(request.family);
+
+  /*
+   * A provider sees the request and their OWN offer — the phone app's
+   * pattern. Never the other offers or their prices: showing a provider
+   * what everyone else bid is how a price war starts (#15), and "Award"
+   * is the seeker's act, not theirs.
+   */
+  if (me?.role === 'provider') {
+    const mine = proposals.find((p) => p.provider.id === me.id);
+    const here = `/board/${request.id}`;
+    return (
+      <AppShell fam={fam} lang={lang} role="provider" current="/provider/requests">
+        <PageHead eyebrow={<span className="figure">{request.reference}</span>} title={request.title.original} sub={request.detail.original} />
+        <div className="mb-6 flex flex-wrap gap-2">
+          <Chip tone="neutral">{categoryLabel(fam, request.domain, request.category, lang)}</Chip>
+          <Chip tone="neutral">{languageName(request.language, lang)}</Chip>
+          <Chip tone="neutral">Budget {money(request.budget)}</Chip>
+          <Chip tone="neutral">Posted {ago(request.postedAt)}</Chip>
+        </div>
+        {error && (
+          <div role="alert" className="mb-5 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+            That did not go through. Check the price is a whole number of rupees, and try again.
+          </div>
+        )}
+        <div className="max-w-2xl">
+          {mine ? (
+            <Panel title="Your offer" action={<StatusChip status={mine.status === 'submitted' ? 'open' : mine.status} />} note="They see it alongside the others — never ordered by price.">
+              <p className="whitespace-pre-line text-body">{mine.pitch.original}</p>
+              <p className="figure mt-3 text-heading font-semibold">{money(mine.price)}</p>
+              {mine.status === 'submitted' && (
+                <form action={withdrawProposal} className="mt-4">
+                  <input type="hidden" name="proposalId" value={mine.id} />
+                  <input type="hidden" name="postId" value={request.id} />
+                  <input type="hidden" name="returnTo" value={here} />
+                  <Button type="submit" tone="secondary">
+                    Withdraw the offer
+                  </Button>
+                </form>
+              )}
+            </Panel>
+          ) : (
+            <form action={proposeOnPost}>
+              <input type="hidden" name="postId" value={request.id} />
+              <input type="hidden" name="returnTo" value={here} />
+              <Panel title="Make an offer" note="Say what you would actually do. The amount is what you charge, not an opening position.">
+                <TextArea label="What you would do" name="message" rows={6} required hint="They read this before your price." />
+                <div className="mt-4">
+                  <Field label="Your price (₹)" name="rupees" inputMode="numeric" pattern="d*" required />
+                </div>
+                <div className="mt-4">
+                  <Button type="submit">Send the offer</Button>
+                </div>
+              </Panel>
+            </form>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell fam={fam} lang={lang} role="seeker" current="/board">
@@ -111,7 +172,7 @@ export default async function BoardRequestPage({
                           )}
                           <LanguageChip languages={p.provider.languages} />
                         </div>
-                        <p className="mt-3 max-w-reading text-body">{p.pitch.original}</p>
+                        <p className="mt-3 max-w-reading whitespace-pre-line text-body">{p.pitch.original}</p>
                       </div>
                     </div>
 
@@ -121,10 +182,13 @@ export default async function BoardRequestPage({
                           <dt className="text-caption text-ink-muted">Their price</dt>
                           <dd className="figure text-heading font-semibold">{money(p.price)}</dd>
                         </div>
-                        <div className="mt-2 flex items-baseline justify-between">
-                          <dt className="text-caption text-ink-muted">Back within</dt>
-                          <dd className="figure text-small font-medium">{p.deliverInHours} hr</dd>
-                        </div>
+                        {/* An offer states no turnaround field; "0 hr" read as a promise nobody made. */}
+                        {p.deliverInHours > 0 && (
+                          <div className="mt-2 flex items-baseline justify-between">
+                            <dt className="text-caption text-ink-muted">Back within</dt>
+                            <dd className="figure text-small font-medium">{p.deliverInHours} hr</dd>
+                          </div>
+                        )}
                         <div className="mt-2 flex items-baseline justify-between">
                           <dt className="text-caption text-ink-muted">Replied</dt>
                           <dd className="text-small font-medium">{ago(p.submittedAt)}</dd>

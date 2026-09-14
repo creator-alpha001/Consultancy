@@ -108,8 +108,9 @@ export default async function CompletePage({
             <Divider className="my-4" />
 
             <p className="text-small text-ink-muted">
-              This cannot be undone once released. If you do nothing at all, it releases automatically —{' '}
-              <span className="font-medium text-ink">{until(e.escrow.releasesOn)}</span>.
+              {/* Nothing releases on its own — the API has no automatic release. It waits for this, or a dispute. */}
+              This cannot be undone once released. Nothing is released until you confirm here — if a goal was not
+              met, raise a dispute instead and the money stays held.
             </p>
 
             <div className="mt-4 space-y-2">

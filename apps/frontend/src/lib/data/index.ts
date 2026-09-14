@@ -503,6 +503,9 @@ export interface MyCredential {
   status: string;
   decisionNote: string;
   reviewedAt: string | null;
+  /** What was submitted, by name (the API joins the credential type). */
+  credentialTypeCode?: string;
+  credentialTypeLabels?: Record<string, string>;
 }
 
 export async function listMyCredentials(): Promise<MyCredential[]> {
@@ -514,9 +517,26 @@ export interface SubmittableType {
   code: string;
   labels: Record<string, string>;
   verifier: string;
-  inputs: Array<{ name: string; label?: string; type?: string; required?: boolean }>;
+  /**
+   * The verifier's own inputs, from the pack. The API names them `key`
+   * and `kind`; reading `name` and `type` rendered every input as
+   * "vd_undefined", so nothing a provider typed reached the claim.
+   */
+  inputs: Array<{ key: string; kind?: string; required?: boolean; labels?: Record<string, string> }>;
   requiresPaidWorkSanction: boolean;
   grantsPaidWorkSanction: boolean;
+}
+
+/** The skills a credential in this domain's family can prove, from the published pack. */
+export async function listFamilySkills(
+  domainCode: string,
+): Promise<Array<{ code: string; labels: Record<string, string> }>> {
+  const d = await apiOrNull<{ family?: { skills?: Array<{ code?: string; labels?: Record<string, string> }> } }>(
+    `/domains/${encodeURIComponent(domainCode)}`,
+  );
+  return (d?.family?.skills ?? []).flatMap((s) =>
+    typeof s.code === 'string' ? [{ code: s.code, labels: s.labels ?? { en: s.code } }] : [],
+  );
 }
 
 export async function listSubmittableCredentialTypes(domainCode: string): Promise<SubmittableType[]> {
@@ -693,4 +713,103 @@ export interface ReportReason {
 /** The reasons a person may give, declared by the family — core names none of them. */
 export async function listReportReasons(domainCode: string): Promise<ReportReason[]> {
   return apiListOrEmpty<ReportReason>(`/report-reasons?domainCode=${encodeURIComponent(domainCode)}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* The provider's own supply: money, payout, languages, bundles, hours */
+/* ------------------------------------------------------------------ */
+
+/** Figures derive from the ledger (#7); amounts stay strings of paise until formatted. */
+export interface Earnings {
+  summary: {
+    currency: string;
+    inEscrowPaise: string;
+    owedPaise: string;
+    paidOutPaise: string;
+    inTransitPaise: string;
+    failedPaise: string;
+    platformFeePaise: string;
+  };
+  lines: Array<{
+    payoutId: string;
+    engagementId: string;
+    amountPaise: string;
+    currency: string;
+    status: string;
+    bankAccountLast4: string | null;
+    createdAt: string;
+  }>;
+}
+
+export async function getEarnings(): Promise<Earnings | null> {
+  return apiOrNull<Earnings>('/me/earnings');
+}
+
+/** Last four and IFSC only — the account number lives with the aggregator (#31). */
+export interface PayoutDestination {
+  accountHolderName: string;
+  bankAccountLast4: string;
+  bankIfsc: string;
+  verifiedAt: string | null;
+  verificationNote: string | null;
+  updatedAt: string;
+}
+
+export async function getPayoutDestination(): Promise<PayoutDestination | null> {
+  return apiOrNull<PayoutDestination>('/me/payout-destination');
+}
+
+export interface WorkingLanguage {
+  langCode: string;
+  canEvaluate: boolean;
+}
+
+export async function listMyLanguages(): Promise<WorkingLanguage[]> {
+  return apiListOrEmpty<WorkingLanguage>('/me/languages');
+}
+
+export interface ServicePackage {
+  id: string;
+  engagementType: string;
+  title: string;
+  sessionCount: number;
+  amountPaise: string;
+  perSessionPaise: string;
+  currency: string;
+  durationMinutes: number | null;
+  turnaroundHours: number | null;
+}
+
+export async function listMyPackages(): Promise<ServicePackage[]> {
+  return apiListOrEmpty<ServicePackage>('/me/packages');
+}
+
+export interface Availability {
+  rules: Array<{ id: string; timezone: string; rrule: string; startMinute: number; endMinute: number }>;
+  policy: { minNoticeMinutes: number; bufferMinutes: number; maxAdvanceDays: number; slotMinutes: number } | null;
+  exceptions: Array<{ id: string; onDate: string; startMinute: number | null; endMinute: number | null; reason: string | null }>;
+}
+
+export async function getAvailability(): Promise<Availability | null> {
+  return apiOrNull<Availability>('/me/availability');
+}
+
+/** A provider's own history per skill, by name. Never a comparison to anyone else (#17). */
+export interface SkillStat {
+  skillId: string;
+  skillCode?: string;
+  labels?: Record<string, string>;
+  tier: string;
+  completedEngagements: number;
+  refundedEngagements: number;
+  reviewCount: number;
+  avgRating: number | null;
+}
+
+export async function listMySkillStats(): Promise<SkillStat[]> {
+  return apiListOrEmpty<SkillStat>('/me/skill-stats');
+}
+
+export async function getPaidWorkStatus(): Promise<{ blocked: boolean; reason?: string | null } | null> {
+  return apiOrNull<{ blocked: boolean; reason?: string | null }>('/me/paid-work-status');
 }

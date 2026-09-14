@@ -1,25 +1,18 @@
 import { AppShell } from '@/components/shell';
-import { Button, Card, Divider, Eyebrow, Field, PageHead, Panel, Select } from '@/components/ui';
+import { Button, Divider, Eyebrow, Field, PageHead, Panel, Select } from '@/components/ui';
 import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
-import { apiOrNull } from '@/lib/api';
-import { addAvailabilityRule, removeAvailabilityRule } from '@/app/actions/provider';
+import { getAvailability } from '@/lib/data';
+import { dateLong } from '@/lib/format';
+import {
+  addAvailabilityException,
+  addAvailabilityRule,
+  removeAvailabilityException,
+  removeAvailabilityRule,
+  setAvailabilityPolicy,
+} from '@/app/actions/provider';
 
 export const dynamic = 'force-dynamic';
-
-interface Availability {
-  rules: Array<{
-    id: string;
-    timezone: string;
-    rrule: string;
-    startMinute: number;
-    endMinute: number;
-    effectiveFrom: string | null;
-    effectiveTo: string | null;
-  }>;
-  policy: { minNoticeMinutes: number; bufferMinutes: number; maxAdvanceDays: number; slotMinutes: number } | null;
-  exceptions: Array<{ id: string; date: string }>;
-}
 
 const DAYS: Array<{ code: string; label: string }> = [
   { code: 'MO', label: 'Monday' },
@@ -65,11 +58,12 @@ export default async function ProviderAvailabilityPage({
   const { fam, lang } = await preview('provider');
   const [{ error, saved, removed }, availability] = await Promise.all([
     searchParams,
-    apiOrNull<Availability>('/me/availability'),
+    getAvailability(),
   ]);
 
   const rules = availability?.rules ?? [];
   const policy = availability?.policy;
+  const exceptions = availability?.exceptions ?? [];
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider">
@@ -147,28 +141,50 @@ export default async function ProviderAvailabilityPage({
           </form>
         </Panel>
 
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          {policy && (
-            <Card className="p-5">
-              <Eyebrow>Your booking rules</Eyebrow>
-              <dl className="mt-2 space-y-2 text-small">
-                {[
-                  ['Shortest notice', `${policy.minNoticeMinutes} min`],
-                  ['Gap around a session', `${policy.bufferMinutes} min`],
-                  ['Booked up to', `${policy.maxAdvanceDays} days ahead`],
-                  ['Slot length', `${policy.slotMinutes} min`],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex justify-between gap-4">
-                    <dt className="text-ink-muted">{k}</dt>
-                    <dd className="figure font-medium">{v}</dd>
-                  </div>
+        <aside className="space-y-4">
+          {/* Editable here, as on the phone app. They protect the provider's time. */}
+          <Panel title="Booking rules" note="Nobody can book inside your notice period, and there is always a gap between sessions.">
+            <form action={setAvailabilityPolicy} className="space-y-3">
+              <Field label="Shortest notice (minutes)" name="minNoticeMinutes" type="number" inputMode="numeric" required defaultValue={String(policy?.minNoticeMinutes ?? 120)} />
+              <Field label="Gap between sessions (minutes)" name="bufferMinutes" type="number" inputMode="numeric" required defaultValue={String(policy?.bufferMinutes ?? 15)} />
+              <Field label="Booked up to (days ahead)" name="maxAdvanceDays" type="number" inputMode="numeric" required defaultValue={String(policy?.maxAdvanceDays ?? 60)} />
+              <Field label="Slot length (minutes)" name="slotMinutes" type="number" inputMode="numeric" required defaultValue={String(policy?.slotMinutes ?? 60)} />
+              <Button type="submit" size="sm">
+                Save the rules
+              </Button>
+            </form>
+          </Panel>
+
+          <Panel title="Days off" note="A blocked date overrides your weekly hours. Nobody can book you on it.">
+            {exceptions.length === 0 ? (
+              <p className="text-small text-ink-muted">None set.</p>
+            ) : (
+              <ul className="mb-4 divide-y divide-line">
+                {exceptions.map((x) => (
+                  <li key={x.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
+                    <div className="min-w-0">
+                      <p className="text-small font-medium">{dateLong(x.onDate)}</p>
+                      {x.reason && <p className="text-caption text-ink-muted">{x.reason}</p>}
+                    </div>
+                    <form action={removeAvailabilityException}>
+                      <input type="hidden" name="exceptionId" value={x.id} />
+                      <Button type="submit" size="sm" tone="destructive">
+                        Remove
+                      </Button>
+                    </form>
+                  </li>
                 ))}
-              </dl>
-              <p className="mt-3 text-caption text-ink-muted">
-                Changing these is not built here yet — the API accepts it, this screen does not offer it.
-              </p>
-            </Card>
-          )}
+              </ul>
+            )}
+            <form action={addAvailabilityException} className="mt-3 space-y-3">
+              <Field label="Date" name="onDate" type="date" required />
+              <Field label="Reason (optional)" name="reason" hint="Only you see this." />
+              <Button type="submit" size="sm" tone="secondary">
+                Block this date
+              </Button>
+            </form>
+          </Panel>
+
           <Panel title="A slot is not a promise to be free">
             <p className="text-small text-ink-muted">
               Hours you offer are only when a seeker <em>may</em> book. Anything already booked, and the gaps

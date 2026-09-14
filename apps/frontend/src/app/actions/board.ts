@@ -108,9 +108,15 @@ export async function acceptProposal(formData: FormData): Promise<void> {
 }
 
 /** A verified provider offers on a post. The amount and the words are the whole offer. */
+/** Where an offer form sends the provider back to: the request page it was on, or the list. */
+function offerPage(formData: FormData, postId: string): string {
+  const from = field(formData, 'returnTo');
+  return from === `/board/${postId}` ? from : '/provider/requests';
+}
+
 export async function proposeOnPost(formData: FormData): Promise<void> {
   const postId = field(formData, 'postId');
-  const page = `/provider/requests`;
+  const page = offerPage(formData, postId);
   await requireRole('provider', page);
   const proposedAmountPaise = rupeesToPaise(field(formData, 'rupees'));
   const message = field(formData, 'message');
@@ -129,7 +135,7 @@ export async function proposeOnPost(formData: FormData): Promise<void> {
 
 export async function withdrawProposal(formData: FormData): Promise<void> {
   const proposalId = field(formData, 'proposalId');
-  const page = '/provider/requests';
+  const page = offerPage(formData, field(formData, 'postId'));
   await requireRole('provider', page);
   try {
     await apiAsUser(`/board/proposals/${encodeURIComponent(proposalId)}/withdraw`, { method: 'POST' });

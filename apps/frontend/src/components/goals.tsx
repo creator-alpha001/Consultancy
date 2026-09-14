@@ -109,7 +109,8 @@ export function GoalsContract({
               ? 'Evidence artefact. Both parties hold an identical copy.'
               : 'Both of you hold an identical, timestamped copy of this.'}
           </p>
-          <code className="figure rounded-sm bg-surface-sunk px-2 py-0.5 text-caption text-ink-muted">
+          {/* A 64-character hash has no spaces to break at; on a phone it made the page scroll sideways. */}
+          <code className="figure min-w-0 max-w-full break-all rounded-sm bg-surface-sunk px-2 py-0.5 text-caption text-ink-muted">
             {agenda.contentHash}
           </code>
         </footer>

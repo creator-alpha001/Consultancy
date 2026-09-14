@@ -1,168 +1,173 @@
+import Link from 'next/link';
 import { AppShell } from '@/components/shell';
-import { Chip, Divider, Eyebrow, PageHead, Panel, Stat } from '@/components/ui';
+import { ButtonLink, Chip, PageHead, Panel, Stat } from '@/components/ui';
 import { EscrowLine } from '@/components/escrow';
 import { preview } from '@/lib/preview';
-import { listEngagements, listLedger } from '@/lib/data';
+import { requireRole } from '@/lib/session';
+import { getEarnings, getPayoutDestination, listEngagements } from '@/lib/data';
 import { dateLong, money } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
+/** Payout states, in words (migration 0005). */
+const PAYOUT: Record<string, { word: string; tone: 'brand' | 'verified' | 'danger' }> = {
+  initiated: { word: 'On its way', tone: 'brand' },
+  settled: { word: 'Paid', tone: 'verified' },
+  failed: { word: 'Failed', tone: 'danger' },
+};
+
 /**
- * Earnings.
+ * Earnings — the same figures as the phone app's earnings screen.
  *
- * A provider leaves a marketplace over payouts long before they leave it
- * over rates. So this screen answers, in order: how much, when exactly,
- * and why is anything being held.
+ * How much, where it is, and what the platform took, all from the API:
+ * the summary and payouts from `/me/earnings`, each piece of work's split
+ * from its escrow, and the bank from `/me/payout-destination` (last four
+ * and IFSC only, #31).
  *
- * The fee is broken out per piece of work rather than shown as a
- * percentage somewhere in the Terms. A provider who has to compute their
- * own take-home does not trust the number they arrive at.
+ * An earlier version drew a year-to-date total, a bank account, a payout
+ * schedule, monthly statements and a tiered fee table — none of it real.
+ * The fee is not written here as a percentage at all: it comes from the
+ * schedule in force when the money was held (hard rule #8), and each
+ * piece of work below shows what was actually taken.
  */
 export default async function ProviderEarningsPage(): Promise<JSX.Element> {
+  await requireRole('provider', '/provider/earnings');
   const { fam, lang } = await preview('provider');
-  const [work, ledger] = await Promise.all([listEngagements('provider'), listLedger()]);
+  const [earnings, destination, work] = await Promise.all([getEarnings(), getPayoutDestination(), listEngagements('provider')]);
 
-  const clearing = work.filter((e) => e.escrow.stage !== 'released');
-  const pending = clearing.reduce((s, e) => s + (e.escrow.providerNet?.amountPaise ?? 0), 0);
+  const currency = earnings?.summary.currency ?? 'INR';
+  const paise = (v: string | undefined) => ({ amountPaise: Number(v ?? 0), currency });
+  const clearing = work.filter((e) => e.escrow.outcome === null && !['draft', 'cancelled'].includes(e.status));
+  const byEngagement = new Map(work.map((e) => [e.id, e]));
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider/earnings">
-      <PageHead title="Earnings" sub="What is yours, when it lands, and what we took." />
+      <PageHead title="Earnings" sub="What is yours, where it is, and what the platform took." />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Clearing now" value={money({ amountPaise: pending, currency: 'INR' })} tone="brand" sub="Across 3 pieces of work." />
-        <Stat label="Next payout" value="4 Sep" sub="Thursday, for anything cleared by Tuesday." />
-        <Stat label="Paid this year" value="₹3,84,200" sub="Before tax. Statements below." />
-        <Stat label="Failed payouts" value="0" sub="Your bank details were penny-drop verified in March." />
+        <Stat label="Owed to you" value={money(paise(earnings?.summary.owedPaise))} tone="brand" sub="Released and on its way to your bank." />
+        <Stat label="Held for work in progress" value={money(paise(earnings?.summary.inEscrowPaise))} sub="Reaches you when the goals are confirmed." />
+        <Stat label="Paid out" value={money(paise(earnings?.summary.paidOutPaise))} />
+        <Stat label="Platform fee so far" value={money(paise(earnings?.summary.platformFeePaise))} />
       </div>
+      {earnings && earnings.summary.failedPaise !== '0' && (
+        <div role="alert" className="mt-4 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-small text-danger">
+          {money(paise(earnings.summary.failedPaise))} could not be paid out. Check{' '}
+          <Link href="/provider/payout" className="underline">
+            where you get paid
+          </Link>
+          .
+        </div>
+      )}
 
-      <div className="mt-6 space-y-5">
-        <Panel title="Waiting to clear" note="Each line shows the date it becomes yours and what has to happen first.">
-          <ul className="divide-y divide-line">
-            {clearing.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                <div className="min-w-0">
-                  <p className="text-body font-medium">
-                    <span className="figure text-ink-muted">{e.reference}</span> · {e.seeker.displayName}
-                  </p>
-                  <p className="mt-0.5 text-small text-ink-muted">
-                    {e.escrow.releasesOn
-                      ? `Clears ${dateLong(e.escrow.releasesOn)}`
-                      : 'Clears when they confirm, or when the window closes'}
-                  </p>
-                  <div className="mt-2">
-                    <EscrowLine escrow={e.escrow} />
-                  </div>
-                </div>
-                <dl className="text-small">
-                  <div className="flex justify-between gap-6">
-                    <dt className="text-ink-muted">They paid</dt>
-                    <dd className="figure">{money(e.escrow.held)}</dd>
-                  </div>
-                  <div className="flex justify-between gap-6">
-                    <dt className="text-ink-muted">Our fee</dt>
-                    <dd className="figure text-ink-muted">−{money(e.escrow.platformFee)}</dd>
-                  </div>
-                  <div className="mt-1 flex justify-between gap-6 border-t border-line pt-1">
-                    <dt className="font-medium">Yours</dt>
-                    <dd className="figure font-semibold">{money(e.escrow.providerNet)}</dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Panel title="What we charge you">
-            <table className="w-full text-small">
-              <thead>
-                <tr className="border-b border-line text-left">
-                  <th className="pb-2 text-micro font-semibold uppercase tracking-[0.09em] text-ink-muted">
-                    Work with the same person
-                  </th>
-                  <th className="pb-2 text-micro font-semibold uppercase tracking-[0.09em] text-ink-muted">Our fee</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {[
-                  ['First and second time', '15%'],
-                  ['Third to fifth', '12%'],
-                  ['Sixth onwards', '8%'],
-                ].map(([w, f]) => (
-                  <tr key={w}>
-                    <td className="py-2.5">{w}</td>
-                    <td className="figure py-2.5 font-semibold">{f}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {/*
-              Stated as the deliberate incentive it is, rather than left
-              for a provider to discover and read as a trick.
-            */}
-            <p className="mt-3 text-caption text-ink-muted">
-              The fee falls because we would rather earn less from a relationship that lasts than push you and a
-              regular into swapping numbers. If what we take stops being worth what we do, leaving is the rational
-              move and we would deserve it.
-            </p>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="min-w-0 space-y-5">
+          <Panel title="Payouts" note="Newest first.">
+            {!earnings || earnings.lines.length === 0 ? (
+              <p className="text-body text-ink-muted">Nothing paid out yet. A payout starts when someone confirms the goals were met.</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {earnings.lines.map((l) => {
+                  const e = byEngagement.get(l.engagementId);
+                  const state = PAYOUT[l.status];
+                  return (
+                    <li key={l.payoutId} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip tone={state?.tone ?? 'neutral'}>{state?.word ?? 'Other'}</Chip>
+                          {l.bankAccountLast4 && <span className="figure text-caption text-ink-muted">•••• {l.bankAccountLast4}</span>}
+                        </div>
+                        <p className="mt-1 text-small text-ink-muted">
+                          {dateLong(l.createdAt)}
+                          {e && (
+                            <>
+                              {' · '}
+                              <Link href={`/provider/work/${e.id}`} className="figure hover:text-brand hover:underline">
+                                {e.reference}
+                              </Link>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                      <span className="figure text-body font-semibold">{money({ amountPaise: Number(l.amountPaise), currency: l.currency })}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </Panel>
 
-          <Panel title="Payouts and tax">
-            <dl className="space-y-2.5 text-small">
-              {[
-                ['Schedule', 'Weekly, Thursday'],
-                ['Bank account', '•••• 8823 · verified March 2026'],
-                ['Clearance period', 'Three working days after confirmation'],
-                ['Tax deducted at source', 'Per the rate in force; certificate each quarter'],
-              ].map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-4">
-                  <dt className="text-ink-muted">{k}</dt>
-                  <dd className="text-right font-medium">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <Divider className="my-4" />
-            <Eyebrow>Statements</Eyebrow>
-            <ul className="mt-2 divide-y divide-line text-small">
-              {['August 2026', 'July 2026', 'June 2026'].map((m) => (
-                <li key={m} className="flex items-center justify-between py-2.5">
-                  <span>{m}</span>
-                  <a href={`/provider/earnings/${m}`} className="text-brand hover:underline">
-                    Download
-                  </a>
-                </li>
-              ))}
-            </ul>
+          <Panel title="Still held" note="Each piece of work, what was paid in, what the platform takes, and what is yours.">
+            {clearing.length === 0 ? (
+              <p className="text-body text-ink-muted">Nothing held right now.</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {clearing.map((e) => (
+                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <p className="text-body font-medium">
+                        <Link href={`/provider/work/${e.id}`} className="figure text-ink-muted hover:text-brand">
+                          {e.reference}
+                        </Link>{' '}
+                        · {e.seeker.displayName}
+                      </p>
+                      <p className="mt-0.5 text-small text-ink-muted">Reaches you when they confirm the goals were met.</p>
+                      <div className="mt-2">
+                        <EscrowLine escrow={e.escrow} />
+                      </div>
+                    </div>
+                    <dl className="text-small">
+                      <div className="flex justify-between gap-6">
+                        <dt className="text-ink-muted">They paid</dt>
+                        <dd className="figure">{money(e.escrow.held)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <dt className="text-ink-muted">Platform fee</dt>
+                        <dd className="figure text-ink-muted">−{money(e.escrow.platformFee)}</dd>
+                      </div>
+                      <div className="mt-1 flex justify-between gap-6 border-t border-line pt-1">
+                        <dt className="font-medium">Yours</dt>
+                        <dd className="figure font-semibold">{money(e.escrow.providerNet)}</dd>
+                      </div>
+                    </dl>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Panel>
         </div>
 
-        <Panel title="Every movement" note="The same double-entry ledger the finance team reconciles against the bank.">
-          <div className="-mx-5 overflow-x-auto px-5">
-            <table className="w-full min-w-[560px] text-small">
-              <thead>
-                <tr className="border-b border-line text-left">
-                  {['Date', 'What happened', 'Reference', 'Out', 'In'].map((h) => (
-                    <th key={h} className="pb-2 text-micro font-semibold uppercase tracking-[0.09em] text-ink-muted">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {ledger.map((l) => (
-                  <tr key={l.id}>
-                    <td className="py-3 text-ink-muted">{dateLong(l.postedAt)}</td>
-                    <td className="py-3">{l.description}</td>
-                    <td className="figure py-3 text-ink-muted">{l.reference}</td>
-                    <td className="figure py-3 font-medium">{l.debit ? money(l.debit) : ''}</td>
-                    <td className="figure py-3 font-medium text-verified">{l.credit ? money(l.credit) : ''}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+        <aside className="space-y-4">
+          <Panel title="Where you get paid">
+            {destination ? (
+              <dl className="space-y-2 text-small">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-muted">Account holder</dt>
+                  <dd className="text-right font-medium">{destination.accountHolderName}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-muted">Account</dt>
+                  <dd className="figure font-medium">•••• {destination.bankAccountLast4}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-muted">IFSC</dt>
+                  <dd className="figure font-medium">{destination.bankIfsc}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-muted">Checked</dt>
+                  <dd className="text-right">{destination.verifiedAt ? dateLong(destination.verifiedAt) : 'Not yet'}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-small text-ink-muted">No bank account yet. You can work before adding one; you cannot be paid out.</p>
+            )}
+            <div className="mt-4">
+              <ButtonLink href="/provider/payout" tone="secondary" full>
+                {destination ? 'Change the account' : 'Add a bank account'}
+              </ButtonLink>
+            </div>
+          </Panel>
+        </aside>
       </div>
     </AppShell>
   );

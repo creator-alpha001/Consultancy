@@ -139,11 +139,15 @@ export default async function VerificationQueuePage({
               <div className="rounded-md border border-line bg-surface-sunk p-4">
                 <Eyebrow>Evidence</Eyebrow>
                 {selected.documentCount > 0 ? (
-                  <form action={openCredentialDocument} target="_blank" className="mt-2">
+                  // No target="_blank": React drops it from a form whose action is a
+                  // server function, so it never opened a new tab and made the page
+                  // fail hydration. The link opens here and expires in five minutes.
+                  <form action={openCredentialDocument} className="mt-2">
                     <input type="hidden" name="credentialId" value={selected.id} />
                     <Button tone="secondary" size="sm" type="submit">
                       Open the document
                     </Button>
+                    <p className="mt-1.5 text-caption text-ink-muted">Opens in this tab. The link lasts five minutes.</p>
                   </form>
                 ) : (
                   <p className="mt-2 text-small text-ink-muted">No document was attached — only the typed details.</p>

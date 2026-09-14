@@ -1,9 +1,9 @@
 import { AppShell } from '@/components/shell';
-import { Button, Card, Chip, Divider, Eyebrow, Field, PageHead, Panel, Select } from '@/components/ui';
+import { Button, Card, Chip, Divider, Eyebrow, Field, PageHead, Panel } from '@/components/ui';
 import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
 import { allFamilies, t } from '@/lib/pack';
-import { listMyCredentials, listSubmittableCredentialTypes } from '@/lib/data';
+import { listFamilySkills, listMyCredentials, listSubmittableCredentialTypes } from '@/lib/data';
 import { dateLong } from '@/lib/format';
 import { submitCredential } from '@/app/actions/provider';
 
@@ -14,6 +14,20 @@ const STATUS_TONE: Record<string, 'verified' | 'caution' | 'danger' | 'neutral'>
   submitted: 'caution',
   under_review: 'caution',
   rejected: 'danger',
+};
+
+/** A pack key the pack gave no label for, made readable ("rollNo" → "Roll no"). */
+function humanize(key: string): string {
+  const spaced = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** Plain words for each state — a code like "under_review" is not a sentence. */
+const STATUS_WORD: Record<string, string> = {
+  verified: 'Verified',
+  submitted: 'Being checked',
+  under_review: 'Being checked',
+  rejected: 'Not accepted',
 };
 
 /**
@@ -45,11 +59,24 @@ export default async function ProviderCredentialsPage({
    * domains they are already in could never be used to enter one.
    */
   const domains = allFamilies().flatMap((f) => f.domains.map((d) => ({ domain: d, family: f })));
-  const active = domains.find((d) => d.domain.code === domain) ?? domains[0];
 
-  const [mine, types] = await Promise.all([
-    listMyCredentials(),
+  // A field by its name; the code only if the pack has no such field.
+  const domainName = (code: string): string => {
+    const hit = domains.find((d) => d.domain.code === code);
+    return hit ? t(hit.domain.label, lang) : code;
+  };
+
+  // Opens on a field the provider already works in, not simply the first
+  // field in the catalogue.
+  const mineFirst = await listMyCredentials();
+  const active =
+    domains.find((d) => d.domain.code === domain) ??
+    domains.find((d) => mineFirst.some((c) => c.domainCode === d.domain.code)) ??
+    domains[0];
+  const [mine, types, skills] = await Promise.all([
+    Promise.resolve(mineFirst),
     active ? listSubmittableCredentialTypes(active.domain.code) : Promise.resolve([]),
+    active ? listFamilySkills(active.domain.code) : Promise.resolve([]),
   ]);
 
   return (
@@ -80,96 +107,119 @@ export default async function ProviderCredentialsPage({
                 {mine.map((c) => (
                   <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
                     <div className="min-w-0">
-                      <p className="text-body font-medium">{c.domainCode}</p>
-                      {c.reviewedAt && (
-                        <p className="mt-0.5 text-caption text-ink-muted">Decided {dateLong(c.reviewedAt)}</p>
-                      )}
+                      <p className="text-body font-medium">
+                        {c.credentialTypeLabels
+                          ? (c.credentialTypeLabels[lang] ?? c.credentialTypeLabels.en ?? domainName(c.domainCode))
+                          : domainName(c.domainCode)}
+                      </p>
+                      <p className="mt-0.5 text-caption text-ink-muted">
+                        {[
+                          c.credentialTypeLabels ? domainName(c.domainCode) : null,
+                          c.reviewedAt ? `Decided ${dateLong(c.reviewedAt)}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
                       {c.decisionNote && <p className="mt-1 max-w-reading text-small text-ink-muted">{c.decisionNote}</p>}
                     </div>
-                    <Chip tone={STATUS_TONE[c.status] ?? 'neutral'}>{c.status.replace(/_/g, ' ')}</Chip>
+                    <Chip tone={STATUS_TONE[c.status] ?? 'neutral'}>{STATUS_WORD[c.status] ?? 'Other'}</Chip>
                   </li>
                 ))}
               </ul>
             )}
           </Panel>
 
-          <Panel title="Claim something new">
+          <Panel title="Claim something new" note="Choose the area, then what you are claiming. Each kind asks for its own details.">
             {!active ? (
               <p className="text-body text-ink-muted">No areas are open yet, so there is nothing to claim against.</p>
             ) : (
-              <form action={submitCredential}>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {/*
-                    Changing the area changes which types are offered, so
-                    this reloads the page rather than filtering in the
-                    browser — the list is pack data, not a constant.
-                  */}
-                  <div>
-                    <label htmlFor="f-domainPick" className="mb-1.5 block text-small font-medium">
-                      Area
-                    </label>
-                    <select
-                      id="f-domainPick"
-                      name="domainCode"
-                      defaultValue={active.domain.code}
-                      className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-body focus:border-brand focus:shadow-focus focus:outline-none"
-                    >
-                      {domains.map(({ domain: d, family: f }) => (
-                        <option key={d.code} value={d.code}>
-                          {t(f.label, lang)} — {t(d.label, lang)}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1.5 text-caption text-ink-muted">
-                      Showing what {t(active.family.label, lang)} accepts.{' '}
-                      <a href={`/provider/credentials?domain=${active.domain.code}`} className="text-brand underline underline-offset-2">
-                        Reload for another area
-                      </a>
-                      .
-                    </p>
-                  </div>
-
-                  <Select
-                    label="What you are claiming"
-                    name="credentialTypeCode"
-                    options={types.map((ct) => ({ value: ct.code, label: ct.labels.en ?? ct.code }))}
-                  />
-                </div>
-
+              <>
                 {/*
-                  The verifier's own inputs, from the pack. Prefixed so the
-                  action can collect them without knowing any of their names.
+                  The area is a link, not a select: which kinds of claim exist
+                  is pack data per area, so choosing one reloads the page with
+                  that area's list — and works with no JavaScript at all.
                 */}
-                {types[0]?.inputs?.length ? (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    {types[0].inputs.map((input) => (
-                      <Field
-                        key={input.name}
-                        label={input.label ?? input.name}
-                        name={`vd_${input.name}`}
-                        type={input.type === 'number' ? 'number' : 'text'}
-                        required={input.required}
-                      />
+                <p className="mb-2 text-small font-medium">Area</p>
+                <ul className="mb-5 flex flex-wrap gap-2">
+                  {domains.map(({ domain: d }) => {
+                    const on = d.code === active.domain.code;
+                    return (
+                      <li key={d.code}>
+                        <a
+                          href={`/provider/credentials?domain=${d.code}`}
+                          aria-current={on ? 'true' : undefined}
+                          className={`inline-flex min-h-touch items-center rounded-full border px-3.5 text-small ${
+                            on ? 'border-brand bg-brand-soft text-brand-soft-ink' : 'border-line bg-surface text-ink-muted'
+                          }`}
+                        >
+                          {t(d.label, lang)}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {types.length === 0 ? (
+                  <p className="text-body text-ink-muted">This area accepts no claims yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {types.map((ct, i) => (
+                      <details key={ct.code} open={i === 0} className="rounded-md border border-line">
+                        <summary className="flex min-h-touch cursor-pointer items-center px-4 text-body font-medium">
+                          {ct.labels[lang] ?? ct.labels.en ?? ct.code}
+                        </summary>
+                        <form action={submitCredential} className="space-y-4 border-t border-line p-4">
+                          <input type="hidden" name="domainCode" value={active.domain.code} />
+                          <input type="hidden" name="credentialTypeCode" value={ct.code} />
+
+                          {/* The verifier's own inputs, from the pack, collected generically by the action. */}
+                          {ct.inputs.length > 0 && (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              {ct.inputs.map((input) => (
+                                <Field
+                                  key={input.key}
+                                  label={input.labels?.[lang] ?? input.labels?.en ?? humanize(input.key)}
+                                  name={`vd_${input.key}`}
+                                  type={input.kind === 'number' ? 'number' : 'text'}
+                                  inputMode={input.kind === 'number' ? 'numeric' : undefined}
+                                  required={input.required}
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          {skills.length > 0 && (
+                            <fieldset>
+                              <legend className="mb-1.5 text-small font-medium">Skills this proves</legend>
+                              <p className="mb-2 text-caption text-ink-muted">
+                                Choose only what it genuinely shows. A tier is granted per skill, never once for the
+                                whole person.
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {skills.map((sk) => (
+                                  <label
+                                    key={sk.code}
+                                    className="inline-flex min-h-touch cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 text-small has-[:checked]:border-brand has-[:checked]:bg-brand-soft"
+                                  >
+                                    <input type="checkbox" name="skillCodes" value={sk.code} className="h-4 w-4 accent-[color:var(--brand)]" />
+                                    {sk.labels[lang] ?? sk.labels.en ?? sk.code}
+                                  </label>
+                                ))}
+                              </div>
+                            </fieldset>
+                          )}
+
+                          <Button type="submit">Submit for review</Button>
+                          <p className="text-caption text-ink-muted">
+                            A person reads this. There is no automated approval, and an automated check never grants a
+                            tier by itself.
+                          </p>
+                        </form>
+                      </details>
                     ))}
                   </div>
-                ) : null}
-
-                <Field
-                  label="Skills this proves"
-                  name="skillCodes"
-                  className="mt-4"
-                  placeholder="answer_writing.gs.polity, answer_writing.gs.history"
-                  hint="Comma separated. A tier is granted per skill, never once for the whole person — so this decides what you can be matched for."
-                />
-
-                <div className="mt-4">
-                  <Button type="submit">Submit for review</Button>
-                </div>
-                <p className="mt-2 text-caption text-ink-muted">
-                  A person reads this. There is no automated approval, and an automated check never grants a tier by
-                  itself.
-                </p>
-              </form>
+                )}
+              </>
             )}
           </Panel>
         </div>

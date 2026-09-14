@@ -891,6 +891,7 @@ export function toProposal(p: ApiProposal, provider: ProviderSummary): Proposal 
     // rather than as an invented promise the provider never made.
     deliverInHours: 0,
     submittedAt: p.submittedAt ?? '',
+    status: p.status,
   };
 }
 

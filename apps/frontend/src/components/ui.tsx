@@ -71,7 +71,10 @@ export function Panel({
     verified: 'border-verified-line bg-verified-soft',
   }[tone];
   return (
-    <section className={`rounded-lg border shadow-e1 ${tones} ${className}`}>
+    // min-w-0: a panel in a grid otherwise grows to its widest content (a
+    // wide table that already scrolls inside it), and pushed a 360px phone
+    // screen 339px sideways.
+    <section className={`min-w-0 rounded-lg border shadow-e1 ${tones} ${className}`}>
       {(title || action) && (
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
           <div>
@@ -434,14 +437,39 @@ const STATUS_TONE: Record<string, ChipTone> = {
   ruled: 'verified',
 };
 
+/**
+ * Plain words for each state. Neutral on purpose — the same chip is read
+ * by both parties, and "with you" is true for only one of them. The same
+ * words as the phone app's chips.
+ */
 const STATUS_WORD: Record<string, string> = {
-  assessed: 'awaiting your confirmation',
-  held_for_review: 'held for review',
+  draft: 'Draft',
+  agreed: 'Agreed',
+  working: 'In progress',
+  delivered: 'Work sent',
+  assessed: 'Assessed',
+  completed: 'Completed',
+  disputed: 'In dispute',
+  refunded: 'Refunded',
+  cancelled: 'Cancelled',
+  open: 'Open',
+  awarded: 'Awarded',
+  closed: 'Closed',
+  held_for_review: 'Held for review',
+  scheduled: 'Booked',
+  live: 'Live now',
+  ended: 'Ended',
+  missed: 'Missed',
+  triage: 'Being looked at',
+  negotiation: 'Talking it through',
+  adjudication: 'Being decided',
+  appeal: 'On appeal',
+  ruled: 'Decided',
 };
 
 export function StatusChip({ status }: { status: string }): JSX.Element {
   return (
-    <Chip tone={STATUS_TONE[status] ?? 'neutral'}>{STATUS_WORD[status] ?? status.replace(/_/g, ' ')}</Chip>
+    <Chip tone={STATUS_TONE[status] ?? 'neutral'}>{STATUS_WORD[status] ?? 'Other'}</Chip>
   );
 }
 

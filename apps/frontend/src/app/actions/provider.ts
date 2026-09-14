@@ -107,8 +107,11 @@ export async function submitCredential(formData: FormData): Promise<void> {
   await requireRole('provider', '/provider/credentials');
   const credentialTypeCode = String(formData.get('credentialTypeCode') ?? '');
   const domainCode = String(formData.get('domainCode') ?? '');
-  const skillCodes = String(formData.get('skillCodes') ?? '')
-    .split(',')
+  // Ticked boxes arrive as repeated fields; a typed list as one
+  // comma-separated value. Both are accepted.
+  const skillCodes = formData
+    .getAll('skillCodes')
+    .flatMap((v) => String(v).split(','))
     .map((s) => s.trim())
     .filter(Boolean);
 
@@ -254,6 +257,170 @@ export async function removeAvailabilityRule(formData: FormData): Promise<void> 
   const id = String(formData.get('ruleId') ?? '');
   try {
     await apiAsUser(`/me/availability/rules/${encodeURIComponent(id)}/remove`, { method: 'POST' });
+  } catch (err) {
+    back('/provider/availability', { error: reason(err) });
+  }
+  revalidatePath('/provider/availability');
+  back('/provider/availability', { removed: '1' });
+}
+
+/** A whole, non-negative number from a form field, or null when left blank. */
+function wholeOrNull(formData: FormData, field: string, backTo: string, what: string): number | null {
+  const raw = String(formData.get(field) ?? '').trim();
+  if (raw === '') return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) back(backTo, { error: `${what} has to be a whole number.` });
+  return n;
+}
+
+/**
+ * Where payouts go.
+ *
+ * The full account number passes through to the API once, which hands it
+ * to the payment aggregator; only the last four and the IFSC are kept
+ * (#31). Nothing here stores or echoes it.
+ */
+export async function setPayoutDestination(formData: FormData): Promise<void> {
+  await requireRole('provider', '/provider/payout');
+  const accountHolderName = String(formData.get('accountHolderName') ?? '').trim();
+  const accountNumber = String(formData.get('accountNumber') ?? '').replace(/\s+/g, '');
+  const ifsc = String(formData.get('ifsc') ?? '').trim().toUpperCase();
+  if (!accountHolderName || !accountNumber || !ifsc) {
+    back('/provider/payout', { error: 'The name on the account, the account number and the IFSC are all needed.' });
+  }
+  if (!/^\d{6,18}$/.test(accountNumber)) back('/provider/payout', { error: 'An account number is 6 to 18 digits.' });
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
+    back('/provider/payout', { error: 'That IFSC does not look right. It is 11 characters, like HDFC0001234.' });
+  }
+  try {
+    await apiAsUser('/me/payout-destination', {
+      method: 'POST',
+      body: JSON.stringify({ accountHolderName, accountNumber, ifsc }),
+    });
+  } catch (err) {
+    back('/provider/payout', { error: reason(err) });
+  }
+  revalidatePath('/provider/payout');
+  revalidatePath('/provider/earnings');
+  back('/provider/payout', { saved: '1' });
+}
+
+/**
+ * The languages a provider works in, and in which they can assess work.
+ *
+ * A matching dimension, not a display preference (#19): someone working
+ * in Hindi is only matched with a provider who works in Hindi.
+ */
+export async function setLanguages(formData: FormData): Promise<void> {
+  await requireRole('provider', '/provider/languages');
+  const works = new Set(formData.getAll('works').map(String));
+  const evaluates = new Set(formData.getAll('evaluates').map(String));
+  const languages = [...works].map((langCode) => ({ langCode, canEvaluate: evaluates.has(langCode) }));
+  if (languages.length === 0) {
+    back('/provider/languages', { error: 'Keep at least one language. Nobody can be matched with you otherwise.' });
+  }
+  try {
+    await apiAsUser('/me/languages', { method: 'POST', body: JSON.stringify({ languages }) });
+  } catch (err) {
+    back('/provider/languages', { error: reason(err) });
+  }
+  revalidatePath('/provider/languages');
+  back('/provider/languages', { saved: '1' });
+}
+
+/**
+ * A bundle: several of one kind of work, paid once.
+ *
+ * Whole rupees in the form, paise on the wire, converted with integer
+ * arithmetic only (CLAUDE.md money rules).
+ */
+export async function publishPackage(formData: FormData): Promise<void> {
+  await requireRole('provider', '/provider/services');
+  const engagementType = String(formData.get('engagementType') ?? '');
+  const title = String(formData.get('title') ?? '').trim();
+  const sessionCount = wholeOrNull(formData, 'sessionCount', '/provider/services', 'The number of sessions');
+  const rupees = wholeOrNull(formData, 'rupees', '/provider/services', 'The price');
+  const commitment = wholeOrNull(formData, 'commitment', '/provider/services', 'The time commitment');
+  if (!engagementType || !title || !sessionCount || sessionCount < 2 || !rupees) {
+    back('/provider/services', { error: 'A bundle needs a kind of work, a name, at least two sessions and a price.' });
+  }
+  try {
+    await apiAsUser('/me/packages', {
+      method: 'POST',
+      body: JSON.stringify({
+        engagementType,
+        title,
+        sessionCount,
+        amountPaise: String(BigInt(rupees ?? 0) * 100n),
+        ...(commitment ? { commitment } : {}),
+      }),
+    });
+  } catch (err) {
+    back('/provider/services', { error: reason(err) });
+  }
+  revalidatePath('/provider/services');
+  back('/provider/services', { saved: '1' });
+}
+
+export async function withdrawPackage(formData: FormData): Promise<void> {
+  await requireRole('provider', '/provider/services');
+  const id = String(formData.get('packageId') ?? '');
+  try {
+    await apiAsUser(`/me/packages/${encodeURIComponent(id)}/withdraw`, { method: 'POST' });
+  } catch (err) {
+    back('/provider/services', { error: reason(err) });
+  }
+  revalidatePath('/provider/services');
+  back('/provider/services', { removed: '1' });
+}
+
+/** Booking rules: notice, gap, how far ahead, slot length. They protect the provider's time. */
+export async function setAvailabilityPolicy(formData: FormData): Promise<void> {
+  await requireRole('provider', '/provider/availability');
+  const read = (f: string, what: string): number | null => wholeOrNull(formData, f, '/provider/availability', what);
+  const minNoticeMinutes = read('minNoticeMinutes', 'Shortest notice');
+  const bufferMinutes = read('bufferMinutes', 'The gap between sessions');
+  const maxAdvanceDays = read('maxAdvanceDays', 'How far ahead');
+  const slotMinutes = read('slotMinutes', 'Slot length');
+  if ([minNoticeMinutes, bufferMinutes, maxAdvanceDays, slotMinutes].some((v) => v === null)) {
+    back('/provider/availability', { error: 'Fill in all four booking rules.' });
+  }
+  try {
+    await apiAsUser('/me/availability/policy', {
+      method: 'POST',
+      body: JSON.stringify({ minNoticeMinutes, bufferMinutes, maxAdvanceDays, slotMinutes }),
+    });
+  } catch (err) {
+    back('/provider/availability', { error: reason(err) });
+  }
+  revalidatePath('/provider/availability');
+  back('/provider/availability', { saved: '1' });
+}
+
+/** A day off. A blocked date overrides the weekly hours. */
+export async function addAvailabilityException(formData: FormData): Promise<void> {
+  await requireRole('provider', '/provider/availability');
+  const onDate = String(formData.get('onDate') ?? '');
+  const why = String(formData.get('reason') ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(onDate)) back('/provider/availability', { error: 'Choose the date to block.' });
+  try {
+    await apiAsUser('/me/availability/exceptions', {
+      method: 'POST',
+      // An empty reason is left out: JSON drops an undefined field.
+      body: JSON.stringify({ onDate, reason: why || undefined }),
+    });
+  } catch (err) {
+    back('/provider/availability', { error: reason(err) });
+  }
+  revalidatePath('/provider/availability');
+  back('/provider/availability', { saved: '1' });
+}
+
+export async function removeAvailabilityException(formData: FormData): Promise<void> {
+  await requireRole('provider', '/provider/availability');
+  const id = String(formData.get('exceptionId') ?? '');
+  try {
+    await apiAsUser(`/me/availability/exceptions/${encodeURIComponent(id)}/remove`, { method: 'POST' });
   } catch (err) {
     back('/provider/availability', { error: reason(err) });
   }

@@ -3,7 +3,7 @@ import { Button, ButtonLink, Card, Chip, Divider, Eyebrow, PageHead, Panel, Tier
 import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
 import { t, tl } from '@/lib/pack';
-import { getProvider } from '@/lib/data';
+import { getProvider, listMyCredentials, listMySkillStats } from '@/lib/data';
 import { dateLong } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,10 @@ export default async function ProviderStandingPage(): Promise<JSX.Element> {
    */
   const actor = await requireRole('provider', '/provider/standing');
   const { fam, lang } = await preview('provider');
-  const me = await getProvider(actor.id);
+  const [me, credentials, stats] = await Promise.all([getProvider(actor.id), listMyCredentials(), listMySkillStats()]);
+  const statFor = new Map(stats.map((s) => [s.skillCode, s]));
+  // What is actually waiting on a reviewer — not an example.
+  const inReview = credentials.filter((c) => c.status === 'submitted' || c.status === 'under_review');
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider/standing">
@@ -52,6 +55,11 @@ export default async function ProviderStandingPage(): Promise<JSX.Element> {
                   </div>
                   <p className="mt-1.5 text-small text-ink-muted">
                     {s.issuerSummary} · verified {dateLong(s.verifiedAt)}
+                    {(() => {
+                      const st = statFor.get(s.skillCode);
+                      if (!st || st.completedEngagements === 0) return ' · no completed work yet';
+                      return ` · ${st.completedEngagements} completed${st.avgRating !== null ? ` · ${st.avgRating.toFixed(1)} average` : ''}`;
+                    })()}
                   </p>
                 </li>
               ))}
@@ -63,21 +71,26 @@ export default async function ProviderStandingPage(): Promise<JSX.Element> {
             </div>
           </Panel>
 
-          <Panel title="In review" tone="caution">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-body font-semibold">Environment and ecology</p>
-                <p className="mt-1 text-small text-ink-muted">
-                  Degree certificate submitted 29 Aug. Two documents, both received.
-                </p>
-              </div>
-              <Chip tone="caution">Decision due 2 Sep</Chip>
-            </div>
-            <p className="mt-3 text-small text-ink-muted">
-              We aim to decide within 48 hours. If we need something else we will ask for exactly that, not send you
-              back to the beginning.
-            </p>
-          </Panel>
+          {/*
+            Real submissions waiting on a reviewer. This panel used to show an
+            invented "Environment and ecology" certificate with a decision date
+            and a 48-hour promise nothing enforces.
+          */}
+          {inReview.length > 0 && (
+            <Panel title="Being checked" tone="caution">
+              <ul className="divide-y divide-line">
+                {inReview.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <p className="text-body font-medium">
+                      {c.credentialTypeLabels?.[lang] ?? c.credentialTypeLabels?.en ?? 'A credential'}
+                    </p>
+                    <Chip tone="caution">Being checked</Chip>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-small text-ink-muted">A person reads each one. The outcome, and any reason, appears here.</p>
+            </Panel>
+          )}
 
           <Panel title="What each tier lets you do">
             <table className="w-full text-small">

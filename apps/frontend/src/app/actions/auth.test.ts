@@ -129,6 +129,50 @@ describe('signIn', () => {
   });
 });
 
+/**
+ * One sign-in form for both sides (the phone app's pattern). The account
+ * the API returns decides where a person lands; the side they picked on
+ * the form only decides whether they are told it did not match.
+ */
+describe('signIn lands each side on its own home', () => {
+  function apiRoutes(role: string) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const body = String(url).endsWith('/auth/me')
+          ? { id: 'u1', email: 'a@b.c', role }
+          : { outcome: 'session', token: 'tok' };
+        return { status: 200, ok: true, text: async () => JSON.stringify(body) };
+      }),
+    );
+  }
+
+  it('sends a provider from a bare sign-in to the provider dashboard', async () => {
+    apiRoutes('provider');
+    const to = await landsOn(() => signIn(form({ email: 'a@b.c', password: 'pw', next: '/', as: 'provider' })));
+    expect(to).toBe('/provider');
+  });
+
+  it('keeps an explicit destination', async () => {
+    apiRoutes('provider');
+    const to = await landsOn(() => signIn(form({ email: 'a@b.c', password: 'pw', next: '/sessions', as: 'provider' })));
+    expect(to).toBe('/sessions');
+  });
+
+  it('tells someone who chose "give guidance" that their account gets it', async () => {
+    apiRoutes('seeker');
+    const to = await landsOn(() => signIn(form({ email: 'a@b.c', password: 'pw', next: '/', as: 'provider' })));
+    expect(to).toBe('/?notice=account-is-seeker');
+  });
+
+  it('never lets the form choice change the role', async () => {
+    apiRoutes('seeker');
+    const to = await landsOn(() => signIn(form({ email: 'a@b.c', password: 'pw', next: '/provider', as: 'provider' })));
+    // The destination is kept as typed; the page itself refuses a seeker.
+    expect(to).toBe('/provider?notice=account-is-seeker');
+  });
+});
+
 describe('registerAccount', () => {
   /*
    * The platform is 18+ (#27). The confirmation is a hard gate, not a

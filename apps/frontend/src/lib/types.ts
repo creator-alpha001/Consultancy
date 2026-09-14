@@ -290,6 +290,8 @@ export interface Proposal {
   price: Money;
   deliverInHours: number;
   submittedAt: string;
+  /** submitted | withdrawn | accepted | rejected */
+  status: string;
 }
 
 export interface SessionRecord {

@@ -1,96 +1,112 @@
 import Link from 'next/link';
 import { AppShell } from '@/components/shell';
-import { ButtonLink, Card, Chip, Divider, Eyebrow, PageHead, Panel, SlaClock, Stat, StatusChip } from '@/components/ui';
-import { EscrowLine } from '@/components/escrow';
+import { ButtonLink, Chip, PageHead, Panel, Stat, StatusChip } from '@/components/ui';
 import { preview, contextFor } from '@/lib/preview';
-import { t, tl, plural, categoryLabel } from '@/lib/pack';
-import { listEngagements, listBoard, listSessions } from '@/lib/data';
-import { dateTime, money, until, ago } from '@/lib/format';
+import { requireRole } from '@/lib/session';
+import { categoryLabel } from '@/lib/pack';
+import { getEarnings, getPaidWorkStatus, getReadiness, listBoard, listEngagements, listSessions } from '@/lib/data';
+import { STEPS } from '@/lib/readiness-steps';
+import { ago, dateTime, money } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * The provider's home.
+ * The provider's home — the same shape as the phone app's dashboard.
  *
- * Ordered by the provider's real fears, not by our data model. A
- * provider's fear is not "where is my dashboard" — it is "will I be paid,
- * and am I about to waste an hour". So: what needs doing today, then
- * money with its dates, then what is open to bid on. Ranking and stats
- * are further down, because they are interesting rather than urgent.
+ * Ordered by what a provider can act on: anything stopping them being
+ * booked, then work waiting on them (work that has been sent comes first,
+ * because it is the one they can do now), then money, then sessions, then
+ * the board.
  *
- * The dark header marks this as the provider surface. Many providers
- * were seekers first and some hold both accounts; the fastest way to
- * answer "which one am I in" is the colour of the bar at the top.
+ * Every figure here comes from the API. An earlier version drew "99%
+ * delivered on time across 412 pieces of work", a median reply time, a
+ * payout date and a search band — none of it real, all of it read as
+ * fact by the person looking at it.
  */
 export default async function ProviderHome(): Promise<JSX.Element> {
+  await requireRole('provider', '/provider');
   const { fam, lang } = await preview('provider');
-  const [work, board, sessions] = await Promise.all([listEngagements('provider'), listBoard(), listSessions()]);
+  const [work, board, sessions, earnings, readiness, paidWork] = await Promise.all([
+    listEngagements('provider'),
+    listBoard(),
+    listSessions(),
+    getEarnings(),
+    getReadiness(),
+    getPaidWorkStatus(),
+  ]);
 
-  const due = work.filter((e) => e.status === 'working');
-  const upcoming = work.filter((e) => e.status === 'agreed' && e.scheduledAt);
-  const clearing = work.filter((e) => ['review', 'in_progress'].includes(e.escrow.stage));
-
-  const pending = clearing.reduce((s, e) => s + (e.escrow.providerNet?.amountPaise ?? 0), 0);
+  // Work sent and waiting to be assessed first, then work under way.
+  const needsYou = work
+    .filter((e) => e.status === 'delivered' || e.status === 'working')
+    .sort((a, b) => (a.status === 'delivered' ? 0 : 1) - (b.status === 'delivered' ? 0 : 1));
+  const blockers = (readiness?.steps ?? []).filter((s) => s.blocking && !s.done);
+  const upcoming = sessions
+    .filter((s) => s.status === 'scheduled' && new Date(s.scheduledAt).getTime() > Date.now())
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+    .slice(0, 3);
+  const currency = earnings?.summary.currency ?? 'INR';
+  const paise = (v: string | undefined) => ({ amountPaise: Number(v ?? 0), currency });
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider">
       <PageHead
-        title="Today"
-        sub={`${due.length} to deliver, ${upcoming.length} booked, ${board.length} open on the board.`}
-        action={
-          <>
-            <ButtonLink href="/provider/readiness" tone="secondary">
-              Getting ready
-            </ButtonLink>
-            <ButtonLink href="/provider/requests">See open requests</ButtonLink>
-          </>
-        }
+        title="Dashboard"
+        sub={`${needsYou.length} waiting on you · ${board.length} open on the board`}
+        action={<ButtonLink href="/provider/requests">See open requests</ButtonLink>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
-          label="Clearing"
-          value={money({ amountPaise: pending, currency: 'INR' })}
-          sub="Yours once the review windows close."
-          tone="brand"
-        />
-        <Stat label="Next payout" value="4 Sep" sub="Every Thursday, for anything cleared by Tuesday." />
-        <Stat label="Delivered on time" value="99%" sub="Across 412 pieces of work." />
-        <Stat label="Median reply" value="47 min" sub="This affects where you appear in search." />
-      </div>
+      {paidWork?.blocked && (
+        <div role="note" className="mb-5 rounded-md border border-caution-line bg-caution-soft px-4 py-3 text-small text-caution">
+          {paidWork.reason ?? 'Paid work is not available on your account. Free answers on the board still are.'}
+        </div>
+      )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+      {blockers.length > 0 && (
+        <Panel title="Before you can be booked" className="mb-5">
+          <ul className="divide-y divide-line">
+            {blockers.map((s) => {
+              const meta = STEPS[s.code];
+              return (
+                <li key={s.code} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="text-body font-medium">{meta?.title ?? 'A step to finish'}</p>
+                    {meta?.why && <p className="mt-0.5 text-small text-ink-muted">{meta.why}</p>}
+                  </div>
+                  {meta?.href && (
+                    <ButtonLink href={meta.href} tone="secondary" size="sm">
+                      {meta.cta ?? 'Open'}
+                    </ButtonLink>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Panel>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-5">
-          <Panel
-            title="Needs delivering"
-            note="Ordered by how much time is left, not by what it pays."
-          >
-            {due.length === 0 ? (
-              <p className="text-body text-ink-muted">Nothing outstanding.</p>
-            ) : (
+          <Panel title="Needs you" note={needsYou.length === 0 ? 'Nothing waiting. New requests appear under Open requests.' : undefined}>
+            {needsYou.length > 0 && (
               <ul className="divide-y divide-line">
-                {due.map((e) => (
-                  <li key={e.id} className="py-4 first:pt-0 last:pb-0">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="figure text-caption text-ink-muted">{e.reference}</span>
-                          <Chip tone="neutral">{categoryLabel(contextFor(e.family), e.domain, e.category, lang)}</Chip>
-                          <Chip tone="neutral">{e.language.toUpperCase()}</Chip>
-                        </div>
-                        <p className="mt-1.5 text-body font-medium">{e.seeker.displayName}</p>
-                        <p className="figure mt-0.5 text-small text-ink-muted">
-                          {e.agenda?.items.filter((i) => i.addressed).length ?? 0} of {e.agenda?.items.length ?? 0}{' '}
-                          {plural(contextFor(e.family).labels.agendaItem, lang)} marked
-                        </p>
+                {needsYou.map((e) => (
+                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="figure text-caption text-ink-muted">{e.reference}</span>
+                        <StatusChip status={e.status} />
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <SlaClock text={until(e.dueAt)} />
-                        <span className="figure text-small font-semibold">{money(e.escrow.providerNet)}</span>
-                        <ButtonLink href={`/provider/work/${e.id}`} size="sm">
-                          Open
-                        </ButtonLink>
-                      </div>
+                      <p className="mt-1 text-body font-medium">{e.seeker.displayName}</p>
+                      <p className="mt-0.5 text-small text-ink-muted">
+                        {e.status === 'delivered' ? 'Work sent — assess it' : 'Under way'} ·{' '}
+                        {categoryLabel(contextFor(e.family), e.domain, e.category, lang)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="figure text-small font-semibold">{money(e.escrow.providerNet)}</span>
+                      <ButtonLink href={`/provider/work/${e.id}`} size="sm" tone={e.status === 'delivered' ? 'primary' : 'secondary'}>
+                        {e.status === 'delivered' ? 'Assess' : 'Open'}
+                      </ButtonLink>
                     </div>
                   </li>
                 ))}
@@ -98,35 +114,22 @@ export default async function ProviderHome(): Promise<JSX.Element> {
             )}
           </Panel>
 
-          <Panel title="Booked sessions">
-            {upcoming.length === 0 ? (
-              <p className="text-body text-ink-muted">Nothing booked.</p>
-            ) : (
+          <Panel title="Booked sessions" note={upcoming.length === 0 ? 'Nothing booked.' : undefined}>
+            {upcoming.length > 0 && (
               <ul className="divide-y divide-line">
-                {upcoming.map((e) => {
-                  const session = sessions.find((s) => s.engagementId === e.id);
-                  return (
-                    <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-                      <div>
-                        <p className="figure text-body font-medium">{dateTime(e.scheduledAt)}</p>
-                        <p className="mt-0.5 text-small text-ink-muted">
-                          {e.seeker.displayName} · {categoryLabel(contextFor(e.family), e.domain, e.category, lang)} ·{' '}
-                          {e.language.toUpperCase()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <ButtonLink href={`/provider/work/${e.id}`} tone="secondary" size="sm">
-                          Prep brief
-                        </ButtonLink>
-                        {session && (
-                          <ButtonLink href={`/sessions/${session.id}`} size="sm">
-                            Join
-                          </ButtonLink>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
+                {upcoming.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="figure text-body font-medium">{dateTime(s.scheduledAt)}</p>
+                      <p className="mt-0.5 text-small text-ink-muted">
+                        {s.counterpart} · {s.durationMinutes} min
+                      </p>
+                    </div>
+                    <ButtonLink href={`/sessions/${s.id}`} tone="secondary" size="sm">
+                      Open
+                    </ButtonLink>
+                  </li>
+                ))}
               </ul>
             )}
           </Panel>
@@ -138,69 +141,48 @@ export default async function ProviderHome(): Promise<JSX.Element> {
                 All {board.length}
               </Link>
             }
-            note="Only requests matching a skill you are verified for, in a language you work in."
           >
-            <ul className="divide-y divide-line">
-              {board.slice(0, 3).map((r) => (
-                <li key={r.id} className="flex flex-wrap items-start justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
-                  <div className="min-w-0">
-                    <p className="text-body font-medium">{r.title.original}</p>
-                    <p className="mt-0.5 text-small text-ink-muted">
-                      {categoryLabel(contextFor(r.family), r.domain, r.category, lang)} · {r.language.toUpperCase()} ·
-                      posted {ago(r.postedAt)} · <span className="figure">{r.proposalCount} replies</span>
-                    </p>
-                  </div>
-                  <span className="figure flex-none text-small font-semibold">{money(r.budget)}</span>
-                </li>
-              ))}
-            </ul>
+            {board.length === 0 ? (
+              <p className="text-body text-ink-muted">No open requests right now.</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {board.slice(0, 3).map((r) => (
+                  <li key={r.id} className="py-3.5 first:pt-0 last:pb-0">
+                    <Link href={`/board/${r.id}`} className="block hover:text-brand">
+                      <p className="text-body font-medium">{r.title.original}</p>
+                      <p className="mt-0.5 text-small text-ink-muted">
+                        {categoryLabel(contextFor(r.family), r.domain, r.category, lang)} · {r.language.toUpperCase()} ·
+                        posted {ago(r.postedAt)} · <span className="figure">{r.proposalCount} offers</span>
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Panel>
         </div>
 
-        {/* ------------------------------------------------ side rail */}
         <aside className="space-y-4">
-          <Panel title="Money, in order of when">
-            <ul className="space-y-3">
-              {clearing.map((e) => (
-                <li key={e.id} className="rounded-md border border-line p-3.5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="figure text-caption text-ink-muted">{e.reference}</span>
-                    <span className="figure text-small font-semibold">{money(e.escrow.providerNet)}</span>
-                  </div>
-                  <p className="mt-1.5 text-caption text-ink-muted">
-                    {e.escrow.releasesOn ? `Clears ${dateTime(e.escrow.releasesOn)}` : 'Clears when confirmed'}
-                  </p>
-                  <div className="mt-2">
-                    <EscrowLine escrow={e.escrow} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <Divider className="my-4" />
-            <ButtonLink href="/provider/earnings" tone="secondary" full>
-              Full statement
-            </ButtonLink>
-          </Panel>
-
-          <Panel tone="brand" title="Where you sit in search">
-            <p className="text-small">
-              You are in the top band for GS-II answer evaluation in English and Hindi. The two things moving that
-              number right now:
-            </p>
-            <ul className="mt-3 space-y-2 text-small">
-              <li className="flex justify-between gap-3">
-                <span className="text-ink-muted">Reply time</span>
-                <span className="figure font-medium">47 min</span>
-              </li>
-              <li className="flex justify-between gap-3">
-                <span className="text-ink-muted">Delivered on time</span>
-                <span className="figure font-medium">99%</span>
-              </li>
-            </ul>
-            <p className="mt-3 text-caption">
-              Your price is not one of them, and never will be — nothing in search is ordered by it.
-            </p>
-          </Panel>
+          <Stat label="Held for work in progress" value={money(paise(earnings?.summary.inEscrowPaise))} tone="brand" />
+          <Stat label="Owed to you" value={money(paise(earnings?.summary.owedPaise))} sub="Released and on its way to your bank." />
+          <Stat label="Paid out" value={money(paise(earnings?.summary.paidOutPaise))} />
+          {earnings && earnings.summary.failedPaise !== '0' && (
+            <Stat label="Failed payouts" value={money(paise(earnings.summary.failedPaise))} tone="caution" sub="Check where you get paid." />
+          )}
+          <ButtonLink href="/provider/earnings" tone="secondary" full>
+            Earnings and payouts
+          </ButtonLink>
+          <div className="flex flex-wrap gap-2">
+            <Chip tone="neutral">
+              <Link href="/provider/languages">Languages</Link>
+            </Chip>
+            <Chip tone="neutral">
+              <Link href="/provider/payout">Where you get paid</Link>
+            </Chip>
+            <Chip tone="neutral">
+              <Link href="/provider/availability">Availability</Link>
+            </Chip>
+          </div>
         </aside>
       </div>
     </AppShell>

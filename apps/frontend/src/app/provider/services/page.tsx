@@ -3,9 +3,9 @@ import { Button, Card, Chip, Divider, Eyebrow, Field, PageHead, Panel, Select } 
 import { preview } from '@/lib/preview';
 import { requireRole } from '@/lib/session';
 import { t, tl } from '@/lib/pack';
-import { listMyRates } from '@/lib/data';
+import { listMyPackages, listMyRates } from '@/lib/data';
 import { commitmentLine, money } from '@/lib/format';
-import { removeRate, setRate } from '@/app/actions/provider';
+import { publishPackage, removeRate, setRate, withdrawPackage } from '@/app/actions/provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +24,7 @@ export default async function ProviderServicesPage({
 }): Promise<JSX.Element> {
   await requireRole('provider', '/provider/services');
   const { fam, lang } = await preview('provider');
-  const [{ error, saved, removed }, rates] = await Promise.all([searchParams, listMyRates()]);
+  const [{ error, saved, removed }, rates, packages] = await Promise.all([searchParams, listMyRates(), listMyPackages()]);
 
   return (
     <AppShell fam={fam} lang={lang} role="provider" current="/provider">
@@ -45,6 +45,7 @@ export default async function ProviderServicesPage({
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="min-w-0 space-y-5">
         <Panel title="Your prices" note="Ordered by what the work is. Never against anyone else's.">
           {rates.length === 0 ? (
             <p className="text-body text-ink-muted">
@@ -122,12 +123,78 @@ export default async function ProviderServicesPage({
           </form>
         </Panel>
 
+        {/*
+          Bundles, as the phone app offers them: several of one kind of work
+          paid once. Each one a seeker starts still gets its own goals and
+          its own escrow.
+        */}
+        <Panel title="Bundles" note="Several of one kind of work, paid for once. Each one started still has its own goals and its own held money.">
+          {packages.length === 0 ? (
+            <p className="text-body text-ink-muted">No bundles offered.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {packages.map((b) => (
+                <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="text-body font-medium">{b.title}</p>
+                    <p className="figure mt-0.5 text-caption text-ink-muted">
+                      {b.sessionCount} sessions · {money({ amountPaise: Number(b.perSessionPaise), currency: b.currency })} each
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="figure text-body font-semibold">{money({ amountPaise: Number(b.amountPaise), currency: b.currency })}</span>
+                    <form action={withdrawPackage}>
+                      <input type="hidden" name="packageId" value={b.id} />
+                      <Button type="submit" size="sm" tone="destructive">
+                        Withdraw
+                      </Button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <Divider className="my-5" />
+
+          <form action={publishPackage}>
+            <Eyebrow>Offer a bundle</Eyebrow>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <Select
+                label="Kind of work"
+                name="engagementType"
+                options={fam.engagementTypes.map((e) => ({ value: e.code, label: t(e.label, lang) }))}
+              />
+              <Field label="Name" name="title" required placeholder="Three reviews" />
+              <Field label="Number of sessions" name="sessionCount" type="number" inputMode="numeric" required placeholder="3" />
+              <Field label="Price for all of them, in rupees" name="rupees" type="number" inputMode="numeric" required placeholder="2500" />
+              <Field
+                label="Time commitment (optional)"
+                name="commitment"
+                type="number"
+                inputMode="numeric"
+                hint="Minutes for a live session, hours to return written work."
+              />
+            </div>
+            <div className="mt-4">
+              <Button type="submit">Offer this bundle</Button>
+            </div>
+          </form>
+        </Panel>
+        </div>
+
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          {/*
+            No percentage is written here. The fee comes from the schedule in
+            force when money is held (hard rule #8); a hardcoded "15%, 12%,
+            8%" was a promise nothing enforced. Each piece of work shows what
+            was actually taken.
+          */}
           <Card className="p-5">
-            <Eyebrow>What we take</Eyebrow>
+            <Eyebrow>What the platform takes</Eyebrow>
             <p className="mt-2 text-small text-ink-muted">
-              15% on the first two pieces of work with the same person, 12% on the third to fifth, 8% after that. The
-              fee falls because we would rather earn less from a relationship that lasts.
+              A fee from the schedule in force when the money is held. Each piece of work shows exactly what was
+              taken, under Earnings.
             </p>
           </Card>
           <Panel title="Why there is no suggested price">

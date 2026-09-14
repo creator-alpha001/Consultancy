@@ -154,19 +154,19 @@ export default async function ProviderWorkDetail({ params }: { params: Promise<{
 
           <Panel title="Send it back">
             <p className="text-small text-ink-muted">
-              Once you deliver, {e.seeker.displayName.split(' ')[0]} has a review window. If they say nothing, it
-              releases to you automatically.
+              Returning your assessment sends it to {e.seeker.displayName.split(' ')[0]}. The money reaches you when
+              they confirm the goals were met; nothing is released on its own.
             </p>
             <div className="mt-4 space-y-2">
               <Button full size="lg" type="submit" disabled={marked}>
-                {marked ? 'Already returned' : 'Deliver and start the review window'}
+                {marked ? 'Already returned' : 'Return it to them'}
               </Button>
             </div>
             <Divider className="my-4" />
             <p className="text-caption text-ink-muted">
               {marked
                 ? 'This has been returned. A change now goes through a change order, not an edit.'
-                : 'Nothing is sent until you press deliver. Every dimension has to carry a mark first — a partly marked assessment is not comparable, which is the whole point of a shared rubric.'}
+                : 'Nothing is sent until you return it. Every dimension has to carry a mark first — a partly marked assessment is not comparable, which is the whole point of a shared rubric.'}
             </p>
           </Panel>
 

@@ -34,7 +34,8 @@ export async function signIn(formData: FormData): Promise<void> {
     });
   } catch (err) {
     const code = err instanceof ApiError ? err.code : 'UNKNOWN';
-    redirect(`/login?error=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`);
+    const as = formData.get('as') === 'provider' ? '&as=provider' : '';
+    redirect(`/login?error=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}${as}`);
   }
 
   if (result.outcome === 'mfa_enrolment_required') {
@@ -50,7 +51,30 @@ export async function signIn(formData: FormData): Promise<void> {
   }
 
   await setSessionCookie(result.token);
-  redirect(next);
+  redirect(await landingFor(result.token, next, formData.get('as')));
+}
+
+/**
+ * Where a fresh session lands.
+ *
+ * One sign-in serves both sides, and the account — not the choice on the
+ * form — decides which product opens (#28). A bare "/" goes to that
+ * role's own home, so a provider does not land on the seeker's front
+ * page. If the person chose the other side on the form, they are told
+ * which kind of account this is rather than left wondering.
+ */
+async function landingFor(token: string, next: string, chose: FormDataEntryValue | null): Promise<string> {
+  let role: string | undefined;
+  try {
+    role = (await api<{ role?: string }>('/auth/me', { token }))?.role;
+  } catch {
+    // Signed in either way; without the role, go where they were headed.
+  }
+  const home = role === 'provider' ? '/provider' : role === 'admin' ? '/admin' : '/';
+  const target = next === '/' ? home : next;
+  const picked = chose === 'provider' || chose === 'seeker' ? chose : null;
+  if (!picked || !role || role === 'admin' || role === picked) return target;
+  return `${target}${target.includes('?') ? '&' : '?'}notice=account-is-${role}`;
 }
 
 /** Sign out. Revokes the session server-side, then drops the cookie. */

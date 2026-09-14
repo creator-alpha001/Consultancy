@@ -144,7 +144,7 @@ export default async function BookPage({
                   value: l,
                   label: languageName(l, lang),
                 }))}
-                hint={`Only shown here because ${p.displayName.split(' ')[0]} verified this language. Language is matched, never assumed (CLAUDE.md #19).`}
+                hint={`Only shown here because ${p.displayName.split(' ')[0]} verified this language. Language is matched, never assumed.`}
               />
             </Panel>
 

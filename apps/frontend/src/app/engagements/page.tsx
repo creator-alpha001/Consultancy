@@ -21,8 +21,11 @@ export default async function EngagementsPage(): Promise<JSX.Element> {
   const { fam, lang } = await preview('seeker');
   const all = await listEngagements('seeker');
 
-  const needsYou = all.filter((e) => e.status === 'assessed' || e.status === 'delivered');
-  const active = all.filter((e) => ['agreed', 'working', 'draft'].includes(e.status));
+  // Only an assessed piece of work waits on the seeker. `delivered` means
+  // they have sent it and it is with the provider — the same reading as
+  // the phone app, and the API's own lifecycle (migration 0010).
+  const needsYou = all.filter((e) => e.status === 'assessed' || e.status === 'draft');
+  const active = all.filter((e) => ['agreed', 'working', 'delivered'].includes(e.status));
   const closed = all.filter((e) => ['completed', 'refunded', 'cancelled', 'disputed'].includes(e.status));
 
   return (
@@ -48,7 +51,7 @@ export default async function EngagementsPage(): Promise<JSX.Element> {
           {needsYou.length > 0 && (
             <Group
               title="Waiting on you"
-              note="The review window is running. If you do nothing, the money releases on the date shown."
+              note="Terms to confirm, or an assessment back to check against the goals. The money stays held until you act."
               tone="caution"
             >
               {needsYou.map((e) => (
@@ -94,7 +97,7 @@ function Group({
       <div className="mb-3">
         <h2 className="text-heading font-semibold">
           {title}
-          {tone === 'caution' && <span className="ml-2 align-middle"><Chip tone="caution">Time-limited</Chip></span>}
+          {tone === 'caution' && <span className="ml-2 align-middle"><Chip tone="caution">Your turn</Chip></span>}
         </h2>
         {note && <p className="mt-1 text-small text-ink-muted">{note}</p>}
       </div>
